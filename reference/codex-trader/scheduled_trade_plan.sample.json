@@ -1,0 +1,17 @@
+{
+  "name": "매일 10시 비트코인 테스트",
+  "start_date": "2026-03-27",
+  "end_date": "2026-04-30",
+  "items": [
+    {
+      "exchange": "bithumb",
+      "target": "김재한",
+      "api_key": "YOUR_API_KEY",
+      "secret_key": "YOUR_SECRET_KEY",
+      "market": "KRW-BTC",
+      "buy_krw": "5100",
+      "full_market_sell_after_buy": true,
+      "request": "BTC 시장가 5,100원 매수 후 전량 시장가 매도"
+    }
+  ]
+}
