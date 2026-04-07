@@ -151,6 +151,10 @@ export default function LoginPage() {
         >
           {mode === 'login' ? '계정이 없으신가요? 회원 생성' : '이미 계정이 있으신가요? 로그인'}
         </button>
+
+        <p className="mt-3 text-right text-xs text-gray-400">
+          Last updated: {process.env.NEXT_PUBLIC_BUILD_TIME}
+        </p>
       </div>
     </div>
   )
