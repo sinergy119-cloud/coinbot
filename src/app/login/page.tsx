@@ -71,7 +71,8 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-sm rounded-xl bg-white p-8 shadow-lg">
+      <div className="flex w-full max-w-sm flex-col">
+      <div className="rounded-xl bg-white p-8 shadow-lg">
         <h1 className="mb-1 text-center text-2xl font-bold text-gray-900">MyCoinBot</h1>
         <p className="mb-6 text-center text-sm text-gray-500">
           {mode === 'login' ? '로그인' : '회원 생성'}
@@ -154,9 +155,10 @@ export default function LoginPage() {
 
       </div>
 
-      <p className="mt-3 w-full max-w-sm text-right text-xs text-gray-400">
+      <p className="mt-2 text-right text-xs text-gray-400">
         Last updated: {process.env.NEXT_PUBLIC_BUILD_TIME}
       </p>
+      </div>
     </div>
   )
 }
