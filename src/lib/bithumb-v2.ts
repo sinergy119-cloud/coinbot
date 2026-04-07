@@ -34,7 +34,7 @@ async function signToken(
 
   const secret = new TextEncoder().encode(secretKey)
   const token = await new SignJWT(payload)
-    .setProtectedHeader({ alg: 'HS256' })
+    .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
     .sign(secret)
 
   return token
