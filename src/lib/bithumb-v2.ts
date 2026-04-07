@@ -134,7 +134,8 @@ export async function bithumbGetTradeHistory(
     market: string
     side: string
     executed_volume: string
-    price: string | null
+    executed_funds: string | null  // 매도 시 체결된 KRW 총액
+    price: string | null           // 매수 시 KRW 총액
     created_at: string
   }>
   return data
@@ -145,7 +146,9 @@ export async function bithumbGetTradeHistory(
       coin: o.market.replace('KRW-', ''),
       side: (o.side === 'bid' ? 'buy' : 'sell') as 'buy' | 'sell',
       quantity: Number(o.executed_volume),
-      total: o.side === 'bid' ? Number(o.price ?? 0) : 0,
+      total: o.side === 'bid'
+        ? Number(o.price ?? 0)
+        : Number(o.executed_funds ?? 0),
     }))
 }
 
