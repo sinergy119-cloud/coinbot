@@ -8,15 +8,17 @@ import { createHmac } from 'crypto'
 
 const BASE_URL = 'https://api.korbit.co.kr'
 
+// 서명: HMAC-SHA256 HEX (reference 기준 — base64 아님)
 function korbitSign(secretKey: string, plainText: string): string {
   return createHmac('sha256', Buffer.from(secretKey, 'utf8'))
     .update(plainText, 'utf8')
-    .digest('base64')
+    .digest('hex')
 }
 
+// 키는 인코딩 안 함, 값만 encodeURIComponent (reference New-FormString 동일)
 function buildParamString(params: Record<string, string>): string {
   return Object.entries(params)
-    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+    .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
     .join('&')
 }
 
@@ -32,12 +34,13 @@ async function korbitPrivate(
     timestamp: Date.now().toString(),
   }
   const paramString = buildParamString(allParams)
+  // 서명은 paramString 기준으로 계산하고, URL/body에 raw로 append (인코딩 없음)
   const signature = korbitSign(secretKey, paramString)
   const headers: Record<string, string> = { 'X-KAPI-KEY': accessKey }
 
   let res: Response
   if (method === 'GET') {
-    res = await fetch(`${BASE_URL}${path}?${paramString}&signature=${encodeURIComponent(signature)}`, {
+    res = await fetch(`${BASE_URL}${path}?${paramString}&signature=${signature}`, {
       method: 'GET',
       headers,
     })
@@ -46,7 +49,7 @@ async function korbitPrivate(
     res = await fetch(`${BASE_URL}${path}`, {
       method: 'POST',
       headers,
-      body: `${paramString}&signature=${encodeURIComponent(signature)}`,
+      body: `${paramString}&signature=${signature}`,
     })
   }
 
@@ -87,6 +90,113 @@ export async function korbitGetCoinBalance(
   }
   const item = data.data?.find((b) => b.currency.toLowerCase() === coin.toLowerCase())
   return Number(item?.available ?? 0)
+}
+
+// ──────────────────────────────────────
+// 1-c) 전체 잔고 (KRW + 코인) 조회
+// ──────────────────────────────────────
+export async function korbitGetFullBalance(
+  accessKey: string,
+  secretKey: string,
+): Promise<{ krw: number; coins: Record<string, number> }> {
+  const data = (await korbitPrivate(accessKey, secretKey, 'GET', '/v2/balance')) as {
+    data?: Array<{ currency: string; available: string }>
+  }
+  const coins: Record<string, number> = {}
+  let krw = 0
+  for (const item of data.data ?? []) {
+    const amount = Number(item.available)
+    const cur = item.currency.toUpperCase()
+    if (cur === 'KRW') krw = amount
+    else if (amount > 0) coins[cur] = amount
+  }
+  return { krw, coins }
+}
+
+// ──────────────────────────────────────
+// 3-b) 거래내역 조회: GET /v2/orders
+// ──────────────────────────────────────
+export interface KorbitTradeHistoryItem {
+  id: string
+  datetime: string
+  coin: string
+  side: 'buy' | 'sell'
+  quantity: number
+  total: number
+}
+
+// 코빗 주요 코인 목록 (symbol 필수이므로 병렬 조회)
+const KORBIT_MAJOR_COINS = ['btc', 'eth', 'xrp', 'usdt', 'ada', 'sol', 'dot', 'avax', 'link', 'matic', 'bch', 'ltc', 'doge', 'trx', 'etc']
+
+export async function korbitGetTradeHistory(
+  accessKey: string,
+  secretKey: string,
+  limit = 50,
+): Promise<KorbitTradeHistoryItem[]> {
+  // /v2/myTrades 는 최대 36시간 이전까지만 조회 가능 (startTime 미지정 시 기본값 36시간 전)
+  // 공식 docs.korbit.co.kr 기준 응답 필드
+  type RawTrade = {
+    tradeId: string | number
+    symbol: string
+    side: string
+    price: string
+    qty: string   // 코인 수량
+    amt: string   // KRW 금액
+    tradedAt: number  // UNIX ms
+  }
+
+  // 보유 코인 목록을 먼저 조회하여 major 목록과 합산 (사용자가 보유한 코인이 목록에 없을 경우 대비)
+  let userCoins: string[] = []
+  try {
+    const balData = (await korbitPrivate(accessKey, secretKey, 'GET', '/v2/balance')) as {
+      data?: Array<{ currency: string; available: string; hold?: string }>
+    }
+    userCoins = (balData.data ?? [])
+      .filter((b) => b.currency.toLowerCase() !== 'krw')
+      .map((b) => b.currency.toLowerCase())
+  } catch { /* 잔고 조회 실패 시 major 목록만 사용 */ }
+
+  const allCoins = Array.from(new Set([...KORBIT_MAJOR_COINS, ...userCoins]))
+
+  const results = await Promise.allSettled(
+    allCoins.map((coin) =>
+      korbitPrivate(accessKey, secretKey, 'GET', '/v2/myTrades', {
+        symbol: `${coin}_krw`,
+        limit: '100',
+      }).then((data) => {
+        const d = data as { data?: RawTrade[] } | RawTrade[]
+        if (Array.isArray(d)) return d
+        return d.data ?? []
+      })
+    )
+  )
+
+  // 전부 실패 시 첫 번째 에러를 throw하여 원인 노출
+  const failures = results.filter((r) => r.status === 'rejected')
+  if (failures.length === results.length) {
+    const firstErr = (failures[0] as PromiseRejectedResult).reason
+    throw new Error(firstErr instanceof Error ? firstErr.message : String(firstErr))
+  }
+
+  const all: KorbitTradeHistoryItem[] = []
+  for (const r of results) {
+    if (r.status !== 'fulfilled') continue
+    for (const o of r.value) {
+      all.push({
+        id: String(o.tradeId),
+        datetime: new Date(o.tradedAt).toISOString(),
+        coin: o.symbol.split('_')[0].toUpperCase(),
+        side: (o.side === 'buy' ? 'buy' : 'sell') as 'buy' | 'sell',
+        quantity: Number(o.qty),
+        total: Number(o.amt),
+      })
+    }
+  }
+
+  // 최신순 정렬 후 limit 건 반환
+  return all
+    .sort((a, b) => new Date(b.datetime).getTime() - new Date(a.datetime).getTime())
+    .slice(0, limit)
 }
 
 // ──────────────────────────────────────
@@ -150,16 +260,16 @@ export async function korbitPlaceMarketOrder(
     if (side === 'buy') {
       params.amt = String(amountKrw)
     } else {
-      params.qty = String(coinQty ?? 0)
+      params.qty = String(parseFloat(Number(coinQty ?? 0).toFixed(8)))
     }
 
     const data = (await korbitPrivate(accessKey, secretKey, 'POST', '/v2/orders', params)) as {
       data?: { orderId?: string }
     }
-    return { success: true, orderId: data.data?.orderId }
+    return { success: true, orderId: data.data?.orderId != null ? String(data.data.orderId) : undefined }
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : '알 수 없는 오류'
-    if (msg.includes('balance') || msg.includes('잔고') || msg.includes('insufficient'))
+    if (msg.includes('insufficient_funds') || msg.includes('부족') || msg.includes('balance') || msg.includes('잔고') || msg.includes('insufficient'))
       return { success: false, reason: '잔고 부족' }
     if (msg.includes('min') || msg.includes('minimum') || msg.includes('최소'))
       return { success: false, reason: '최소 금액 미달' }

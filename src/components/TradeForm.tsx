@@ -2,6 +2,14 @@
 
 import { useState, useEffect } from 'react'
 import { EXCHANGE_LABELS, TRADE_TYPE_LABELS } from '@/types/database'
+
+const EXCHANGE_EMOJI: Record<string, string> = {
+  BITHUMB: '🟠',
+  UPBIT:   '🔵',
+  COINONE: '🟢',
+  KORBIT:  '🟣',
+  GOPAX:   '🟡',
+}
 import type { Exchange, TradeType } from '@/types/database'
 
 interface Account {
@@ -29,15 +37,22 @@ const TRADE_TYPES = Object.keys(TRADE_TYPE_LABELS) as TradeType[]
 
 export default function TradeForm({ onExecute, onSchedule, loading }: TradeFormProps) {
   const [exchange, setExchange] = useState<Exchange | null>(null)
+  const [exchangeTouched, setExchangeTouched] = useState(false)
   const [coin, setCoin] = useState('')
-  const [tradeType, setTradeType] = useState<TradeType>('BUY')
+  const [tradeType, setTradeType] = useState<TradeType>('CYCLE')
   const [amountKrw, setAmountKrw] = useState(5100)
+  const [amountDisplay, setAmountDisplay] = useState('5,100')
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [accounts, setAccounts] = useState<Account[]>([])
   const [accountsLoading, setAccountsLoading] = useState(false)
   const [error, setError] = useState('')
 
-  // 거래소 변경 시 계정 목록 조회
+  function handleSetExchange(ex: Exchange) {
+    setExchange(ex)
+    setExchangeTouched(false)
+  }
+
+  // 거래소 변경 시 계정 목록 조회 → 전체 디폴트 체크
   useEffect(() => {
     if (!exchange) {
       setAccounts([])
@@ -48,8 +63,9 @@ export default function TradeForm({ onExecute, onSchedule, loading }: TradeFormP
     fetch(`/api/accounts?exchange=${exchange}`)
       .then((r) => r.json())
       .then((data) => {
-        setAccounts(Array.isArray(data) ? data : [])
-        setSelectedIds([])
+        const list: Account[] = Array.isArray(data) ? data : []
+        setAccounts(list)
+        setSelectedIds(list.map((a) => a.id)) // 전체 디폴트 체크
       })
       .catch(() => setAccounts([]))
       .finally(() => setAccountsLoading(false))
@@ -61,9 +77,13 @@ export default function TradeForm({ onExecute, onSchedule, loading }: TradeFormP
 
   function validate(): TradeInput | null {
     setError('')
-    if (!exchange) { setError('거래소를 선택해주세요.'); return null }
+    if (!exchange) {
+      setExchangeTouched(true)
+      setError('거래소를 선택해주세요.')
+      return null
+    }
     if (!coin.trim()) { setError('코인을 입력해주세요.'); return null }
-    if (amountKrw < 5100) { setError('최소 거래 금액은 5,100원입니다.'); return null }
+    if (tradeType !== 'SELL' && amountKrw < 5100) { setError('최소 거래 금액은 5,100원입니다.'); return null }
     if (selectedIds.length === 0) { setError('계정을 1개 이상 선택해주세요.'); return null }
     return { exchange, coin: coin.trim().toUpperCase(), tradeType, amountKrw, accountIds: selectedIds }
   }
@@ -84,19 +104,26 @@ export default function TradeForm({ onExecute, onSchedule, loading }: TradeFormP
 
       {/* 거래소 선택 */}
       <div className="mb-4">
-        <label className="mb-2 block text-sm font-medium text-gray-700">거래소</label>
-        <div className="flex flex-wrap gap-2">
+        <label className={`mb-2 block text-sm font-medium ${!exchange ? 'text-red-600' : 'text-gray-700'}`}>
+          거래소 {!exchange && <span className="animate-bounce inline-block">👆 먼저 선택해주세요</span>}
+        </label>
+        <div className={`flex flex-wrap gap-2 rounded-lg p-1 transition-all ${
+          !exchange ? 'animate-pulse bg-red-50 ring-2 ring-red-300' : ''
+        }`}>
           {EXCHANGES.map((ex) => (
-            <label key={ex} className="flex cursor-pointer items-center gap-1.5">
-              <input
-                type="radio"
-                name="exchange"
-                checked={exchange === ex}
-                onChange={() => setExchange(ex)}
-                className="accent-blue-600"
-              />
-              <span className="text-sm">{EXCHANGE_LABELS[ex]}</span>
-            </label>
+            <button
+              key={ex}
+              type="button"
+              onClick={() => handleSetExchange(ex)}
+              className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-sm transition ${
+                exchange === ex
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <span>{EXCHANGE_EMOJI[ex]}</span>
+              {EXCHANGE_LABELS[ex]}
+            </button>
           ))}
         </div>
       </div>
@@ -107,7 +134,7 @@ export default function TradeForm({ onExecute, onSchedule, loading }: TradeFormP
         <input
           type="text"
           value={coin}
-          onChange={(e) => setCoin(e.target.value)}
+          onChange={(e) => setCoin(e.target.value.toUpperCase())}
           placeholder="예: BTC, ETH, USDT"
           className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
         />
@@ -115,7 +142,9 @@ export default function TradeForm({ onExecute, onSchedule, loading }: TradeFormP
 
       {/* 거래 방식 */}
       <div className="mb-4">
-        <label className="mb-2 block text-sm font-medium text-gray-700">거래 방식</label>
+        <label className="mb-2 block text-sm font-medium text-gray-700">
+          거래 방식 <span className="animate-pulse font-bold text-red-500 [animation-duration:1s]">(시장가)</span>
+        </label>
         <div className="flex gap-4">
           {TRADE_TYPES.map((tt) => (
             <label key={tt} className="flex cursor-pointer items-center gap-1.5">
@@ -130,21 +159,38 @@ export default function TradeForm({ onExecute, onSchedule, loading }: TradeFormP
             </label>
           ))}
         </div>
-        <p className="mt-1 text-xs text-gray-400">현재 서비스는 시장가 거래만 지원합니다.</p>
       </div>
 
-      {/* 금액 */}
-      <div className="mb-4">
-        <label className="mb-1 block text-sm font-medium text-gray-700">거래 금액 (KRW)</label>
-        <input
-          type="number"
-          value={amountKrw}
-          onChange={(e) => setAmountKrw(Number(e.target.value))}
-          min={5100}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-        />
-        <p className="mt-1 text-xs text-gray-400">최소 거래 금액: 5,100원</p>
-      </div>
+      {/* 금액 - 매도일 때 숨김 */}
+      {tradeType === 'SELL' ? (
+        <div className="mb-4 rounded-lg bg-amber-50 border border-amber-200 px-4 py-3">
+          <p className="text-sm text-amber-800">💰 보유 코인 전량을 시장가로 매도합니다</p>
+          <p className="mt-0.5 text-xs text-amber-600">거래 금액 입력 없이 보유 수량 전체가 매도됩니다.</p>
+        </div>
+      ) : (
+        <div className="mb-4">
+          <label className="mb-1 block text-sm font-medium text-gray-700">거래 금액 (KRW)</label>
+          <input
+            type="text"
+            inputMode="numeric"
+            value={amountDisplay}
+            onChange={(e) => {
+              const raw = e.target.value.replace(/,/g, '')
+              if (!/^\d*$/.test(raw)) return
+              const num = Number(raw)
+              setAmountKrw(num)
+              setAmountDisplay(num === 0 ? '' : num.toLocaleString())
+            }}
+            onBlur={() => {
+              if (amountKrw === 0) { setAmountDisplay(''); return }
+              setAmountDisplay(amountKrw.toLocaleString())
+            }}
+            placeholder="5,100"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          />
+          <p className="mt-1 text-xs text-gray-400">최소 거래 금액: 5,100원</p>
+        </div>
+      )}
 
       {/* 계정 선택 */}
       <div className="mb-4">
@@ -177,16 +223,9 @@ export default function TradeForm({ onExecute, onSchedule, loading }: TradeFormP
         <button
           onClick={handleExecute}
           disabled={loading}
-          className="flex-1 rounded-lg bg-blue-600 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+          className="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
         >
           {loading ? '실행 중...' : '지금 실행'}
-        </button>
-        <button
-          onClick={handleSchedule}
-          disabled={loading}
-          className="flex-1 rounded-lg border border-blue-600 py-2.5 text-sm font-medium text-blue-600 hover:bg-blue-50 disabled:opacity-50"
-        >
-          스케줄 등록
         </button>
       </div>
     </section>

@@ -4,15 +4,24 @@ import { useState, useEffect, useCallback } from 'react'
 import Header from '@/components/Header'
 import TradeForm from '@/components/TradeForm'
 import type { TradeInput } from '@/components/TradeForm'
-import TradeList from '@/components/TradeList'
+import ScheduleList from '@/components/ScheduleList'
 import ValidationModal from '@/components/ValidationModal'
 import ScheduleModal from '@/components/ScheduleModal'
 import ResultPanel from '@/components/ResultPanel'
-import AccountRegister from '@/components/AccountRegister'
-import Tabs from '@/components/Tabs'
+import AssetPanel from '@/components/AssetPanel'
+import TradeHistoryPanel from '@/components/TradeHistoryPanel'
+import ScheduleTab from '@/components/ScheduleTab'
 import type { TradeJobRow } from '@/types/database'
 import type { ValidationItem } from '@/app/api/validate/route'
 import type { ExecutionResultItem } from '@/app/api/execute/route'
+
+type TabType = 'trade' | 'schedule' | 'assets' | 'history'
+const TABS: { id: TabType; label: string }[] = [
+  { id: 'trade',    label: '거래 실행' },
+  { id: 'schedule', label: '스케줄' },
+  { id: 'assets',   label: '나의 자산' },
+  { id: 'history',  label: '거래 내역' },
+]
 
 interface DashboardProps {
   userId: string
@@ -21,11 +30,9 @@ interface DashboardProps {
 }
 
 export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) {
-  // 탭 상태
-  const [activeTab, setActiveTab] = useState<'trade' | 'register'>('trade')
-
-  // 거래 목록
+  // 스케줄 목록
   const [tradeJobs, setTradeJobs] = useState<TradeJobRow[]>([])
+  const [accountMap, setAccountMap] = useState<Record<string, string>>({})
 
   // 모달 / 결과
   const [validationItems, setValidationItems] = useState<ValidationItem[]>([])
@@ -33,6 +40,7 @@ export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) 
   const [pendingTrade, setPendingTrade] = useState<TradeInput | null>(null)
 
   // UI 상태
+  const [activeTab, setActiveTab] = useState<TabType>('trade')
   const [showValidation, setShowValidation] = useState(false)
   const [showSchedule, setShowSchedule] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -40,18 +48,26 @@ export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) 
 
   void userId // used for future features
 
-  // 거래 목록 조회
   const fetchJobs = useCallback(async () => {
     try {
       const res = await fetch('/api/trade-jobs')
+      if (res.ok) setTradeJobs(await res.json())
+    } catch { /* 무시 */ }
+  }, [])
+
+  const fetchAllAccounts = useCallback(async () => {
+    try {
+      const res = await fetch('/api/accounts')
       if (res.ok) {
-        const data = await res.json()
-        setTradeJobs(data)
+        const data: { id: string; account_name: string }[] = await res.json()
+        const map: Record<string, string> = {}
+        data.forEach((a) => { map[a.id] = a.account_name })
+        setAccountMap(map)
       }
     } catch { /* 무시 */ }
   }, [])
 
-  useEffect(() => { fetchJobs() }, [fetchJobs])
+  useEffect(() => { fetchJobs(); fetchAllAccounts() }, [fetchJobs, fetchAllAccounts])
 
   // ── 지금 실행: 1단계 - 검증 ──
   async function handleExecute(data: TradeInput) {
@@ -175,27 +191,42 @@ export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) 
     <div className="min-h-screen bg-gray-50">
       <Header loginId={loginId} isAdmin={isAdmin} />
 
-      <Tabs
-        tabs={[
-          { key: 'trade', label: '코인 거래' },
-          { key: 'register', label: '거래소 등록' },
-        ]}
-        active={activeTab}
-        onChange={(k) => setActiveTab(k as 'trade' | 'register')}
-      />
+      <main className="mx-auto max-w-2xl px-4 py-4">
+        {/* 탭 메뉴 */}
+        <div className="mb-4 flex border-b border-gray-200">
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => { setActiveTab(tab.id); if (tab.id === 'trade') fetchJobs() }}
+              className={`px-4 py-2.5 text-sm font-medium transition-colors ${
+                activeTab === tab.id
+                  ? 'border-b-2 border-blue-600 text-blue-600'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
-      <main className="mx-auto max-w-2xl space-y-4 px-4 py-4">
-        {activeTab === 'trade' ? (
-          <>
+        {/* 탭 콘텐츠 */}
+        {activeTab === 'trade' && (
+          <div className="space-y-4">
             <TradeForm onExecute={handleExecute} onSchedule={handleScheduleClick} loading={loading} />
-            <TradeList jobs={tradeJobs} onUpdate={handleUpdateJob} onDelete={handleDeleteJob} />
+            <section className="rounded-xl border border-gray-200 bg-white p-4">
+              <h2 className="mb-3 text-base font-semibold text-gray-900">
+                등록된 스케줄 <span className="text-sm font-normal text-gray-400">({tradeJobs.length}개)</span>
+              </h2>
+              <ScheduleList jobs={tradeJobs} accountMap={accountMap} onDelete={handleDeleteJob} />
+            </section>
             {executionResults.length > 0 && (
               <ResultPanel results={executionResults} onClose={() => setExecutionResults([])} />
             )}
-          </>
-        ) : (
-          <AccountRegister />
+          </div>
         )}
+        {activeTab === 'schedule' && <ScheduleTab />}
+        {activeTab === 'assets' && <AssetPanel />}
+        {activeTab === 'history' && <TradeHistoryPanel />}
       </main>
 
       {/* 검증 모달 */}

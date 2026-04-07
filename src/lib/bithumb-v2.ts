@@ -106,6 +106,50 @@ export async function bithumbGetPrice(market: string): Promise<number> {
 }
 
 // ──────────────────────────────────────
+// 3-b) 거래내역 조회: GET /v1/orders?state=done
+// ──────────────────────────────────────
+export interface BithumbTradeHistoryItem {
+  id: string
+  datetime: string
+  coin: string
+  side: 'buy' | 'sell'
+  quantity: number
+  total: number
+}
+
+export async function bithumbGetTradeHistory(
+  accessKey: string,
+  secretKey: string,
+  limit = 20,
+): Promise<BithumbTradeHistoryItem[]> {
+  const params: Record<string, string | number> = { state: 'done', limit }
+  const token = await signToken(accessKey, secretKey, params)
+  const qs = Object.entries(params).map(([k, v]) => `${k}=${v}`).join('&')
+  const res = await fetch(`${BASE_URL}/v1/orders?${qs}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) throw new Error(`빗썸 거래내역 조회 실패 (${res.status})`)
+  const data = (await res.json()) as Array<{
+    uuid: string
+    market: string
+    side: string
+    executed_volume: string
+    price: string | null
+    created_at: string
+  }>
+  return data
+    .filter((o) => Number(o.executed_volume) > 0)
+    .map((o) => ({
+      id: o.uuid,
+      datetime: o.created_at,
+      coin: o.market.replace('KRW-', ''),
+      side: (o.side === 'bid' ? 'buy' : 'sell') as 'buy' | 'sell',
+      quantity: Number(o.executed_volume),
+      total: o.side === 'bid' ? Number(o.price ?? 0) : 0,
+    }))
+}
+
+// ──────────────────────────────────────
 // 4) 시장가 주문: POST /v1/orders
 // ──────────────────────────────────────
 export interface BithumbOrderResult {
@@ -133,8 +177,10 @@ export async function bithumbPlaceMarketOrder(
       params.ord_type = 'price'
       params.price = String(amountKrw)
     } else {
+      // 매도: volume은 소수점 8자리 이하로 포맷 (trailing zero 제거)
+      const vol = Number(coinQty ?? 0)
       params.ord_type = 'market'
-      params.volume = String(coinQty ?? 0)
+      params.volume = parseFloat(vol.toFixed(8)).toString()
     }
 
     const token = await signToken(accessKey, secretKey, params)

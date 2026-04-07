@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Trash2 } from 'lucide-react'
+import { Trash2, ChevronDown, ChevronUp } from 'lucide-react'
 import { EXCHANGE_LABELS } from '@/types/database'
 import type { Exchange } from '@/types/database'
 
@@ -14,6 +14,29 @@ interface Account {
 
 const EXCHANGES = Object.keys(EXCHANGE_LABELS) as Exchange[]
 
+// 거래소별 이모지
+const EXCHANGE_EMOJI: Record<Exchange, string> = {
+  BITHUMB: '🟠',
+  UPBIT:   '🔵',
+  COINONE: '🟢',
+  KORBIT:  '🟣',
+  GOPAX:   '🟡',
+}
+
+// created_at → KST 표시 (YYYY-MM-DD HH:MM)
+function toKST(utcString: string): string {
+  const date = new Date(utcString)
+  return date.toLocaleString('ko-KR', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })
+}
+
 export default function AccountRegister() {
   const [accounts, setAccounts] = useState<Account[]>([])
   const [exchange, setExchange] = useState<Exchange | null>(null)
@@ -24,12 +47,21 @@ export default function AccountRegister() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
+  // 아코디언: 기본 전체 펼침
+  const [openGroups, setOpenGroups] = useState<Record<Exchange, boolean>>(
+    () => Object.fromEntries(EXCHANGES.map((ex) => [ex, false])) as Record<Exchange, boolean>
+  )
+
   const fetchAccounts = useCallback(async () => {
     const res = await fetch('/api/exchange-accounts')
     if (res.ok) setAccounts(await res.json())
   }, [])
 
   useEffect(() => { fetchAccounts() }, [fetchAccounts])
+
+  function toggleGroup(ex: Exchange) {
+    setOpenGroups((prev) => ({ ...prev, [ex]: !prev[ex] }))
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -48,11 +80,9 @@ export default function AccountRegister() {
         body: JSON.stringify({ exchange, accountName, accessKey, secretKey }),
       })
       const data = await res.json()
-      if (!res.ok) {
-        setError(data.error || '등록 실패')
-        return
-      }
-      setSuccess(`${EXCHANGE_LABELS[exchange]} - ${accountName} 계정이 등록되었습니다.`)
+      if (!res.ok) { setError(data.error || '등록 실패'); return }
+
+      setSuccess(`${EXCHANGE_EMOJI[exchange]} ${EXCHANGE_LABELS[exchange]} - ${accountName} 등록 완료`)
       setExchange(null)
       setAccountName('')
       setAccessKey('')
@@ -69,16 +99,28 @@ export default function AccountRegister() {
     if (!confirm(`'${name}' 계정을 삭제하시겠습니까?`)) return
     const res = await fetch(`/api/exchange-accounts/${id}`, { method: 'DELETE' })
     const data = await res.json()
-    if (!res.ok) {
-      alert(data.error || '삭제 실패')
-      return
-    }
+    if (!res.ok) { alert(data.error || '삭제 실패'); return }
     fetchAccounts()
   }
 
+  // 거래소별 그룹핑 + 이름 오름차순
+  const grouped = EXCHANGES.reduce<Record<Exchange, Account[]>>(
+    (acc, ex) => {
+      acc[ex] = accounts
+        .filter((a) => a.exchange === ex)
+        .sort((a, b) => a.account_name.localeCompare(b.account_name, 'ko'))
+      return acc
+    },
+    {} as Record<Exchange, Account[]>
+  )
+
+  // 계정이 하나라도 있는 거래소만 표시
+  const activeExchanges = EXCHANGES.filter((ex) => grouped[ex].length > 0)
+
   return (
     <div className="space-y-4">
-      {/* 등록 폼 */}
+
+      {/* ── 등록 폼 ── */}
       <section className="rounded-xl border border-gray-200 bg-white p-4">
         <h2 className="mb-4 text-base font-semibold text-gray-900">거래소 계정 등록</h2>
 
@@ -92,12 +134,13 @@ export default function AccountRegister() {
                   key={ex}
                   type="button"
                   onClick={() => setExchange(ex)}
-                  className={`rounded-full px-3 py-1.5 text-sm transition ${
+                  className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-sm transition ${
                     exchange === ex
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
+                  <span>{EXCHANGE_EMOJI[ex]}</span>
                   {EXCHANGE_LABELS[ex]}
                 </button>
               ))}
@@ -145,7 +188,7 @@ export default function AccountRegister() {
             </p>
           </div>
 
-          {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
+          {error   && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
           {success && <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">{success}</p>}
 
           <button
@@ -158,31 +201,70 @@ export default function AccountRegister() {
         </form>
       </section>
 
-      {/* 등록된 계정 목록 */}
+      {/* ── 등록된 계정 — 거래소별 아코디언 ── */}
       <section className="rounded-xl border border-gray-200 bg-white p-4">
-        <h2 className="mb-3 text-base font-semibold text-gray-900">등록된 계정</h2>
+        <h2 className="mb-3 text-base font-semibold text-gray-900">
+          등록된 계정
+          <span className="ml-2 text-sm font-normal text-gray-400">({accounts.length}개)</span>
+        </h2>
 
-        {accounts.length === 0 ? (
+        {activeExchanges.length === 0 ? (
           <p className="text-sm text-gray-400">등록된 계정이 없습니다.</p>
         ) : (
-          <ul className="divide-y divide-gray-100">
-            {accounts.map((acc) => (
-              <li key={acc.id} className="flex items-center justify-between py-2">
-                <div className="flex items-center gap-2">
-                  <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
-                    {EXCHANGE_LABELS[acc.exchange] ?? acc.exchange}
-                  </span>
-                  <span className="text-sm font-medium">{acc.account_name}</span>
+          <div className="space-y-2">
+            {activeExchanges.map((ex) => {
+              const group = grouped[ex]
+              const isOpen = openGroups[ex]
+              return (
+                <div key={ex} className="overflow-hidden rounded-lg border border-gray-200">
+                  {/* 아코디언 헤더 */}
+                  <button
+                    type="button"
+                    onClick={() => toggleGroup(ex)}
+                    className="flex w-full items-center justify-between bg-gray-50 px-4 py-2.5 hover:bg-gray-100"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">{EXCHANGE_EMOJI[ex]}</span>
+                      <span className="text-sm font-semibold text-gray-800">
+                        {EXCHANGE_LABELS[ex]}
+                      </span>
+                      <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+                        {group.length}명
+                      </span>
+                    </div>
+                    {isOpen
+                      ? <ChevronUp size={16} className="text-gray-400" />
+                      : <ChevronDown size={16} className="text-gray-400" />
+                    }
+                  </button>
+
+                  {/* 아코디언 바디 */}
+                  {isOpen && (
+                    <ul className="divide-y divide-gray-100">
+                      {group.map((acc) => (
+                        <li key={acc.id} className="flex items-center justify-between px-4 py-2.5">
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-sm font-medium text-gray-900">
+                              {acc.account_name}
+                            </span>
+                            <span className="text-xs text-gray-400">
+                              등록: {toKST(acc.created_at)}
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => handleDelete(acc.id, acc.account_name)}
+                            className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-500"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
-                <button
-                  onClick={() => handleDelete(acc.id, acc.account_name)}
-                  className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-600"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </li>
-            ))}
-          </ul>
+              )
+            })}
+          </div>
         )}
       </section>
     </div>

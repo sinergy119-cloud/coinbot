@@ -44,7 +44,7 @@ export default function ResultPanel({ results, onClose }: ResultPanelProps) {
                 <td className="py-2 pr-3">{r.exchange}</td>
                 <td className="py-2 pr-3">{r.accountName}</td>
                 <td className="py-2 pr-3 text-xs">{r.orderSummary}</td>
-                <td className="py-2 pr-3">{r.balance.toLocaleString()}원</td>
+                <td className="py-2 pr-3">{Math.floor(r.balance).toLocaleString()}원</td>
                 <td className="py-2">
                   {r.success ? (
                     <span className="flex items-center gap-1 text-green-600">
@@ -78,7 +78,7 @@ export default function ResultPanel({ results, onClose }: ResultPanelProps) {
               <tr key={`bal-${r.accountId}`} className="border-b border-gray-100">
                 <td className="py-2 pr-3">{r.exchange}</td>
                 <td className="py-2 pr-3">{r.accountName}</td>
-                <td className="py-2 font-medium">{r.balance.toLocaleString()}원</td>
+                <td className="py-2 font-medium">{Math.floor(r.balance).toLocaleString()}원</td>
               </tr>
             ))}
           </tbody>

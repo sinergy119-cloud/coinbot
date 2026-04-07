@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CoinBot",
+  title: "MyCoinBot",
   description: "여러 코인 거래소 계정을 대상으로 시장가 매수/매도를 실행하는 Private 웹 서비스",
 };
 

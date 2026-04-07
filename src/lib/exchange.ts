@@ -7,6 +7,7 @@ import {
   bithumbGetMarkets,
   bithumbGetPrice,
   bithumbPlaceMarketOrder,
+  bithumbGetTradeHistory,
 } from '@/lib/bithumb-v2'
 import {
   gopaxGetBalance,
@@ -14,6 +15,8 @@ import {
   gopaxGetMarkets,
   gopaxGetPrice,
   gopaxPlaceMarketOrder,
+  gopaxGetFullBalance,
+  gopaxGetTradeHistory,
 } from '@/lib/gopax'
 import {
   coinoneGetBalance,
@@ -21,6 +24,8 @@ import {
   coinoneGetMarkets,
   coinoneGetPrice,
   coinonePlaceMarketOrder,
+  coinoneGetFullBalance,
+  coinoneGetTradeHistory,
 } from '@/lib/coinone'
 import {
   korbitGetBalance,
@@ -28,6 +33,8 @@ import {
   korbitGetMarkets,
   korbitGetPrice,
   korbitPlaceMarketOrder,
+  korbitGetFullBalance,
+  korbitGetTradeHistory,
 } from '@/lib/korbit'
 
 // ──────────────────────────────────────
@@ -135,6 +142,36 @@ export async function getBalance(
 }
 
 // ──────────────────────────────────────
+// 2-a) 전체 잔고 조회 (KRW + 보유 코인 전체)
+// ──────────────────────────────────────
+export async function getFullBalance(
+  exchange: Exchange,
+  encAccessKey: string,
+  encSecretKey: string,
+): Promise<{ krw: number; coins: Record<string, number> }> {
+  const accessKey = decrypt(encAccessKey)
+  const secretKey = decrypt(encSecretKey)
+
+  if (exchange === 'BITHUMB') return bithumbGetBalance(accessKey, secretKey)
+  if (exchange === 'GOPAX') return gopaxGetFullBalance(accessKey, secretKey)
+  if (exchange === 'COINONE') return coinoneGetFullBalance(accessKey, secretKey)
+  if (exchange === 'KORBIT') return korbitGetFullBalance(accessKey, secretKey)
+
+  // 업비트 (ccxt)
+  const ex = createUpbitPrivate(encAccessKey, encSecretKey)
+  const balance = await ex.fetchBalance()
+  const free = balance.free as unknown as Record<string, number> | undefined
+  const coins: Record<string, number> = {}
+  let krw = 0
+  for (const [currency, amount] of Object.entries(free ?? {})) {
+    if (!amount || Number(amount) <= 0) continue
+    if (currency === 'KRW') krw = Number(amount)
+    else coins[currency] = Number(amount)
+  }
+  return { krw, coins }
+}
+
+// ──────────────────────────────────────
 // 2-b) 코인 잔고 조회 (매도 검증용)
 // ──────────────────────────────────────
 export async function getCoinBalance(
@@ -157,6 +194,46 @@ export async function getCoinBalance(
   const balance = await ex.fetchBalance()
   const free = balance.free as unknown as Record<string, number> | undefined
   return Number(free?.[upperCoin] ?? 0)
+}
+
+// ──────────────────────────────────────
+// 2-c) 거래내역 조회
+// ──────────────────────────────────────
+export interface TradeHistoryItem {
+  id: string
+  datetime: string
+  coin: string
+  side: 'buy' | 'sell'
+  quantity: number
+  total: number
+}
+
+export async function getTradeHistory(
+  exchange: Exchange,
+  encAccessKey: string,
+  encSecretKey: string,
+  limit = 50,
+  coin?: string,
+): Promise<TradeHistoryItem[]> {
+  const accessKey = decrypt(encAccessKey)
+  const secretKey = decrypt(encSecretKey)
+
+  if (exchange === 'BITHUMB') return bithumbGetTradeHistory(accessKey, secretKey, limit)
+  if (exchange === 'GOPAX') return gopaxGetTradeHistory(accessKey, secretKey, limit)
+  if (exchange === 'COINONE') return coinoneGetTradeHistory(accessKey, secretKey, limit)
+  if (exchange === 'KORBIT') return korbitGetTradeHistory(accessKey, secretKey, limit)
+
+  // 업비트 (ccxt)
+  const ex = createUpbitPrivate(encAccessKey, encSecretKey)
+  const orders = await ex.fetchClosedOrders(undefined, undefined, limit)
+  return orders.map((o) => ({
+    id: o.id,
+    datetime: o.datetime ?? new Date(o.timestamp).toISOString(),
+    coin: (o.symbol ?? '').replace('/KRW', ''),
+    side: o.side as 'buy' | 'sell',
+    quantity: o.filled ?? o.amount ?? 0,
+    total: o.cost ?? 0,
+  }))
 }
 
 // ──────────────────────────────────────
@@ -226,7 +303,7 @@ export async function placeMarketOrder(
     if (side === 'sell') {
       const price = await gopaxGetPrice(tradingPairName)
       if (price <= 0) return { success: false, reason: '현재가 조회 실패' }
-      amount = amountKrw / price
+      amount = parseFloat((amountKrw / price).toFixed(8))
     }
     return gopaxPlaceMarketOrder(accessKey, secretKey, tradingPairName, side, amount)
   }
@@ -236,7 +313,7 @@ export async function placeMarketOrder(
     if (side === 'sell') {
       const price = await coinoneGetPrice(upperCoin)
       if (price <= 0) return { success: false, reason: '현재가 조회 실패' }
-      coinQty = amountKrw / price
+      coinQty = parseFloat((amountKrw / price).toFixed(8))
     }
     return coinonePlaceMarketOrder(accessKey, secretKey, upperCoin, side, amountKrw, coinQty)
   }
@@ -247,7 +324,7 @@ export async function placeMarketOrder(
     if (side === 'sell') {
       const price = await korbitGetPrice(symbol)
       if (price <= 0) return { success: false, reason: '현재가 조회 실패' }
-      coinQty = amountKrw / price
+      coinQty = parseFloat((amountKrw / price).toFixed(8))
     }
     return korbitPlaceMarketOrder(accessKey, secretKey, symbol, side, amountKrw, coinQty)
   }
@@ -263,7 +340,7 @@ export async function placeMarketOrder(
     } else {
       const price = await getCurrentPrice(exchange, coin)
       if (price <= 0) return { success: false, reason: '현재가 조회 실패' }
-      const qty = amountKrw / price
+      const qty = parseFloat((amountKrw / price).toFixed(8))
       const order = await ex.createMarketSellOrder(symbol, qty)
       return { success: true, orderId: order.id }
     }
@@ -274,5 +351,103 @@ export async function placeMarketOrder(
     if (message.includes('minimum') || message.includes('min'))
       return { success: false, reason: '최소 금액 미달' }
     return { success: false, reason: `API 오류: ${message.slice(0, 80)}` }
+  }
+}
+
+// ──────────────────────────────────────
+// 5) CYCLE: 시장가 매수 → 체결 대기(폴링) → 전량 매도
+// reference의 market-cycle 패턴:
+//   매수 → Start-Sleep → GetStableOrderCheck(폴링) → 잔고조회 → 매도
+// ──────────────────────────────────────
+
+// reference Get-PollDelayMilliseconds 스케줄과 동일
+const POLL_DELAYS_MS = [250, 350, 500, 700, 900, 1200, 1500, 1800]
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+export interface CycleOrderResult {
+  success: boolean
+  buyOrderId?: string
+  sellOrderId?: string
+  reason?: string
+}
+
+export async function placeCycleOrder(
+  exchange: Exchange,
+  encAccessKey: string,
+  encSecretKey: string,
+  coin: string,
+  amountKrw: number,
+): Promise<CycleOrderResult> {
+  // 1) 매수
+  const buyResult = await placeMarketOrder(exchange, encAccessKey, encSecretKey, coin, 'buy', amountKrw)
+  if (!buyResult.success) {
+    return { success: false, reason: `매수 실패: ${buyResult.reason}` }
+  }
+
+  // 2) 매수 체결 대기 — reference의 Start-Sleep + GetStableOrderCheck 패턴
+  //    점진적 딜레이로 최대 8회 폴링, coinQty > 0 이 되면 즉시 진행
+  let coinQty = 0
+  for (let i = 0; i < POLL_DELAYS_MS.length; i++) {
+    await sleep(POLL_DELAYS_MS[i])
+    try {
+      coinQty = await getCoinBalance(exchange, encAccessKey, encSecretKey, coin)
+    } catch { /* 잠시 후 재시도 */ }
+    if (coinQty > 0) break
+  }
+
+  if (coinQty <= 0) {
+    return {
+      success: false,
+      buyOrderId: buyResult.orderId,
+      reason: '매수 체결 대기 시간 초과 — 코인 잔고 미확인',
+    }
+  }
+
+  // 3) 전량 매도
+  const sellResult = await placeMarketOrderByCoinQty(exchange, encAccessKey, encSecretKey, coin, coinQty)
+  return {
+    success: sellResult.success,
+    buyOrderId: buyResult.orderId,
+    sellOrderId: sellResult.orderId,
+    reason: sellResult.success ? undefined : `매도 실패: ${sellResult.reason}`,
+  }
+}
+
+// 코인 수량으로 직접 매도 (CYCLE / SELL 전량 매도용)
+export async function placeMarketOrderByCoinQty(
+  exchange: Exchange,
+  encAccessKey: string,
+  encSecretKey: string,
+  coin: string,
+  coinQty: number,
+): Promise<OrderResult> {
+  const upperCoin = coin.toUpperCase()
+  const accessKey = decrypt(encAccessKey)
+  const secretKey = decrypt(encSecretKey)
+  const vol = parseFloat(coinQty.toFixed(8))
+
+  if (exchange === 'BITHUMB') {
+    return bithumbPlaceMarketOrder(accessKey, secretKey, `KRW-${upperCoin}`, 'sell', 0, vol)
+  }
+  if (exchange === 'GOPAX') {
+    return gopaxPlaceMarketOrder(accessKey, secretKey, `${upperCoin}-KRW`, 'sell', vol)
+  }
+  if (exchange === 'COINONE') {
+    return coinonePlaceMarketOrder(accessKey, secretKey, upperCoin, 'sell', 0, vol)
+  }
+  if (exchange === 'KORBIT') {
+    return korbitPlaceMarketOrder(accessKey, secretKey, `${upperCoin.toLowerCase()}_krw`, 'sell', 0, vol)
+  }
+  // 업비트 (ccxt)
+  try {
+    const ex = createUpbitPrivate(encAccessKey, encSecretKey)
+    const order = await ex.createMarketSellOrder(`${upperCoin}/KRW`, vol)
+    return { success: true, orderId: order.id }
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : '알 수 없는 오류'
+    return { success: false, reason: `API 오류: ${msg.slice(0, 80)}` }
   }
 }

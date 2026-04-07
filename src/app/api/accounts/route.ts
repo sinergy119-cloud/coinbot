@@ -9,15 +9,17 @@ export async function GET(req: NextRequest) {
   if (!session) return Response.json({ error: '로그인 필요' }, { status: 401 })
 
   const exchange = req.nextUrl.searchParams.get('exchange')
-  if (!exchange) return Response.json({ error: '거래소를 선택해주세요.' }, { status: 400 })
 
   const db = createServerClient()
-  const { data, error } = await db
+  let query = db
     .from('exchange_accounts')
     .select('id, exchange, account_name')
     .eq('user_id', session.userId)
-    .eq('exchange', exchange)
     .order('created_at')
+
+  if (exchange) query = query.eq('exchange', exchange)
+
+  const { data, error } = await query
 
   if (error) return Response.json({ error: error.message }, { status: 500 })
   return Response.json(data ?? [])

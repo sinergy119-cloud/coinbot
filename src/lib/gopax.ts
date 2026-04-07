@@ -30,7 +30,9 @@ async function gopaxPrivate(
   body?: Record<string, unknown>,
 ) {
   const bodyJson = body ? JSON.stringify(body) : ''
-  const { timestamp, signature } = signGopax(secretKey, method, path, bodyJson)
+  // 서명에는 쿼리스트링 제외한 경로만 사용 (GOPAX 스펙)
+  const pathForSign = path.split('?')[0]
+  const { timestamp, signature } = signGopax(secretKey, method, pathForSign, bodyJson)
 
   const headers: Record<string, string> = {
     'API-Key': accessKey,
@@ -82,14 +84,72 @@ export async function gopaxGetCoinBalance(
 }
 
 // ──────────────────────────────────────
+// 1-c) 전체 잔고 (KRW + 코인) 조회
+// ──────────────────────────────────────
+export async function gopaxGetFullBalance(
+  accessKey: string,
+  secretKey: string,
+): Promise<{ krw: number; coins: Record<string, number> }> {
+  const data = (await gopaxPrivate(accessKey, secretKey, 'GET', '/balances')) as Array<{
+    asset: string
+    avail: string
+  }>
+  const coins: Record<string, number> = {}
+  let krw = 0
+  for (const item of data) {
+    const amount = Number(item.avail)
+    if (item.asset === 'KRW') krw = amount
+    else if (amount > 0) coins[item.asset.toUpperCase()] = amount
+  }
+  return { krw, coins }
+}
+
+// ──────────────────────────────────────
+// 3-b) 거래내역 조회: GET /orders
+// ──────────────────────────────────────
+export interface GopaxTradeHistoryItem {
+  id: string
+  datetime: string
+  coin: string
+  side: 'buy' | 'sell'
+  quantity: number
+  total: number
+}
+
+export async function gopaxGetTradeHistory(
+  accessKey: string,
+  secretKey: string,
+  limit = 50,
+): Promise<GopaxTradeHistoryItem[]> {
+  const data = (await gopaxPrivate(accessKey, secretKey, 'GET', `/trades?limit=${limit}`)) as Array<{
+    id: string | number
+    tradingPairName: string
+    side: string
+    baseAmount: number    // 코인 수량
+    quoteAmount: number   // KRW 금액
+    price: number
+    timestamp: string     // ISO 문자열
+  }>
+  if (!Array.isArray(data)) return []
+  return data.map((o) => ({
+    id: String(o.id),
+    datetime: o.timestamp,
+    coin: String(o.tradingPairName).replace('-KRW', '').replace('-krw', ''),
+    side: (o.side === 'buy' ? 'buy' : 'sell') as 'buy' | 'sell',
+    quantity: Number(o.baseAmount),
+    total: Number(o.quoteAmount),
+  }))
+}
+
+// ──────────────────────────────────────
 // 2) 마켓 목록 (public): GET /trading-pairs
 // 응답: [{ name: 'BTC-KRW', ... }, ...]
 // ──────────────────────────────────────
 export async function gopaxGetMarkets(): Promise<string[]> {
   const res = await fetch(`${BASE_URL}/trading-pairs`)
   if (!res.ok) throw new Error(`고팍스 마켓 조회 실패 (${res.status})`)
-  const data = (await res.json()) as Array<{ id?: string; name?: string }>
-  return data.map((m) => (m.id ?? m.name ?? '')).filter(Boolean)
+  const data = (await res.json()) as Array<{ id?: number; name?: string }>
+  return data.map((m) => m.name ?? '').filter(Boolean)
 }
 
 // ──────────────────────────────────────
@@ -126,7 +186,7 @@ export async function gopaxPlaceMarketOrder(
       tradingPairName,
       side,
       type: 'market',
-      amount,
+      amount: side === 'sell' ? parseFloat(Number(amount).toFixed(8)) : amount,
     }
     const data = (await gopaxPrivate(accessKey, secretKey, 'POST', '/orders', body)) as {
       id?: string | number
@@ -134,7 +194,8 @@ export async function gopaxPlaceMarketOrder(
     return { success: true, orderId: String(data.id) }
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : '알 수 없는 오류'
-    if (msg.includes('balance') || msg.includes('잔고')) return { success: false, reason: '잔고 부족' }
+    if (msg.includes('insufficient_funds') || msg.includes('부족') || msg.includes('balance') || msg.includes('잔고'))
+      return { success: false, reason: '잔고 부족' }
     if (msg.includes('min') || msg.includes('minimum') || msg.includes('최소'))
       return { success: false, reason: '최소 금액 미달' }
     return { success: false, reason: `API 오류: ${msg.slice(0, 80)}` }

@@ -38,15 +38,25 @@ export default function ValidationModal({ items, onConfirm, onCancel, loading }:
                   <td className="py-2 pr-3">{item.exchange}</td>
                   <td className="py-2 pr-3">{item.accountName}</td>
                   <td className="py-2 pr-3 text-xs">{item.orderSummary}</td>
-                  <td className="py-2 pr-3">{item.balance.toLocaleString()}원</td>
+                  <td className="py-2 pr-3 text-xs">
+                    {item.coinQty !== undefined
+                      ? (
+                        <span>
+                          {item.coinQty.toFixed(8).replace(/\.?0+$/, '') || '0'}
+                          <br />
+                          <span className="text-gray-400">{item.coin} → 전량 매도</span>
+                        </span>
+                      )
+                      : `${Math.floor(item.balance).toLocaleString()}원`}
+                  </td>
                   <td className="py-2">
                     {item.feasible ? (
                       <span className="flex items-center gap-1 text-green-600">
                         <CheckCircle size={14} /> 가능
                       </span>
                     ) : (
-                      <span className="flex items-center gap-1 text-red-600">
-                        <XCircle size={14} /> {item.reason}
+                      <span className="flex items-start gap-1 text-red-600 text-xs">
+                        <XCircle size={14} className="mt-0.5 shrink-0" /> {item.reason}
                       </span>
                     )}
                   </td>

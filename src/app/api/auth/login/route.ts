@@ -17,13 +17,10 @@ export async function POST(req: NextRequest) {
     .eq('user_id', userId)
     .single()
 
-  if (!user) {
-    return Response.json({ error: '존재하지 않는 사용자입니다.' }, { status: 401 })
-  }
-
-  const valid = await bcrypt.compare(password, user.password_hash)
-  if (!valid) {
-    return Response.json({ error: '비밀번호가 올바르지 않습니다.' }, { status: 401 })
+  // 보안: 사용자 존재 여부와 비밀번호 오류를 동일한 메시지로 처리 (user enumeration 방지)
+  const valid = user ? await bcrypt.compare(password, user.password_hash) : false
+  if (!user || !valid) {
+    return Response.json({ error: '아이디 또는 비밀번호가 올바르지 않습니다.' }, { status: 401 })
   }
 
   await createSession(user.id, user.user_id)

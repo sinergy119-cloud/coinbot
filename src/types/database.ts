@@ -15,11 +15,12 @@ export const EXCHANGE_LABELS: Record<Exchange, string> = {
 // ────────────────────────────────────────────────
 // 거래 구분
 // ────────────────────────────────────────────────
-export type TradeType = 'BUY' | 'SELL'
+export type TradeType = 'BUY' | 'SELL' | 'CYCLE'
 
 export const TRADE_TYPE_LABELS: Record<TradeType, string> = {
-  BUY: '시장가 매수',
-  SELL: '시장가 매도',
+  CYCLE: '매수 & 매도',
+  BUY: '매수',
+  SELL: '매도',
 }
 
 // ────────────────────────────────────────────────

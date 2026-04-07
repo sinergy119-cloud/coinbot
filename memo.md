@@ -16,6 +16,10 @@ CoinBot
 
 
 
+
+
+\*\* 수파베이스 정보
+
 project url
 https://pliglimeefdbztimxelt.supabase.co
 

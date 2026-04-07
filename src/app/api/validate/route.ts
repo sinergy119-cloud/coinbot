@@ -9,7 +9,9 @@ export interface ValidationItem {
   exchange: string
   accountName: string
   orderSummary: string
-  balance: number
+  balance: number       // KRW 잔고 (BUY/CYCLE), SELL일 때는 0
+  coinQty?: number      // SELL: 보유 코인 수량
+  coin?: string         // SELL: 코인 심볼
   feasible: boolean
   reason: string
 }
@@ -21,7 +23,7 @@ export async function POST(req: NextRequest) {
 
   const { exchange, coin, tradeType, amountKrw, accountIds } = await req.json()
 
-  if (!exchange || !coin || !tradeType || !amountKrw || !accountIds?.length) {
+  if (!exchange || !coin || !tradeType || !accountIds?.length) {
     return Response.json({ error: '필수 항목이 누락되었습니다.' }, { status: 400 })
   }
 
@@ -43,13 +45,20 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: '계정을 찾을 수 없습니다.' }, { status: 404 })
   }
 
-  // 3) 계정별 잔고 조회 + 가능 여부 판단 (Promise.all 동시 실행)
   const isSell = tradeType === 'SELL'
-  const orderSummary = `${symbol} ${isSell ? '매도' : '매수'} ${Number(amountKrw).toLocaleString()}원`
+  const isCycle = tradeType === 'CYCLE'
+  const upperCoin = coin.toUpperCase()
 
-  // 매도의 경우 현재가 미리 조회 (공유)
+  // 주문 요약
+  const orderSummary = isCycle
+    ? `${symbol} 매수(시장가) & 매도(시장가, 전체 수량) ${Number(amountKrw).toLocaleString()}원`
+    : isSell
+    ? `${symbol} 전량 매도(시장가)`
+    : `${symbol} 매수(시장가) ${Number(amountKrw).toLocaleString()}원`
+
+  // 매도/사이클: 현재가 미리 조회
   let currentPrice = 0
-  if (isSell) {
+  if (isSell || isCycle) {
     try {
       currentPrice = await getCurrentPrice(exchange as Exchange, coin)
     } catch { /* 현재가 조회 실패 시 0으로 진행 */ }
@@ -58,23 +67,8 @@ export async function POST(req: NextRequest) {
   const results: ValidationItem[] = await Promise.all(
     accounts.map(async (acc) => {
       try {
-        if (isSell) {
-          // 매도: 코인 잔고 확인
-          const coinQty = await getCoinBalance(exchange as Exchange, acc.access_key, acc.secret_key, coin)
-          const neededQty = currentPrice > 0 ? amountKrw / currentPrice : 0
-          const feasible = coinQty > 0 && (neededQty <= 0 || coinQty >= neededQty)
-          const coinDisplay = coinQty.toFixed(8).replace(/\.?0+$/, '')
-          return {
-            accountId: acc.id,
-            exchange: acc.exchange,
-            accountName: acc.account_name,
-            orderSummary,
-            balance: coinQty,           // 코인 수량으로 표시
-            feasible,
-            reason: feasible ? `가능 (보유 ${coinDisplay} ${coin.toUpperCase()})` : `잔고 부족 (보유 ${coinDisplay} ${coin.toUpperCase()})`,
-          }
-        } else {
-          // 매수: KRW 잔고 확인
+        // CYCLE: KRW 잔고 검증
+        if (isCycle) {
           const { krw } = await getBalance(exchange as Exchange, acc.access_key, acc.secret_key)
           const feasible = krw >= amountKrw
           return {
@@ -84,8 +78,45 @@ export async function POST(req: NextRequest) {
             orderSummary,
             balance: krw,
             feasible,
-            reason: feasible ? '가능' : '잔고 부족',
+            reason: feasible ? '가능 (매수 후 전량 매도)' : '잔고 부족',
           }
+        }
+
+        // SELL: 코인 잔고 검증 (보유량 × 현재가 >= 5,000원)
+        if (isSell) {
+          const coinBalance = await getCoinBalance(exchange as Exchange, acc.access_key, acc.secret_key, coin)
+          const valueKrw = currentPrice > 0 ? coinBalance * currentPrice : 0
+          const coinDisplay = coinBalance.toFixed(8).replace(/\.?0+$/, '') || '0'
+          const feasible = coinBalance > 0 && (currentPrice <= 0 || valueKrw >= 5000)
+          const reason = !feasible
+            ? coinBalance <= 0
+              ? `매도 불가 — 보유 ${upperCoin} 없음`
+              : `매도 불가 — 보유 ${upperCoin}의 시장가 환산액이 5,000원 미만입니다 (보유: ${coinDisplay} ${upperCoin} ≈ ${Math.floor(valueKrw).toLocaleString()}원)`
+            : `가능 (보유 ${coinDisplay} ${upperCoin} 전량 매도)`
+          return {
+            accountId: acc.id,
+            exchange: acc.exchange,
+            accountName: acc.account_name,
+            orderSummary,
+            balance: 0,
+            coinQty: coinBalance,
+            coin: upperCoin,
+            feasible,
+            reason,
+          }
+        }
+
+        // BUY: KRW 잔고 검증
+        const { krw } = await getBalance(exchange as Exchange, acc.access_key, acc.secret_key)
+        const feasible = krw >= amountKrw
+        return {
+          accountId: acc.id,
+          exchange: acc.exchange,
+          accountName: acc.account_name,
+          orderSummary,
+          balance: krw,
+          feasible,
+          reason: feasible ? '가능' : '잔고 부족',
         }
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'API 오류'

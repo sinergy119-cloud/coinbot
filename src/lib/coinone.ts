@@ -74,6 +74,70 @@ export async function coinoneGetCoinBalance(
 }
 
 // ──────────────────────────────────────
+// 1-c) 전체 잔고 (KRW + 코인) 조회
+// ──────────────────────────────────────
+export async function coinoneGetFullBalance(
+  accessKey: string,
+  secretKey: string,
+): Promise<{ krw: number; coins: Record<string, number> }> {
+  const data = (await coinonePrivate(accessKey, secretKey, '/v2.1/account/balance/all')) as {
+    balances?: Array<{ currency: string; avail: string }>
+  }
+  const coins: Record<string, number> = {}
+  let krw = 0
+  for (const item of data.balances ?? []) {
+    const amount = Number(item.avail)
+    const cur = item.currency.toUpperCase()
+    if (cur === 'KRW') krw = amount
+    else if (amount > 0) coins[cur] = amount
+  }
+  return { krw, coins }
+}
+
+// ──────────────────────────────────────
+// 3-b) 거래내역 조회: POST /v2.1/order/list
+// ──────────────────────────────────────
+export interface CoinoneTradeHistoryItem {
+  id: string
+  datetime: string
+  coin: string
+  side: 'buy' | 'sell'
+  quantity: number
+  total: number
+}
+
+export async function coinoneGetTradeHistory(
+  accessKey: string,
+  secretKey: string,
+  limit = 50,
+): Promise<CoinoneTradeHistoryItem[]> {
+  const toTs = Date.now()
+  const fromTs = toTs - 30 * 24 * 60 * 60 * 1000 // 최근 30일
+  const data = (await coinonePrivate(accessKey, secretKey, '/v2.1/order/completed_orders/all', {
+    from_ts: fromTs,
+    to_ts: toTs,
+    size: limit,
+  })) as {
+    orders?: Array<{
+      order_id: string
+      side: string
+      target_currency: string
+      executed_qty: string
+      avg_price: string
+      created_at: number
+    }>
+  }
+  return (data.orders ?? []).map((o) => ({
+    id: o.order_id,
+    datetime: new Date(o.created_at).toISOString(),
+    coin: o.target_currency.toUpperCase(),
+    side: (o.side === 'BUY' ? 'buy' : 'sell') as 'buy' | 'sell',
+    quantity: Number(o.executed_qty),
+    total: Number(o.avg_price) * Number(o.executed_qty),
+  }))
+}
+
+// ──────────────────────────────────────
 // 2) 마켓 목록 (public): GET /public/v2/ticker_new/KRW
 // 응답: { result: 'success', tickers: { BTC: {...}, ETH: {...} } }
 // ──────────────────────────────────────
@@ -126,7 +190,7 @@ export async function coinonePlaceMarketOrder(
     if (side === 'buy') {
       extraBody.amount = String(amountKrw)
     } else {
-      extraBody.qty = String(coinQty ?? 0)
+      extraBody.qty = String(parseFloat(Number(coinQty ?? 0).toFixed(8)))
     }
 
     const data = (await coinonePrivate(accessKey, secretKey, '/v2.1/order', extraBody)) as {
@@ -135,7 +199,7 @@ export async function coinonePlaceMarketOrder(
     return { success: true, orderId: data.order_id }
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : '알 수 없는 오류'
-    if (msg.includes('balance') || msg.includes('잔고') || msg.includes('INSUFFICIENT'))
+    if (msg.includes('insufficient_funds') || msg.includes('부족') || msg.includes('balance') || msg.includes('잔고') || msg.includes('INSUFFICIENT'))
       return { success: false, reason: '잔고 부족' }
     if (msg.includes('min') || msg.includes('minimum') || msg.includes('최소'))
       return { success: false, reason: '최소 금액 미달' }
