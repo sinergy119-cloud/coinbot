@@ -3,7 +3,7 @@ import { execSync } from "child_process";
 
 const buildTime = (() => {
   try {
-    return execSync("git log -1 --format=%cd --date=format:'%Y-%m-%d %H:%M' KST").toString().trim().replace(/'/g, "")
+    return execSync("TZ=Asia/Seoul git log -1 --format=%cd --date=format:'%Y-%m-%d %H:%M'").toString().trim().replace(/'/g, "") + " KST"
   } catch {
     return new Date().toISOString().slice(0, 16).replace('T', ' ') + " KST"
   }
