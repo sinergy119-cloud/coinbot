@@ -144,10 +144,10 @@ export async function coinoneGetTradeHistory(
 export async function coinoneGetMarkets(): Promise<string[]> {
   const res = await fetch(`${BASE_URL}/public/v2/ticker_new/KRW`)
   if (!res.ok) throw new Error(`코인원 마켓 조회 실패 (${res.status})`)
-  const data = (await res.json()) as { result?: string; tickers?: Record<string, unknown> }
-  if (!data.tickers) return []
+  const data = (await res.json()) as { result?: string; tickers?: Array<{ target_currency: string }> }
+  if (!Array.isArray(data.tickers)) return []
   // 내부 심볼 형식: "BTC/KRW"
-  return Object.keys(data.tickers).map((coin) => `${coin.toUpperCase()}/KRW`)
+  return data.tickers.map((t) => `${t.target_currency.toUpperCase()}/KRW`)
 }
 
 // ──────────────────────────────────────
