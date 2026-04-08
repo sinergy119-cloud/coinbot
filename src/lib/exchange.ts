@@ -381,19 +381,26 @@ export async function placeCycleOrder(
   coin: string,
   amountKrw: number,
 ): Promise<CycleOrderResult> {
+  // 0) 매수 전 기존 잔고 snapshot (기존 보유량 제외하기 위함)
+  let snapshotQty = 0
+  try {
+    snapshotQty = await getCoinBalance(exchange, encAccessKey, encSecretKey, coin)
+  } catch { /* 조회 실패 시 0으로 처리 */ }
+
   // 1) 매수
   const buyResult = await placeMarketOrder(exchange, encAccessKey, encSecretKey, coin, 'buy', amountKrw)
   if (!buyResult.success) {
     return { success: false, reason: `매수 실패: ${buyResult.reason}` }
   }
 
-  // 2) 매수 체결 대기 — reference의 Start-Sleep + GetStableOrderCheck 패턴
-  //    점진적 딜레이로 최대 8회 폴링, coinQty > 0 이 되면 즉시 진행
+  // 2) 매수 체결 대기 — 점진적 딜레이로 최대 8회 폴링
+  //    이번에 매수한 수량 = 현재 잔고 - 매수 전 snapshot
   let coinQty = 0
   for (let i = 0; i < POLL_DELAYS_MS.length; i++) {
     await sleep(POLL_DELAYS_MS[i])
     try {
-      coinQty = await getCoinBalance(exchange, encAccessKey, encSecretKey, coin)
+      const currentQty = await getCoinBalance(exchange, encAccessKey, encSecretKey, coin)
+      coinQty = parseFloat((currentQty - snapshotQty).toFixed(8))
     } catch { /* 잠시 후 재시도 */ }
     if (coinQty > 0) break
   }
@@ -406,7 +413,7 @@ export async function placeCycleOrder(
     }
   }
 
-  // 3) 전량 매도
+  // 3) 이번에 매수한 수량만 매도
   const sellResult = await placeMarketOrderByCoinQty(exchange, encAccessKey, encSecretKey, coin, coinQty)
   return {
     success: sellResult.success,

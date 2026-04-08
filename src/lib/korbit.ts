@@ -55,7 +55,7 @@ async function korbitPrivate(
 
   if (!res.ok) {
     const text = await res.text()
-    throw new Error(`코빗 API 오류 (${res.status}): ${text.slice(0, 120)}`)
+    throw new Error(`코빗 API 오류 (${res.status}): ${text.slice(0, 300)}`)
   }
 
   const data = await res.json() as { success?: boolean; errorCode?: string }
@@ -271,8 +271,10 @@ export async function korbitPlaceMarketOrder(
     const msg = err instanceof Error ? err.message : '알 수 없는 오류'
     if (msg.includes('insufficient_funds') || msg.includes('부족') || msg.includes('balance') || msg.includes('잔고') || msg.includes('insufficient'))
       return { success: false, reason: '잔고 부족' }
-    if (msg.includes('min') || msg.includes('minimum') || msg.includes('최소'))
+    if (msg.includes('min') || msg.includes('minimum') || msg.includes('최소') || msg.includes('ORDER_VALUE_TOO_SMALL'))
       return { success: false, reason: '최소 금액 미달' }
-    return { success: false, reason: `API 오류: ${msg.slice(0, 80)}` }
+    if (msg.includes('ORDER_VALUE_TOO_LARGE') || msg.includes('max') || msg.includes('maximum'))
+      return { success: false, reason: '최대 주문 금액 초과' }
+    return { success: false, reason: `API 오류: ${msg.slice(0, 200)}` }
   }
 }
