@@ -53,6 +53,7 @@ const COIN_NAMES: Record<string, string> = {
   ME: '매직에덴', SKY: '스카이', EDU: '오픈캠퍼스', MBX: '메타버스엑스',
   AMP: '앰프', CYBER: '사이버커넥트', LOOKS: '룩스레어', MED: '메디블록',
   BFC: '비파이낸스', MNDE: '마리나드파이낸스',
+  UP: '유니타스',
 }
 
 function withNames(codes: string[]): CoinInfo[] {
