@@ -23,7 +23,7 @@ export default function ResultPanel({ results, onClose }: ResultPanelProps) {
 
       <div className="mb-3 flex gap-4 text-sm">
         <span className="text-green-600">성공: {successCount}건</span>
-        <span className="text-red-600">실패: {failCount}건</span>
+        <span className={failCount > 0 ? 'text-red-600' : 'text-gray-400'}>실패: {failCount}건</span>
       </div>
 
       {/* 처리 결과 */}
