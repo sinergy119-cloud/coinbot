@@ -27,7 +27,7 @@ export async function createSession(userId: string, loginId: string) {
   const cookieStore = await cookies()
   cookieStore.set('session', token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production' || process.env.SECURE_COOKIE === 'true',
+    secure: process.env.SECURE_COOKIE === 'true',
     sameSite: 'lax',
     path: '/',
     // maxAge / expires 없음 → 브라우저 종료 시 삭제 (planning.md 세션 정책)
