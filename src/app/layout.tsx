@@ -14,7 +14,14 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "MyCoinBot",
-  description: "여러 코인 거래소 계정을 대상으로 시장가 매수/매도를 실행하는 Private 웹 서비스",
+  description: "코인 에어드랍 이벤트 자동 참여 서비스 — 빗썸, 업비트, 코인원, 코빗, 고팍스 5대 거래소 지원",
+  openGraph: {
+    title: "MyCoinBot",
+    description: "코인 에어드랍 이벤트 자동 참여 서비스 — 5대 거래소 자동 사팔 실행",
+    siteName: "MyCoinBot",
+    locale: "ko_KR",
+    type: "website",
+  },
 };
 
 export default function RootLayout({
