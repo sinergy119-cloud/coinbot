@@ -120,8 +120,12 @@ export default function AccountRegister() {
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* 거래소 선택 */}
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">거래소</label>
-            <div className="flex flex-wrap gap-2">
+            <label className={`mb-2 block text-sm font-medium ${!exchange ? 'text-red-600' : 'text-gray-700'}`}>
+              거래소 {!exchange && <span className="animate-bounce inline-block text-blue-600">👇 먼저 선택해 주세요</span>}
+            </label>
+            <div className={`flex flex-wrap gap-2 rounded-lg p-1 transition-all ${
+              !exchange ? 'animate-pulse bg-red-50 ring-2 ring-red-300' : ''
+            }`}>
               {EXCHANGES.map((ex) => (
                 <button
                   key={ex}
