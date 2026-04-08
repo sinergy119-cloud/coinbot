@@ -33,7 +33,9 @@ async function getCoins(exchange: Exchange): Promise<string[]> {
         .filter((s) => s.endsWith('/KRW'))
         .map((s) => s.replace('/KRW', ''))
     }
-  } catch { /* 오류 시 빈 배열 */ }
+  } catch (err) {
+    console.error(`[markets] ${exchange} 오류:`, err instanceof Error ? err.message : err)
+  }
   return []
 }
 
