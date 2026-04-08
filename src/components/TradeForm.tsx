@@ -1,15 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { EXCHANGE_LABELS, TRADE_TYPE_LABELS } from '@/types/database'
+import { EXCHANGE_LABELS, EXCHANGE_EMOJI, TRADE_TYPE_LABELS } from '@/types/database'
 
-const EXCHANGE_EMOJI: Record<string, string> = {
-  BITHUMB: '🟠',
-  UPBIT:   '🔵',
-  COINONE: '🟢',
-  KORBIT:  '🟣',
-  GOPAX:   '🟡',
-}
 import type { Exchange, TradeType } from '@/types/database'
 
 interface Account {
@@ -37,8 +30,9 @@ const TRADE_TYPES = Object.keys(TRADE_TYPE_LABELS) as TradeType[]
 
 export default function TradeForm({ onExecute, onSchedule, loading }: TradeFormProps) {
   const [exchange, setExchange] = useState<Exchange | null>(null)
-  const [exchangeTouched, setExchangeTouched] = useState(false)
   const [coin, setCoin] = useState('')
+  const [coinSuggestions, setCoinSuggestions] = useState<string[]>([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
   const [tradeType, setTradeType] = useState<TradeType>('CYCLE')
   const [amountKrw, setAmountKrw] = useState(5100)
   const [amountDisplay, setAmountDisplay] = useState('5,100')
@@ -46,10 +40,35 @@ export default function TradeForm({ onExecute, onSchedule, loading }: TradeFormP
   const [accounts, setAccounts] = useState<Account[]>([])
   const [accountsLoading, setAccountsLoading] = useState(false)
   const [error, setError] = useState('')
+  const [allCoins, setAllCoins] = useState<string[]>([])
 
   function handleSetExchange(ex: Exchange) {
     setExchange(ex)
-    setExchangeTouched(false)
+    setCoin('')
+    setCoinSuggestions([])
+    setAllCoins([])
+    // 거래소 변경 시 해당 거래소 코인 목록 비동기 로드
+    fetch(`/api/markets?exchange=${ex}`)
+      .then((r) => r.json())
+      .then((data: string[]) => Array.isArray(data) ? setAllCoins(data) : null)
+      .catch(() => null)
+  }
+
+  function handleCoinChange(value: string) {
+    const upper = value.toUpperCase()
+    setCoin(upper)
+    if (upper.length >= 1 && allCoins.length > 0) {
+      const filtered = allCoins.filter((c) => c.startsWith(upper)).slice(0, 8)
+      setCoinSuggestions(filtered)
+      setShowSuggestions(filtered.length > 0)
+    } else {
+      setShowSuggestions(false)
+    }
+  }
+
+  function handleCoinSelect(selected: string) {
+    setCoin(selected)
+    setShowSuggestions(false)
   }
 
   // 거래소 변경 시 계정 목록 조회 → 전체 디폴트 체크
@@ -78,7 +97,6 @@ export default function TradeForm({ onExecute, onSchedule, loading }: TradeFormP
   function validate(): TradeInput | null {
     setError('')
     if (!exchange) {
-      setExchangeTouched(true)
       setError('거래소를 선택해주세요.')
       return null
     }
@@ -129,15 +147,30 @@ export default function TradeForm({ onExecute, onSchedule, loading }: TradeFormP
       </div>
 
       {/* 코인 입력 */}
-      <div className="mb-4">
+      <div className="relative mb-4">
         <label className="mb-1 block text-sm font-medium text-gray-700">코인</label>
         <input
           type="text"
           value={coin}
-          onChange={(e) => setCoin(e.target.value.toUpperCase())}
+          onChange={(e) => handleCoinChange(e.target.value)}
+          onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+          onFocus={() => coin.length >= 1 && coinSuggestions.length > 0 && setShowSuggestions(true)}
           placeholder="예: BTC, ETH, USDT"
           className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
         />
+        {showSuggestions && (
+          <ul className="absolute z-10 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg">
+            {coinSuggestions.map((c) => (
+              <li
+                key={c}
+                onMouseDown={() => handleCoinSelect(c)}
+                className="cursor-pointer px-3 py-2 text-sm hover:bg-blue-50"
+              >
+                {c}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       {/* 거래 방식 */}

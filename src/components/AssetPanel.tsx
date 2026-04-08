@@ -1,17 +1,19 @@
 'use client'
 
 import { useState } from 'react'
-import { EXCHANGE_LABELS } from '@/types/database'
+import { EXCHANGE_LABELS, EXCHANGE_EMOJI } from '@/types/database'
 import type { Exchange } from '@/types/database'
 import type { AccountAsset } from '@/app/api/assets/route'
 
-const EXCHANGE_EMOJI: Record<Exchange, string> = {
-  BITHUMB: '🟠', UPBIT: '🔵', COINONE: '🟢', KORBIT: '🟣', GOPAX: '🟡',
-}
 const EXCHANGES = Object.keys(EXCHANGE_LABELS) as Exchange[]
 
-export default function AssetPanel() {
-  const [exchange, setExchange] = useState<Exchange | null>(null)
+interface AssetPanelProps {
+  defaultExchange?: string | null
+  onExchangeChange?: (ex: string) => void
+}
+
+export default function AssetPanel({ defaultExchange, onExchangeChange }: AssetPanelProps) {
+  const [exchange, setExchange] = useState<Exchange | null>((defaultExchange as Exchange) ?? null)
   const [assets, setAssets] = useState<AccountAsset[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -30,6 +32,7 @@ export default function AssetPanel() {
 
   function handleSelect(ex: Exchange) {
     setExchange(ex)
+    onExchangeChange?.(ex)
     fetchAssets(ex)
   }
 
@@ -75,6 +78,17 @@ export default function AssetPanel() {
         </div>
       )}
       {error && <p className="text-sm text-red-500">{error}</p>}
+
+      {/* 총평가 합계 */}
+      {!loading && assets.length > 0 && (() => {
+        const totalKrw = assets.reduce((s, a) => s + a.krw + a.coins.reduce((cs, c) => cs + c.value, 0), 0)
+        return (
+          <div className="mb-3 flex items-center justify-between rounded-lg bg-blue-50 px-3 py-2">
+            <span className="text-sm font-medium text-blue-700">총평가</span>
+            <span className="text-base font-bold text-blue-700">{Math.floor(totalKrw).toLocaleString()}원</span>
+          </div>
+        )
+      })()}
 
       {/* 계정별 자산 */}
       {!loading && assets.length > 0 && (

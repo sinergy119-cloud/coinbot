@@ -158,18 +158,26 @@ export async function korbitGetTradeHistory(
 
   const allCoins = Array.from(new Set([...KORBIT_MAJOR_COINS, ...userCoins]))
 
-  const results = await Promise.allSettled(
-    allCoins.map((coin) =>
-      korbitPrivate(accessKey, secretKey, 'GET', '/v2/myTrades', {
-        symbol: `${coin}_krw`,
-        limit: '100',
-      }).then((data) => {
-        const d = data as { data?: RawTrade[] } | RawTrade[]
-        if (Array.isArray(d)) return d
-        return d.data ?? []
-      })
+  // rate limit 대비: 5개씩 나눠서 순차 처리
+  const CHUNK = 5
+  const settled: PromiseSettledResult<RawTrade[]>[] = []
+  for (let i = 0; i < allCoins.length; i += CHUNK) {
+    const chunk = allCoins.slice(i, i + CHUNK)
+    const chunkResults = await Promise.allSettled(
+      chunk.map((coin) =>
+        korbitPrivate(accessKey, secretKey, 'GET', '/v2/myTrades', {
+          symbol: `${coin}_krw`,
+          limit: '100',
+        }).then((data) => {
+          const d = data as { data?: RawTrade[] } | RawTrade[]
+          if (Array.isArray(d)) return d
+          return d.data ?? []
+        })
+      )
     )
-  )
+    settled.push(...chunkResults)
+  }
+  const results = settled
 
   // 전부 실패 시 첫 번째 에러를 throw하여 원인 노출
   const failures = results.filter((r) => r.status === 'rejected')

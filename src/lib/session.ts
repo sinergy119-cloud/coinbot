@@ -1,7 +1,9 @@
 import { SignJWT, jwtVerify } from 'jose'
 import { cookies } from 'next/headers'
 
-const secret = new TextEncoder().encode(process.env.SESSION_SECRET ?? 'fallback-dev-secret')
+const rawSecret = process.env.SESSION_SECRET
+if (!rawSecret) throw new Error('SESSION_SECRET 환경변수가 설정되지 않았습니다.')
+const secret = new TextEncoder().encode(rawSecret)
 
 export interface SessionPayload {
   userId: string   // users.id (UUID)
@@ -13,6 +15,7 @@ export async function createSession(userId: string, loginId: string) {
   const token = await new SignJWT({ userId, loginId } satisfies SessionPayload)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
+    .setExpirationTime('7d')
     .sign(secret)
 
   const cookieStore = await cookies()

@@ -79,9 +79,14 @@ export async function POST(req: NextRequest) {
     .lte('schedule_from', today)
     .gte('schedule_to', today)
 
-  const jobs = (allActiveJobs ?? []).filter((job: TradeJobRow) =>
-    (job.schedule_time as string).startsWith(currentTime)
-  )
+  // ±1분 허용: cron 지연 발생 시 놓치지 않도록
+  const kstMs = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Seoul' })).getTime()
+  const jobs = (allActiveJobs ?? []).filter((job: TradeJobRow) => {
+    const [hh, mm] = (job.schedule_time as string).split(':').map(Number)
+    const jobMs = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Seoul' }))
+    jobMs.setHours(hh, mm, 0, 0)
+    return Math.abs(kstMs - jobMs.getTime()) <= 60_000
+  })
 
   if (jobs.length === 0) {
     return Response.json({ message: '실행 대상 없음', executed: 0 })

@@ -3,12 +3,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Trash2 } from 'lucide-react'
 import Header from '@/components/Header'
-import { EXCHANGE_LABELS } from '@/types/database'
+import { EXCHANGE_LABELS, EXCHANGE_EMOJI } from '@/types/database'
 import type { Exchange } from '@/types/database'
 
-const EXCHANGE_EMOJI: Record<Exchange, string> = {
-  BITHUMB: '🟠', UPBIT: '🔵', COINONE: '🟢', KORBIT: '🟣', GOPAX: '🟡',
-}
 
 interface User {
   id: string

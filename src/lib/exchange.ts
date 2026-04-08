@@ -62,6 +62,20 @@ function createUpbitPublic(): CcxtExchange {
 }
 
 // ──────────────────────────────────────
+// 마켓 목록 캐시 (5분)
+// ──────────────────────────────────────
+const marketCache = new Map<string, { markets: string[]; expiresAt: number }>()
+const MARKET_CACHE_TTL_MS = 5 * 60 * 1000
+
+async function getCachedMarkets(key: string, fetcher: () => Promise<string[]>): Promise<string[]> {
+  const cached = marketCache.get(key)
+  if (cached && Date.now() < cached.expiresAt) return cached.markets
+  const markets = await fetcher()
+  marketCache.set(key, { markets, expiresAt: Date.now() + MARKET_CACHE_TTL_MS })
+  return markets
+}
+
+// ──────────────────────────────────────
 // 1) 코인 유효성 검증 (KRW 마켓 존재 여부)
 // ──────────────────────────────────────
 export async function validateMarket(
@@ -71,38 +85,37 @@ export async function validateMarket(
   const upperCoin = coin.toUpperCase()
 
   if (exchange === 'BITHUMB') {
-    // 빗썸: "KRW-BTC" 형식
-    const markets = await bithumbGetMarkets()
+    const markets = await getCachedMarkets('BITHUMB', bithumbGetMarkets)
     const symbol = `KRW-${upperCoin}`
     return { valid: markets.includes(symbol), symbol }
   }
 
   if (exchange === 'GOPAX') {
-    // 고팍스: "BTC-KRW" 형식
-    const markets = await gopaxGetMarkets()
+    const markets = await getCachedMarkets('GOPAX', gopaxGetMarkets)
     const symbol = `${upperCoin}-KRW`
     return { valid: markets.includes(symbol), symbol }
   }
 
   if (exchange === 'COINONE') {
-    // 코인원: "BTC/KRW" 형식
-    const markets = await coinoneGetMarkets()
+    const markets = await getCachedMarkets('COINONE', coinoneGetMarkets)
     const symbol = `${upperCoin}/KRW`
     return { valid: markets.includes(symbol), symbol }
   }
 
   if (exchange === 'KORBIT') {
-    // 코빗: 내부적으로 "BTC/KRW" 형식으로 반환
-    const markets = await korbitGetMarkets()
+    const markets = await getCachedMarkets('KORBIT', korbitGetMarkets)
     const symbol = `${upperCoin}/KRW`
     return { valid: markets.includes(symbol), symbol }
   }
 
   // 업비트 (ccxt): "BTC/KRW" 형식
-  const ex = createUpbitPublic()
-  await ex.loadMarkets()
+  const upbitMarkets = await getCachedMarkets('UPBIT', async () => {
+    const ex = createUpbitPublic()
+    await ex.loadMarkets()
+    return Object.keys(ex.markets)
+  })
   const symbol = `${upperCoin}/KRW`
-  return { valid: symbol in ex.markets, symbol }
+  return { valid: upbitMarkets.includes(symbol), symbol }
 }
 
 // ──────────────────────────────────────
@@ -413,8 +426,20 @@ export async function placeCycleOrder(
     }
   }
 
-  // 3) 이번에 매수한 수량만 매도
-  const sellResult = await placeMarketOrderByCoinQty(exchange, encAccessKey, encSecretKey, coin, coinQty)
+  // 3) 이번에 매수한 수량만 매도 — 실패 시 최대 3회 재시도 (1s/2s/4s)
+  const SELL_RETRY_DELAYS_MS = [1000, 2000, 4000]
+  let sellResult = await placeMarketOrderByCoinQty(exchange, encAccessKey, encSecretKey, coin, coinQty)
+  for (let i = 0; !sellResult.success && i < SELL_RETRY_DELAYS_MS.length; i++) {
+    await sleep(SELL_RETRY_DELAYS_MS[i])
+    // 재시도 전 최신 잔고 재조회 (잔고 변동 대비)
+    try {
+      const latestQty = await getCoinBalance(exchange, encAccessKey, encSecretKey, coin)
+      const retryQty = parseFloat((latestQty - snapshotQty).toFixed(8))
+      if (retryQty > 0) coinQty = retryQty
+    } catch { /* 재조회 실패 시 기존 coinQty 유지 */ }
+    sellResult = await placeMarketOrderByCoinQty(exchange, encAccessKey, encSecretKey, coin, coinQty)
+  }
+
   return {
     success: sellResult.success,
     buyOrderId: buyResult.orderId,

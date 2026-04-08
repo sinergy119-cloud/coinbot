@@ -12,6 +12,14 @@ export const EXCHANGE_LABELS: Record<Exchange, string> = {
   GOPAX: '고팍스',
 }
 
+export const EXCHANGE_EMOJI: Record<Exchange, string> = {
+  BITHUMB: '🟠',
+  UPBIT:   '🔵',
+  COINONE: '🟢',
+  KORBIT:  '🟣',
+  GOPAX:   '🟡',
+}
+
 // ────────────────────────────────────────────────
 // 거래 구분
 // ────────────────────────────────────────────────

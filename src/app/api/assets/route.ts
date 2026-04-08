@@ -28,31 +28,40 @@ export async function GET(req: NextRequest) {
 
   if (!accounts || accounts.length === 0) return Response.json([])
 
-  // 계정별 전체 잔고 조회 (동시)
-  const results: AccountAsset[] = await Promise.all(
+  // 1) 계정별 전체 잔고 조회 (동시)
+  const balances = await Promise.all(
     accounts.map(async (acc) => {
       try {
-        const { krw, coins: coinMap } = await getFullBalance(exchange, acc.access_key, acc.secret_key)
-
-        // 보유 코인별 현재가 조회 (동시)
-        const coinEntries = Object.entries(coinMap).filter(([, qty]) => qty >= 0.000001)
-        const holdings = await Promise.all(
-          coinEntries.map(async ([coin, qty]) => {
-            let price = 0
-            try { price = await getCurrentPrice(exchange, coin) } catch { /* 무시 */ }
-            return { coin, qty, price, value: qty * price }
-          }),
-        )
-
-        // 가격 조회 가능한 코인은 100원 이상만 표시, 가격 없는 코인은 제외
-        const filtered = holdings.filter((h) => h.price > 0 && h.value >= 100)
-
-        return { accountId: acc.id, accountName: acc.account_name, krw, coins: filtered }
+        return await getFullBalance(exchange, acc.access_key, acc.secret_key)
       } catch {
-        return { accountId: acc.id, accountName: acc.account_name, krw: 0, coins: [] }
+        return { krw: 0, coins: {} as Record<string, number> }
       }
     }),
   )
+
+  // 2) 전체 계정 통틀어 보유 코인 유니크 목록 추출 후 가격 일괄 조회
+  const allCoins = Array.from(
+    new Set(balances.flatMap(({ coins }) => Object.keys(coins).filter((c) => (coins[c] ?? 0) >= 0.000001)))
+  )
+  const priceMap: Record<string, number> = {}
+  await Promise.all(
+    allCoins.map(async (coin) => {
+      try { priceMap[coin] = await getCurrentPrice(exchange, coin) } catch { /* 무시 */ }
+    }),
+  )
+
+  // 3) 계정별 결과 조합
+  const results: AccountAsset[] = accounts.map((acc, i) => {
+    const { krw, coins: coinMap } = balances[i]
+    const holdings = Object.entries(coinMap)
+      .filter(([, qty]) => qty >= 0.000001)
+      .map(([coin, qty]) => {
+        const price = priceMap[coin] ?? 0
+        return { coin, qty, price, value: qty * price }
+      })
+      .filter((h) => h.price > 0 && h.value >= 100)
+    return { accountId: acc.id, accountName: acc.account_name, krw, coins: holdings }
+  })
 
   return Response.json(results)
 }

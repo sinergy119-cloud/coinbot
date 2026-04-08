@@ -2,13 +2,10 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { ChevronDown, ChevronUp, Bell } from 'lucide-react'
-import { EXCHANGE_LABELS, TRADE_TYPE_LABELS } from '@/types/database'
+import { EXCHANGE_LABELS, EXCHANGE_EMOJI, TRADE_TYPE_LABELS } from '@/types/database'
 import type { Exchange, TradeType, TradeJobRow } from '@/types/database'
 import ScheduleList from '@/components/ScheduleList'
 
-const EXCHANGE_EMOJI: Record<Exchange, string> = {
-  BITHUMB: '🟠', UPBIT: '🔵', COINONE: '🟢', KORBIT: '🟣', GOPAX: '🟡',
-}
 const EXCHANGES = Object.keys(EXCHANGE_LABELS) as Exchange[]
 const TRADE_TYPES = Object.keys(TRADE_TYPE_LABELS) as TradeType[]
 
@@ -127,11 +124,16 @@ function TelegramSettings() {
 }
 
 // ─── 메인 ScheduleTab ─────────────────────────────────────
-export default function ScheduleTab() {
+interface ScheduleTabProps {
+  defaultExchange?: string | null
+  onExchangeChange?: (ex: string) => void
+}
+
+export default function ScheduleTab({ defaultExchange, onExchangeChange }: ScheduleTabProps) {
   const today = getTodayKST()
 
   // 폼 상태
-  const [exchange, setExchange] = useState<Exchange | null>(null)
+  const [exchange, setExchange] = useState<Exchange | null>((defaultExchange as Exchange) ?? null)
   const [exchangeTouched, setExchangeTouched] = useState(false)
   const [coin, setCoin] = useState('')
   const [tradeType, setTradeType] = useState<TradeType>('CYCLE')
@@ -281,7 +283,7 @@ export default function ScheduleTab() {
               !exchange ? 'animate-pulse bg-red-50 ring-2 ring-red-300' : ''
             }`}>
               {EXCHANGES.map((ex) => (
-                <button key={ex} type="button" onClick={() => { setExchange(ex); setExchangeTouched(false) }}
+                <button key={ex} type="button" onClick={() => { setExchange(ex); setExchangeTouched(false); onExchangeChange?.(ex) }}
                   className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-sm transition ${
                     exchange === ex ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}

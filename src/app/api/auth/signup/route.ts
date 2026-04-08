@@ -9,8 +9,8 @@ export async function POST(req: NextRequest) {
   if (!userId || !password) {
     return Response.json({ error: '사용자 ID와 비밀번호를 입력해주세요.' }, { status: 400 })
   }
-  if (password.length < 4) {
-    return Response.json({ error: '비밀번호는 4자 이상이어야 합니다.' }, { status: 400 })
+  if (password.length < 6) {
+    return Response.json({ error: '비밀번호는 6자 이상이어야 합니다.' }, { status: 400 })
   }
 
   const db = createServerClient()

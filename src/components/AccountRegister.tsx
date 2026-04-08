@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { Trash2, ChevronDown, ChevronUp } from 'lucide-react'
-import { EXCHANGE_LABELS } from '@/types/database'
+import { EXCHANGE_LABELS, EXCHANGE_EMOJI } from '@/types/database'
 import type { Exchange } from '@/types/database'
 
 interface Account {
@@ -15,13 +15,6 @@ interface Account {
 const EXCHANGES = Object.keys(EXCHANGE_LABELS) as Exchange[]
 
 // 거래소별 이모지
-const EXCHANGE_EMOJI: Record<Exchange, string> = {
-  BITHUMB: '🟠',
-  UPBIT:   '🔵',
-  COINONE: '🟢',
-  KORBIT:  '🟣',
-  GOPAX:   '🟡',
-}
 
 // created_at → KST 표시 (YYYY-MM-DD HH:MM)
 function toKST(utcString: string): string {

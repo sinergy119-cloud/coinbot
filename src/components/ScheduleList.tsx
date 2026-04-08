@@ -1,12 +1,9 @@
 'use client'
 
 import { Trash2 } from 'lucide-react'
-import { EXCHANGE_LABELS, TRADE_TYPE_LABELS } from '@/types/database'
+import { EXCHANGE_LABELS, EXCHANGE_EMOJI, TRADE_TYPE_LABELS } from '@/types/database'
 import type { Exchange, TradeType, TradeJobRow } from '@/types/database'
 
-const EXCHANGE_EMOJI: Record<Exchange, string> = {
-  BITHUMB: '🟠', UPBIT: '🔵', COINONE: '🟢', KORBIT: '🟣', GOPAX: '🟡',
-}
 
 export interface ScheduleListProps {
   jobs: TradeJobRow[]

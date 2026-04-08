@@ -1,13 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { EXCHANGE_LABELS } from '@/types/database'
+import { EXCHANGE_LABELS, EXCHANGE_EMOJI } from '@/types/database'
 import type { Exchange } from '@/types/database'
 import type { TradeHistoryItem } from '@/lib/exchange'
 
-const EXCHANGE_EMOJI: Record<Exchange, string> = {
-  BITHUMB: '🟠', UPBIT: '🔵', COINONE: '🟢', KORBIT: '🟣', GOPAX: '🟡',
-}
 const EXCHANGES = Object.keys(EXCHANGE_LABELS) as Exchange[]
 
 type QuickFilter = '오늘' | '7일' | '30일'
@@ -46,8 +43,13 @@ function getQuickRange(filter: QuickFilter): { from: string; to: string } {
   return { from: '', to: '' }
 }
 
-export default function TradeHistoryPanel() {
-  const [exchange, setExchange] = useState<Exchange | null>(null)
+interface TradeHistoryPanelProps {
+  defaultExchange?: string | null
+  onExchangeChange?: (ex: string) => void
+}
+
+export default function TradeHistoryPanel({ defaultExchange, onExchangeChange }: TradeHistoryPanelProps) {
+  const [exchange, setExchange] = useState<Exchange | null>((defaultExchange as Exchange) ?? null)
   const [accounts, setAccounts] = useState<Account[]>([])
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null)
   const [history, setHistory] = useState<TradeHistoryItem[]>([])
@@ -129,7 +131,7 @@ export default function TradeHistoryPanel() {
           <button
             key={ex}
             type="button"
-            onClick={() => setExchange(ex)}
+            onClick={() => { setExchange(ex); onExchangeChange?.(ex) }}
             className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-sm transition ${
               exchange === ex ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}

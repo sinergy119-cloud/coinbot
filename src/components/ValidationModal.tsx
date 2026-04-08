@@ -21,6 +21,11 @@ export default function ValidationModal({ items, onConfirm, onCancel, loading }:
           </button>
         </div>
 
+        {items.some((i) => !i.feasible) && (
+          <p className="mb-3 rounded-lg bg-yellow-50 px-3 py-2 text-xs text-yellow-700">
+            불가 계정은 자동 제외되고 가능한 계정만 실행됩니다.
+          </p>
+        )}
         <div className="mb-4 overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
@@ -34,7 +39,7 @@ export default function ValidationModal({ items, onConfirm, onCancel, loading }:
             </thead>
             <tbody>
               {items.map((item) => (
-                <tr key={item.accountId} className="border-b border-gray-100">
+                <tr key={item.accountId} className={`border-b border-gray-100 ${!item.feasible ? 'opacity-40' : ''}`}>
                   <td className="py-2 pr-3">{item.exchange}</td>
                   <td className="py-2 pr-3">{item.accountName}</td>
                   <td className="py-2 pr-3 text-xs">{item.orderSummary}</td>

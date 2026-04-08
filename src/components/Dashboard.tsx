@@ -41,6 +41,7 @@ export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) 
 
   // UI 상태
   const [activeTab, setActiveTab] = useState<TabType>('trade')
+  const [selectedExchange, setSelectedExchange] = useState<string | null>(null)
   const [showValidation, setShowValidation] = useState(false)
   const [showSchedule, setShowSchedule] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -104,6 +105,15 @@ export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) 
     if (!pendingTrade) return
     setLoading(true)
     try {
+      // feasible=false 계정 자동 제외
+      const feasibleIds = validationItems
+        .filter((v) => v.feasible)
+        .map((v) => v.accountId)
+      if (feasibleIds.length === 0) {
+        alert('실행 가능한 계정이 없습니다.')
+        setLoading(false)
+        return
+      }
       const res = await fetch('/api/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -112,7 +122,7 @@ export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) 
           coin: pendingTrade.coin,
           tradeType: pendingTrade.tradeType,
           amountKrw: pendingTrade.amountKrw,
-          accountIds: pendingTrade.accountIds,
+          accountIds: feasibleIds,
         }),
       })
       const results = await res.json()
@@ -169,17 +179,7 @@ export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) 
     }
   }
 
-  // ── 거래 수정 / 삭제 ──
-  async function handleUpdateJob(id: string, data: { scheduleFrom: string; scheduleTo: string; scheduleTime: string }) {
-    const res = await fetch(`/api/trade-jobs/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    })
-    if (res.ok) fetchJobs()
-    else alert('수정 실패')
-  }
-
+  // ── 스케줄 삭제 ──
   async function handleDeleteJob(id: string) {
     if (!confirm('이 스케줄을 삭제하시겠습니까?')) return
     const res = await fetch(`/api/trade-jobs/${id}`, { method: 'DELETE' })
@@ -224,9 +224,9 @@ export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) 
             )}
           </div>
         )}
-        {activeTab === 'schedule' && <ScheduleTab />}
-        {activeTab === 'assets' && <AssetPanel />}
-        {activeTab === 'history' && <TradeHistoryPanel />}
+        {activeTab === 'schedule' && <ScheduleTab defaultExchange={selectedExchange} onExchangeChange={setSelectedExchange} />}
+        {activeTab === 'assets' && <AssetPanel defaultExchange={selectedExchange} onExchangeChange={setSelectedExchange} />}
+        {activeTab === 'history' && <TradeHistoryPanel defaultExchange={selectedExchange} onExchangeChange={setSelectedExchange} />}
       </main>
 
       {/* 검증 모달 */}
