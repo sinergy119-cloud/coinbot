@@ -34,16 +34,20 @@ const EXCHANGE_COLORS: Record<string, string> = {
   '고팍스': 'bg-green-100 text-green-700',
 }
 
-// ─── 인라인 서식: **bold**, `code` ─────────────────
+// ─── 인라인 서식: **bold**, `code`, [text](url) ──────
 function formatInline(text: string): React.ReactNode {
   const parts: React.ReactNode[] = []
-  const regex = /(\*\*(.+?)\*\*|`(.+?)`)/g
+  const regex = /(\*\*(.+?)\*\*|`(.+?)`|\[([^\]]+)\]\((https?:\/\/[^)]+)\))/g
   let lastIndex = 0
   let match
   while ((match = regex.exec(text)) !== null) {
     if (match.index > lastIndex) parts.push(text.slice(lastIndex, match.index))
     if (match[2]) parts.push(<b key={match.index} className="font-semibold text-gray-900">{match[2]}</b>)
     else if (match[3]) parts.push(<code key={match.index} className="rounded bg-gray-100 px-1 py-0.5 text-xs font-mono text-pink-600">{match[3]}</code>)
+    else if (match[4] && match[5]) parts.push(
+      <a key={match.index} href={match[5]} target="_blank" rel="noopener noreferrer"
+        className="font-medium text-blue-600 underline hover:text-blue-800">{match[4]}</a>
+    )
     lastIndex = match.index + match[0].length
   }
   if (lastIndex < text.length) parts.push(text.slice(lastIndex))
