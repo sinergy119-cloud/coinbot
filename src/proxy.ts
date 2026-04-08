@@ -14,8 +14,8 @@ export default async function proxy(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // 정적 파일은 통과
-  if (pathname.startsWith('/_next') || pathname.startsWith('/favicon')) {
+  // 정적 파일 및 OG 이미지는 통과
+  if (pathname.startsWith('/_next') || pathname.startsWith('/favicon') || pathname.includes('opengraph-image')) {
     return NextResponse.next()
   }
 

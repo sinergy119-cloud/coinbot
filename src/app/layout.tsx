@@ -13,6 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("http://mycoinbot.duckdns.org"),
   title: "MyCoinBot",
   description: "코인 에어드랍 이벤트 자동 참여 서비스 — 빗썸, 업비트, 코인원, 코빗, 고팍스 5대 거래소 지원",
   openGraph: {
