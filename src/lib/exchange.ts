@@ -226,6 +226,7 @@ export async function getTradeHistory(
   encAccessKey: string,
   encSecretKey: string,
   limit = 50,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   coin?: string,
 ): Promise<TradeHistoryItem[]> {
   const accessKey = decrypt(encAccessKey)

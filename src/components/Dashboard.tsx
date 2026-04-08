@@ -6,7 +6,7 @@ import TradeForm from '@/components/TradeForm'
 import type { TradeInput } from '@/components/TradeForm'
 import ScheduleList from '@/components/ScheduleList'
 import ValidationModal from '@/components/ValidationModal'
-import ScheduleModal from '@/components/ScheduleModal'
+
 import ResultPanel from '@/components/ResultPanel'
 import AssetPanel from '@/components/AssetPanel'
 import TradeHistoryPanel from '@/components/TradeHistoryPanel'
@@ -43,9 +43,7 @@ export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) 
   const [activeTab, setActiveTab] = useState<TabType>('trade')
   const [selectedExchange, setSelectedExchange] = useState<string | null>(null)
   const [showValidation, setShowValidation] = useState(false)
-  const [showSchedule, setShowSchedule] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [scheduleTradeData, setScheduleTradeData] = useState<TradeInput | null>(null)
 
   void userId // used for future features
 
@@ -140,45 +138,6 @@ export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) 
     }
   }
 
-  // ── 스케줄 등록 ──
-  function handleScheduleClick(data: TradeInput) {
-    setScheduleTradeData(data)
-    setShowSchedule(true)
-  }
-
-  async function handleScheduleConfirm(from: string, to: string, time: string) {
-    if (!scheduleTradeData) return
-    setLoading(true)
-    try {
-      const res = await fetch('/api/trade-jobs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          exchange: scheduleTradeData.exchange,
-          coin: scheduleTradeData.coin,
-          tradeType: scheduleTradeData.tradeType,
-          amountKrw: scheduleTradeData.amountKrw,
-          accountIds: scheduleTradeData.accountIds,
-          scheduleFrom: from,
-          scheduleTo: to,
-          scheduleTime: time,
-        }),
-      })
-      const result = await res.json()
-      if (!res.ok) {
-        alert(result.error || '등록 실패')
-        return
-      }
-      setShowSchedule(false)
-      setScheduleTradeData(null)
-      fetchJobs()
-    } catch {
-      alert('네트워크 오류가 발생했습니다.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
   // ── 스케줄 삭제 ──
   async function handleDeleteJob(id: string) {
     if (!confirm('이 스케줄을 삭제하시겠습니까?')) return
@@ -212,7 +171,7 @@ export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) 
         {/* 탭 콘텐츠 */}
         {activeTab === 'trade' && (
           <div className="space-y-4">
-            <TradeForm onExecute={handleExecute} onSchedule={handleScheduleClick} loading={loading} />
+            <TradeForm onExecute={handleExecute} loading={loading} />
             <section className="rounded-xl border border-gray-200 bg-white p-4">
               <h2 className="mb-3 text-base font-semibold text-gray-900">
                 등록된 스케줄 <span className="text-sm font-normal text-gray-400">({tradeJobs.length}개)</span>
@@ -239,14 +198,6 @@ export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) 
         />
       )}
 
-      {/* 스케줄 모달 */}
-      {showSchedule && (
-        <ScheduleModal
-          onConfirm={handleScheduleConfirm}
-          onCancel={() => { setShowSchedule(false); setScheduleTradeData(null) }}
-          loading={loading}
-        />
-      )}
     </div>
   )
 }

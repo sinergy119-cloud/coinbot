@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { now, today, currentTime } = getKSTDateTime()
+  const { now, today } = getKSTDateTime()
   const db = createServerClient()
 
   // heartbeat 기록 (Supabase)

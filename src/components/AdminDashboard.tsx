@@ -28,7 +28,6 @@ export default function AdminDashboard({ loginId }: { loginId: string }) {
   // 폼 상태
   const [targetUserId, setTargetUserId] = useState('')
   const [exchange, setExchange] = useState<Exchange | null>(null)
-  const [exchangeTouched, setExchangeTouched] = useState(false)
   const [accountName, setAccountName] = useState('')
   const [accessKey, setAccessKey] = useState('')
   const [secretKey, setSecretKey] = useState('')
@@ -55,7 +54,7 @@ export default function AdminDashboard({ loginId }: { loginId: string }) {
     setError(''); setSuccess('')
 
     if (!targetUserId) { setError('대상 사용자를 선택해주세요.'); return }
-    if (!exchange) { setExchangeTouched(true); setError('거래소를 선택해주세요.'); return }
+    if (!exchange) { setError('거래소를 선택해주세요.'); return }
     if (!accountName.trim() || !accessKey.trim() || !secretKey.trim()) {
       setError('모든 항목을 입력해주세요.'); return
     }
@@ -71,7 +70,7 @@ export default function AdminDashboard({ loginId }: { loginId: string }) {
       if (!res.ok) { setError(data.error || '등록 실패'); return }
 
       setSuccess(`${userMap.get(targetUserId)} - ${EXCHANGE_LABELS[exchange]} - ${accountName} 등록 완료`)
-      setExchange(null); setExchangeTouched(false); setAccountName(''); setAccessKey(''); setSecretKey('')
+      setExchange(null); setAccountName(''); setAccessKey(''); setSecretKey('');
       fetchAll()
     } catch {
       setError('네트워크 오류가 발생했습니다.')
@@ -142,7 +141,7 @@ export default function AdminDashboard({ loginId }: { loginId: string }) {
                   <button
                     key={ex}
                     type="button"
-                    onClick={() => { setExchange(ex); setExchangeTouched(false) }}
+                    onClick={() => setExchange(ex)}
                     className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-sm transition ${
                       exchange === ex ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}

@@ -134,7 +134,6 @@ export default function ScheduleTab({ defaultExchange, onExchangeChange }: Sched
 
   // 폼 상태
   const [exchange, setExchange] = useState<Exchange | null>((defaultExchange as Exchange) ?? null)
-  const [exchangeTouched, setExchangeTouched] = useState(false)
   const [coin, setCoin] = useState('')
   const [tradeType, setTradeType] = useState<TradeType>('CYCLE')
   const [amountKrw, setAmountKrw] = useState(5100)
@@ -198,7 +197,7 @@ export default function ScheduleTab({ defaultExchange, onExchangeChange }: Sched
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
-    if (!exchange) { setExchangeTouched(true); setError('거래소를 선택해주세요.'); return }
+    if (!exchange) { setError('거래소를 선택해주세요.'); return }
 
     // cron 실행 여부 확인
     try {
@@ -247,16 +246,6 @@ export default function ScheduleTab({ defaultExchange, onExchangeChange }: Sched
     finally { setSubmitting(false) }
   }
 
-  async function handleUpdate(id: string, data: { scheduleFrom: string; scheduleTo: string; scheduleTime: string }) {
-    const res = await fetch(`/api/trade-jobs/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    })
-    if (res.ok) fetchJobs()
-    else alert('수정 실패')
-  }
-
   async function handleDelete(id: string) {
     if (!confirm('이 스케줄을 삭제하시겠습니까?')) return
     const res = await fetch(`/api/trade-jobs/${id}`, { method: 'DELETE' })
@@ -283,7 +272,7 @@ export default function ScheduleTab({ defaultExchange, onExchangeChange }: Sched
               !exchange ? 'animate-pulse bg-red-50 ring-2 ring-red-300' : ''
             }`}>
               {EXCHANGES.map((ex) => (
-                <button key={ex} type="button" onClick={() => { setExchange(ex); setExchangeTouched(false); onExchangeChange?.(ex) }}
+                <button key={ex} type="button" onClick={() => { setExchange(ex); onExchangeChange?.(ex) }}
                   className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-sm transition ${
                     exchange === ex ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}

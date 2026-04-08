@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { EXCHANGE_LABELS, EXCHANGE_EMOJI, TRADE_TYPE_LABELS } from '@/types/database'
 
 import type { Exchange, TradeType } from '@/types/database'
@@ -13,7 +13,6 @@ interface Account {
 
 interface TradeFormProps {
   onExecute: (data: TradeInput) => void
-  onSchedule: (data: TradeInput) => void
   loading: boolean
 }
 
@@ -30,10 +29,9 @@ interface CoinInfo { code: string; name: string }
 const EXCHANGES = Object.keys(EXCHANGE_LABELS) as Exchange[]
 const TRADE_TYPES = Object.keys(TRADE_TYPE_LABELS) as TradeType[]
 
-export default function TradeForm({ onExecute, onSchedule, loading }: TradeFormProps) {
+export default function TradeForm({ onExecute, loading }: TradeFormProps) {
   const [exchange, setExchange] = useState<Exchange | null>(null)
   const [coin, setCoin] = useState('')
-  const [coinSuggestions, setCoinSuggestions] = useState<CoinInfo[]>([])
   const [tradeType, setTradeType] = useState<TradeType>('CYCLE')
   const [amountKrw, setAmountKrw] = useState(5100)
   const [amountDisplay, setAmountDisplay] = useState('5,100')
@@ -48,53 +46,21 @@ export default function TradeForm({ onExecute, onSchedule, loading }: TradeFormP
   function handleSetExchange(ex: Exchange) {
     setExchange(ex)
     setCoin('')
-    setCoinSuggestions([])
     setAllCoins([])
+    setAccounts([])
+    setSelectedIds([])
+
+    // 코인 목록 로드
     setCoinsLoading(true)
     fetch(`/api/markets?exchange=${ex}`)
       .then((r) => r.json())
       .then((data: CoinInfo[]) => Array.isArray(data) ? setAllCoins(data) : null)
       .catch(() => null)
       .finally(() => setCoinsLoading(false))
-  }
 
-  // allCoins 로드 완료 시 이미 입력된 값으로 자동 재필터링
-  useEffect(() => {
-    if (coin.length >= 1 && allCoins.length > 0) {
-      const upper = coin.toUpperCase()
-      setCoinSuggestions(
-        allCoins.filter((c) => c.code.startsWith(upper) || c.name.includes(coin)).slice(0, 8)
-      )
-    }
-  }, [allCoins])  // eslint-disable-line react-hooks/exhaustive-deps
-
-  function handleCoinChange(value: string) {
-    const upper = value.toUpperCase()
-    setCoin(upper)
-    if (upper.length >= 1 && allCoins.length > 0) {
-      setCoinSuggestions(
-        allCoins.filter((c) => c.code.startsWith(upper) || c.name.includes(value)).slice(0, 8)
-      )
-    } else {
-      setCoinSuggestions([])
-    }
-  }
-
-  function handleCoinSelect(selected: CoinInfo) {
-    setCoin(selected.code)
-    setCoinSuggestions([])
-    setCoinFocused(false)
-  }
-
-  // 거래소 변경 시 계정 목록 조회 → 전체 디폴트 체크
-  useEffect(() => {
-    if (!exchange) {
-      setAccounts([])
-      setSelectedIds([])
-      return
-    }
+    // 계정 목록 로드 → 전체 디폴트 선택
     setAccountsLoading(true)
-    fetch(`/api/accounts?exchange=${exchange}`)
+    fetch(`/api/accounts?exchange=${ex}`)
       .then((r) => r.json())
       .then((data) => {
         const list: Account[] = Array.isArray(data) ? data : []
@@ -103,7 +69,23 @@ export default function TradeForm({ onExecute, onSchedule, loading }: TradeFormP
       })
       .catch(() => setAccounts([]))
       .finally(() => setAccountsLoading(false))
-  }, [exchange])
+  }
+
+  // coin + allCoins 에서 파생되는 자동완성 목록 (useMemo로 불필요한 state 제거)
+  const coinSuggestions = useMemo(() => {
+    if (coin.length < 1 || allCoins.length === 0) return []
+    const upper = coin.toUpperCase()
+    return allCoins.filter((c) => c.code.startsWith(upper) || c.name.includes(coin)).slice(0, 8)
+  }, [coin, allCoins])
+
+  function handleCoinChange(value: string) {
+    setCoin(value.toUpperCase())
+  }
+
+  function handleCoinSelect(selected: CoinInfo) {
+    setCoin(selected.code)
+    setCoinFocused(false)
+  }
 
   function toggleAccount(id: string) {
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
@@ -124,11 +106,6 @@ export default function TradeForm({ onExecute, onSchedule, loading }: TradeFormP
   function handleExecute() {
     const data = validate()
     if (data) onExecute(data)
-  }
-
-  function handleSchedule() {
-    const data = validate()
-    if (data) onSchedule(data)
   }
 
   return (
