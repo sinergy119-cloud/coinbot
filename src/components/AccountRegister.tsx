@@ -152,19 +152,21 @@ export default function AccountRegister() {
             <p className="mt-0.5 text-xs text-gray-500">
               {delegated
                 ? '관리자가 내 모든 계정으로 거래 실행 가능'
-                : 'ON 하면 관리자가 대신 거래를 실행할 수 있습니다'}
+                : 'ON 하면 관리자가 대신 거래를 실행할 수 있습니다.'}
             </p>
           </div>
           <button
             onClick={handleToggleDelegate}
             disabled={delegateLoading}
-            className={`relative h-7 w-12 rounded-full transition-colors ${
-              delegated ? 'bg-blue-600' : 'bg-gray-300'
+            className={`relative h-8 w-14 shrink-0 rounded-full transition-all duration-300 ${
+              delegated ? 'bg-blue-600 shadow-lg shadow-blue-200' : 'bg-gray-300'
             } ${delegateLoading ? 'opacity-50' : ''}`}
           >
-            <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${
-              delegated ? 'translate-x-5' : 'translate-x-0.5'
-            }`} />
+            <span className={`absolute top-1 flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-md transition-all duration-300 ${
+              delegated ? 'translate-x-7' : 'translate-x-1'
+            }`}>
+              {delegated && <span className="text-blue-600 text-xs font-bold">✓</span>}
+            </span>
           </button>
         </div>
         {delegated && (
