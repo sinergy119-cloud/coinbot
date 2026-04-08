@@ -123,6 +123,7 @@ export async function gopaxGetTradeHistory(
 ): Promise<GopaxTradeHistoryItem[]> {
   const data = (await gopaxPrivate(accessKey, secretKey, 'GET', `/trades?limit=${limit}`)) as Array<{
     id: string | number
+    orderId?: string | number  // 분할 체결 시 동일 주문 ID
     tradingPairName: string
     side: string
     baseAmount: number    // 코인 수량
@@ -131,14 +132,30 @@ export async function gopaxGetTradeHistory(
     timestamp: string     // ISO 문자열
   }>
   if (!Array.isArray(data)) return []
-  return data.map((o) => ({
-    id: String(o.id),
-    datetime: o.timestamp,
-    coin: String(o.tradingPairName).replace('-KRW', '').replace('-krw', ''),
-    side: (o.side === 'buy' ? 'buy' : 'sell') as 'buy' | 'sell',
-    quantity: Number(o.baseAmount),
-    total: Number(o.quoteAmount),
-  }))
+
+  // orderId 기준으로 그룹핑 — 동일 주문의 분할 체결을 하나로 합산
+  // orderId 없는 거래소 응답이면 id를 키로 사용 (기존과 동일)
+  const grouped = new Map<string, GopaxTradeHistoryItem>()
+  for (const o of data) {
+    const groupKey = String(o.orderId ?? o.id)
+    const coin = String(o.tradingPairName).replace('-KRW', '').replace('-krw', '')
+    const side = (o.side === 'buy' ? 'buy' : 'sell') as 'buy' | 'sell'
+    if (grouped.has(groupKey)) {
+      const item = grouped.get(groupKey)!
+      item.quantity = parseFloat((item.quantity + Number(o.baseAmount)).toFixed(8))
+      item.total = Math.round(item.total + Number(o.quoteAmount))
+    } else {
+      grouped.set(groupKey, {
+        id: groupKey,
+        datetime: o.timestamp,
+        coin,
+        side,
+        quantity: Number(o.baseAmount),
+        total: Number(o.quoteAmount),
+      })
+    }
+  }
+  return Array.from(grouped.values())
 }
 
 // ──────────────────────────────────────
