@@ -9,7 +9,7 @@ import ScheduleList from '@/components/ScheduleList'
 const EXCHANGES = Object.keys(EXCHANGE_LABELS) as Exchange[]
 const TRADE_TYPES = Object.keys(TRADE_TYPE_LABELS) as TradeType[]
 
-interface Account { id: string; account_name: string; exchange: string }
+interface Account { id: string; account_name: string; exchange: string; _delegated?: boolean }
 
 function getTodayKST() {
   const now = new Date()
@@ -335,13 +335,25 @@ export default function ScheduleTab({ defaultExchange, onExchangeChange }: Sched
             {!exchange && <p className="text-sm text-gray-400">거래소를 먼저 선택해주세요.</p>}
             {exchange && accounts.length === 0 && <p className="text-sm text-gray-400">등록된 계정이 없습니다.</p>}
             <div className="flex flex-wrap gap-2">
-              {accounts.map((acc) => (
+              {accounts.filter((a) => !a._delegated).map((acc) => (
                 <label key={acc.id} className="flex cursor-pointer items-center gap-1.5">
                   <input type="checkbox" checked={selectedIds.includes(acc.id)}
                     onChange={() => toggleAccount(acc.id)} className="accent-blue-600" />
                   <span className="text-sm">{acc.account_name}</span>
                 </label>
               ))}
+              {accounts.some((a) => a._delegated) && (
+                <>
+                  <p className="mt-2 mb-1 text-xs font-semibold text-purple-600">📁 위임받은 계정</p>
+                  {accounts.filter((a) => a._delegated).map((acc) => (
+                    <label key={acc.id} className="flex cursor-pointer items-center gap-1.5 rounded bg-purple-50 px-2 py-1">
+                      <input type="checkbox" checked={selectedIds.includes(acc.id)}
+                        onChange={() => toggleAccount(acc.id)} className="accent-purple-600" />
+                      <span className="text-sm text-purple-800">{acc.account_name}</span>
+                    </label>
+                  ))}
+                </>
+              )}
             </div>
           </div>
 

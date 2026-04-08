@@ -39,6 +39,7 @@ export interface UserRow {
   id: string           // UUID (PK)
   user_id: string      // 로그인 ID (사용자가 직접 입력)
   password_hash: string
+  delegated: boolean   // true면 관리자에게 거래 실행 위임
   created_at: string
 }
 

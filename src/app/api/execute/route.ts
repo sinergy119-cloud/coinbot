@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { getSession } from '@/lib/session'
 import { createServerClient } from '@/lib/supabase'
+import { isAdmin } from '@/lib/admin'
 import { placeMarketOrder, placeCycleOrder, placeMarketOrderByCoinQty, getCoinBalance, getBalance } from '@/lib/exchange'
 import type { Exchange, TradeType } from '@/types/database'
 
@@ -35,13 +36,34 @@ export async function POST(req: NextRequest) {
   }
 
   const db = createServerClient()
-  const { data: accounts } = await db
+
+  // 본인 계정 조회
+  const { data: myAccounts } = await db
     .from('exchange_accounts')
     .select('*')
     .in('id', accountIds)
     .eq('user_id', session.userId)
 
-  if (!accounts || accounts.length === 0) {
+  // 관리자인 경우: 위임된 계정도 허용
+  let delegatedAccounts: typeof myAccounts = []
+  if (isAdmin(session.loginId)) {
+    const { data: delegators } = await db
+      .from('users')
+      .select('id')
+      .eq('delegated', true)
+    const delegatorIds = (delegators ?? []).map((u) => u.id)
+    if (delegatorIds.length > 0) {
+      const { data } = await db
+        .from('exchange_accounts')
+        .select('*')
+        .in('id', accountIds)
+        .in('user_id', delegatorIds)
+      delegatedAccounts = data ?? []
+    }
+  }
+
+  const accounts = [...(myAccounts ?? []), ...(delegatedAccounts ?? [])]
+  if (accounts.length === 0) {
     return Response.json({ error: '계정을 찾을 수 없습니다.' }, { status: 404 })
   }
 

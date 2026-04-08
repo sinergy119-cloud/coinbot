@@ -40,6 +40,10 @@ export default function AccountRegister() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
+  // 위임 상태
+  const [delegated, setDelegated] = useState(false)
+  const [delegateLoading, setDelegateLoading] = useState(false)
+
   // 아코디언: 기본 전체 펼침
   const [openGroups, setOpenGroups] = useState<Record<Exchange, boolean>>(
     () => Object.fromEntries(EXCHANGES.map((ex) => [ex, false])) as Record<Exchange, boolean>
@@ -50,7 +54,34 @@ export default function AccountRegister() {
     if (res.ok) setAccounts(await res.json())
   }, [])
 
-  useEffect(() => { fetchAccounts() }, [fetchAccounts])
+  const fetchProfile = useCallback(async () => {
+    const res = await fetch('/api/user/profile')
+    if (res.ok) {
+      const data = await res.json()
+      setDelegated(data.delegated ?? false)
+    }
+  }, [])
+
+  useEffect(() => { fetchAccounts(); fetchProfile() }, [fetchAccounts, fetchProfile])
+
+  async function handleToggleDelegate() {
+    const next = !delegated
+    const msg = next
+      ? '관리자에게 모든 거래소 계정의 거래 실행을 위임합니다. 계속할까요?'
+      : '위임을 해제합니다. 관리자가 더 이상 내 계정으로 거래할 수 없습니다.'
+    if (!confirm(msg)) return
+
+    setDelegateLoading(true)
+    try {
+      await fetch('/api/user/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ delegated: next }),
+      })
+      setDelegated(next)
+    } catch { /* 무시 */ }
+    finally { setDelegateLoading(false) }
+  }
 
   function toggleGroup(ex: Exchange) {
     setOpenGroups((prev) => ({ ...prev, [ex]: !prev[ex] }))
@@ -112,6 +143,36 @@ export default function AccountRegister() {
 
   return (
     <div className="space-y-4">
+
+      {/* ── 관리자 위임 ── */}
+      <section className={`rounded-xl border p-4 ${delegated ? 'border-blue-300 bg-blue-50' : 'border-gray-200 bg-white'}`}>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-900">관리자 위임</h2>
+            <p className="mt-0.5 text-xs text-gray-500">
+              {delegated
+                ? '관리자가 내 모든 계정으로 거래 실행 가능'
+                : 'ON 하면 관리자가 대신 거래를 실행할 수 있습니다'}
+            </p>
+          </div>
+          <button
+            onClick={handleToggleDelegate}
+            disabled={delegateLoading}
+            className={`relative h-7 w-12 rounded-full transition-colors ${
+              delegated ? 'bg-blue-600' : 'bg-gray-300'
+            } ${delegateLoading ? 'opacity-50' : ''}`}
+          >
+            <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${
+              delegated ? 'translate-x-5' : 'translate-x-0.5'
+            }`} />
+          </button>
+        </div>
+        {delegated && (
+          <div className="mt-2 flex items-center gap-1.5 text-xs text-blue-700">
+            <span>📌</span> 위임 상태 — 관리자가 거래 실행/스케줄 등록 가능
+          </div>
+        )}
+      </section>
 
       {/* ── 등록 폼 ── */}
       <section className="rounded-xl border border-gray-200 bg-white p-4">

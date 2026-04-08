@@ -9,6 +9,7 @@ interface Account {
   id: string
   exchange: string
   account_name: string
+  _delegated?: boolean
 }
 
 interface TradeFormProps {
@@ -231,18 +232,26 @@ export default function TradeForm({ onExecute, loading }: TradeFormProps) {
         {exchange && !accountsLoading && accounts.length === 0 && (
           <p className="text-sm text-gray-400">등록된 계정이 없습니다.</p>
         )}
-        <div className="space-y-2">
-          {accounts.map((acc) => (
+        <div className="space-y-1.5">
+          {accounts.filter((a) => !a._delegated).map((acc) => (
             <label key={acc.id} className="flex cursor-pointer items-center gap-2">
-              <input
-                type="checkbox"
-                checked={selectedIds.includes(acc.id)}
-                onChange={() => toggleAccount(acc.id)}
-                className="accent-blue-600"
-              />
+              <input type="checkbox" checked={selectedIds.includes(acc.id)}
+                onChange={() => toggleAccount(acc.id)} className="accent-blue-600" />
               <span className="text-sm">{acc.account_name}</span>
             </label>
           ))}
+          {accounts.some((a) => a._delegated) && (
+            <>
+              <p className="mt-2 mb-1 text-xs font-semibold text-purple-600">📁 위임받은 계정</p>
+              {accounts.filter((a) => a._delegated).map((acc) => (
+                <label key={acc.id} className="flex cursor-pointer items-center gap-2 rounded bg-purple-50 px-2 py-1">
+                  <input type="checkbox" checked={selectedIds.includes(acc.id)}
+                    onChange={() => toggleAccount(acc.id)} className="accent-purple-600" />
+                  <span className="text-sm text-purple-800">{acc.account_name}</span>
+                </label>
+              ))}
+            </>
+          )}
         </div>
       </div>
 
