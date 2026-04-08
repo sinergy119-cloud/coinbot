@@ -342,7 +342,18 @@ function ServiceGuideModal({ onClose }: { onClose: () => void }) {
             <p className="text-sm text-gray-400 animate-pulse">로딩 중...</p>
           </div>
         ) : (
-          <div>{renderMarkdown(content)}</div>
+          <>
+            <div>{renderMarkdown(content)}</div>
+            {/* 하단 닫기 버튼 */}
+            <div className="mt-5 border-t border-gray-100 pt-4">
+              <button
+                onClick={onClose}
+                className="w-full rounded-lg bg-gray-800 py-2.5 text-sm font-medium text-white hover:bg-gray-900 transition"
+              >
+                닫기
+              </button>
+            </div>
+          </>
         )}
       </div>
     </div>
