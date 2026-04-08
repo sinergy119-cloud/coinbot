@@ -41,18 +41,29 @@ export default function TradeForm({ onExecute, onSchedule, loading }: TradeFormP
   const [accountsLoading, setAccountsLoading] = useState(false)
   const [error, setError] = useState('')
   const [allCoins, setAllCoins] = useState<string[]>([])
+  const [coinsLoading, setCoinsLoading] = useState(false)
 
   function handleSetExchange(ex: Exchange) {
     setExchange(ex)
     setCoin('')
     setCoinSuggestions([])
     setAllCoins([])
-    // 거래소 변경 시 해당 거래소 코인 목록 비동기 로드
+    setCoinsLoading(true)
     fetch(`/api/markets?exchange=${ex}`)
       .then((r) => r.json())
       .then((data: string[]) => Array.isArray(data) ? setAllCoins(data) : null)
       .catch(() => null)
+      .finally(() => setCoinsLoading(false))
   }
+
+  // allCoins 로드 완료 시 이미 입력된 값으로 자동 재필터링
+  useEffect(() => {
+    if (coin.length >= 1 && allCoins.length > 0) {
+      const filtered = allCoins.filter((c) => c.startsWith(coin)).slice(0, 8)
+      setCoinSuggestions(filtered)
+      setShowSuggestions(filtered.length > 0)
+    }
+  }, [allCoins])  // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleCoinChange(value: string) {
     const upper = value.toUpperCase()
@@ -148,15 +159,20 @@ export default function TradeForm({ onExecute, onSchedule, loading }: TradeFormP
 
       {/* 코인 입력 */}
       <div className="relative mb-4">
-        <label className="mb-1 block text-sm font-medium text-gray-700">코인</label>
+        <label className="mb-1 block text-sm font-medium text-gray-700">
+          코인
+          {coinsLoading && <span className="ml-2 text-xs text-blue-500 animate-pulse">목록 로딩 중...</span>}
+          {!coinsLoading && allCoins.length > 0 && <span className="ml-2 text-xs text-gray-400">{allCoins.length}종</span>}
+        </label>
         <input
           type="text"
           value={coin}
           onChange={(e) => handleCoinChange(e.target.value)}
           onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
           onFocus={() => coin.length >= 1 && coinSuggestions.length > 0 && setShowSuggestions(true)}
-          placeholder="예: BTC, ETH, USDT"
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          placeholder={coinsLoading ? '코인 목록 로딩 중...' : '예: BTC, ETH, USDT'}
+          disabled={coinsLoading}
+          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400"
         />
         {showSuggestions && (
           <ul className="absolute z-10 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg">
