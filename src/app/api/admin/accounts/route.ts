@@ -18,7 +18,7 @@ export async function GET() {
   // 사용자 목록 조회
   const { data: users, error: uerr } = await db
     .from('users')
-    .select('id, user_id, delegated')
+    .select('id, user_id, delegated, created_at, last_login_at')
     .order('created_at')
   if (uerr) return Response.json({ error: uerr.message }, { status: 500 })
 

@@ -47,8 +47,9 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: '아이디 또는 비밀번호가 올바르지 않습니다.' }, { status: 401 })
   }
 
-  // 로그인 성공 시 실패 카운트 초기화
+  // 로그인 성공 시 실패 카운트 초기화 + 마지막 로그인 시간 갱신
   loginAttempts.delete(ip)
+  await db.from('users').update({ last_login_at: new Date().toISOString() }).eq('id', user.id)
   await createSession(user.id, user.user_id)
   return Response.json({ ok: true, loginId: user.user_id })
 }

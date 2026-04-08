@@ -83,7 +83,7 @@ function ExchangeAccordion({
 }
 
 // ─── 메인 AdminDashboard ────────────────────────────
-export default function AdminDashboard({ loginId }: { loginId: string }) {
+export default function AdminDashboard({ loginId, embedded }: { loginId: string; embedded?: boolean }) {
   const [users, setUsers] = useState<User[]>([])
   const [accounts, setAccounts] = useState<Account[]>([])
 
@@ -178,14 +178,8 @@ export default function AdminDashboard({ loginId }: { loginId: string }) {
     fetchAll()
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <Header loginId={loginId} isAdmin showBackToHome />
-
-      <main className="mx-auto max-w-3xl space-y-4 px-4 py-4">
-        <div className="rounded-xl border border-purple-200 bg-purple-50 p-3">
-          <p className="text-sm text-purple-900">관리자 페이지 · 모든 사용자의 거래소 계정을 관리합니다.</p>
-        </div>
+  const content = (
+    <div className="space-y-4">
 
         {/* ── 대리 등록 폼 ── */}
         <section className="rounded-xl border border-gray-200 bg-white p-4">
@@ -307,6 +301,16 @@ export default function AdminDashboard({ loginId }: { loginId: string }) {
             </div>
           </section>
         )}
+    </div>
+  )
+
+  if (embedded) return content
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Header loginId={loginId} isAdmin showBackToHome />
+      <main className="mx-auto max-w-3xl space-y-4 px-4 py-4">
+        {content}
       </main>
     </div>
   )

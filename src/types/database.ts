@@ -40,6 +40,7 @@ export interface UserRow {
   user_id: string      // 로그인 ID (사용자가 직접 입력)
   password_hash: string
   delegated: boolean   // true면 관리자에게 거래 실행 위임
+  last_login_at: string | null
   created_at: string
 }
 
