@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { createServerClient } from '@/lib/supabase'
 import { createSession } from '@/lib/session'
+import { sendTelegramMessage } from '@/lib/telegram'
 
 export async function POST(req: NextRequest) {
   const { userId, password } = await req.json()
@@ -40,5 +41,31 @@ export async function POST(req: NextRequest) {
   }
 
   await createSession(newUser.id, newUser.user_id)
+
+  // 관리자에게 신규 가입 텔레그램 알림
+  try {
+    const adminId = process.env.ADMIN_USER_ID
+    if (adminId) {
+      const { data: admin } = await db
+        .from('users')
+        .select('telegram_chat_id')
+        .eq('user_id', adminId)
+        .single()
+      if (admin?.telegram_chat_id) {
+        const { count } = await db.from('users').select('id', { count: 'exact', head: true })
+        const now = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false })
+        const msg = [
+          `🎉 <b>MyCoinBot 신규 가입</b>`,
+          ``,
+          `ID: ${newUser.user_id}`,
+          `가입: ${now} (KST)`,
+          ``,
+          `현재 총 회원: ${count ?? '?'}명`,
+        ].join('\n')
+        await sendTelegramMessage(admin.telegram_chat_id, msg)
+      }
+    }
+  } catch { /* 알림 실패는 무시 */ }
+
   return Response.json({ ok: true, loginId: newUser.user_id })
 }
