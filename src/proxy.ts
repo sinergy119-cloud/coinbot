@@ -4,7 +4,7 @@ import { jwtVerify } from 'jose'
 
 const secret = new TextEncoder().encode(process.env.SESSION_SECRET ?? 'fallback-dev-secret')
 
-const PUBLIC_PATHS = ['/login', '/api/auth/', '/api/cron', '/api/markets', '/api/guide']
+const PUBLIC_PATHS = ['/login', '/api/auth/', '/api/cron', '/api/markets', '/api/guide', '/api/guide-exchange']
 
 export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl

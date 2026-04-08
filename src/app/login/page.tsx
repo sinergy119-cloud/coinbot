@@ -308,16 +308,16 @@ function renderMarkdown(md: string) {
   return elements
 }
 
-// ─── 서비스 소개 모달 ───────────────────────────────
-function ServiceGuideModal({ onClose }: { onClose: () => void }) {
+// ─── 범용 가이드 모달 ───────────────────────────────
+function GuideModal({ apiUrl, onClose }: { apiUrl: string; onClose: () => void }) {
   const [content, setContent] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch('/api/guide')
+    fetch(apiUrl)
       .then((r) => r.json())
       .then((d) => setContent(d.content ?? ''))
-      .catch(() => setContent('서비스 소개를 불러올 수 없습니다.'))
-  }, [])
+      .catch(() => setContent('내용을 불러올 수 없습니다.'))
+  }, [apiUrl])
 
   function handleBackdrop(e: React.MouseEvent) {
     if (e.target === e.currentTarget) onClose()
@@ -344,7 +344,6 @@ function ServiceGuideModal({ onClose }: { onClose: () => void }) {
         ) : (
           <>
             <div>{renderMarkdown(content)}</div>
-            {/* 하단 닫기 버튼 */}
             <div className="mt-5 border-t border-gray-100 pt-4">
               <button
                 onClick={onClose}
@@ -369,7 +368,7 @@ export default function LoginPage() {
   const [saveId, setSaveId] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [showGuide, setShowGuide] = useState(false)
+  const [activeModal, setActiveModal] = useState<'service' | 'exchange' | null>(null)
 
   // 저장된 아이디 불러오기
   useEffect(() => {
@@ -434,14 +433,23 @@ export default function LoginPage() {
           {mode === 'login' ? '로그인' : '회원 생성'}
         </p>
 
-        {/* 서비스 소개 버튼 */}
-        <button
-          type="button"
-          onClick={() => setShowGuide(true)}
-          className="mb-5 flex w-full items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-medium text-blue-700 transition hover:bg-blue-100"
-        >
-          📢 서비스 소개 보기
-        </button>
+        {/* 가이드 버튼 */}
+        <div className="mb-5 flex gap-2">
+          <button
+            type="button"
+            onClick={() => setActiveModal('service')}
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 text-sm font-medium text-blue-700 transition hover:bg-blue-100"
+          >
+            📢 서비스 소개
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveModal('exchange')}
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-green-200 bg-green-50 px-3 py-2.5 text-sm font-medium text-green-700 transition hover:bg-green-100"
+          >
+            🏦 거래소 가이드
+          </button>
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -526,7 +534,8 @@ export default function LoginPage() {
       </div>
 
       {/* 서비스 소개 모달 */}
-      {showGuide && <ServiceGuideModal onClose={() => setShowGuide(false)} />}
+      {activeModal === 'service' && <GuideModal apiUrl="/api/guide" onClose={() => setActiveModal(null)} />}
+      {activeModal === 'exchange' && <GuideModal apiUrl="/api/guide-exchange" onClose={() => setActiveModal(null)} />}
     </div>
   )
 }
