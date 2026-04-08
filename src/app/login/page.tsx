@@ -148,6 +148,11 @@ function renderMarkdown(md: string) {
               {steps.map((step, si) => {
                 const trimmed = step.trim()
                 if (trimmed === '↓') return <p key={si} className="text-blue-400 pl-4 text-xs">↓</p>
+                // ⚠ 또는 "반드시" 포함 → 빨간색 강조
+                const isAlert = trimmed.includes('⚠') || trimmed.includes('반드시')
+                if (isAlert) {
+                  return <p key={si} className="text-xs font-semibold text-red-600">🚨 {trimmed.replace(/^→\s*/, '').replace(/^⚠\s*/, '')}</p>
+                }
                 // 번호 매기기
                 const num = trimmed.match(/^\[(.+?)\]/) || trimmed.match(/^[①②③④⑤]/)
                 return (
