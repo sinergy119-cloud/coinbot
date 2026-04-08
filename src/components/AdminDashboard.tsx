@@ -128,7 +128,7 @@ export default function AdminDashboard({ loginId }: { loginId: string }) {
             {/* 거래소 */}
             <div>
               <label className={`mb-2 block text-sm font-medium ${!exchange ? 'text-red-600' : 'text-gray-700'}`}>
-                거래소 {!exchange && <span className="animate-bounce inline-block">👆 먼저 선택해주세요</span>}
+                거래소 {!exchange && <span className="animate-bounce inline-block text-blue-600">👇 먼저 선택해 주세요</span>}
               </label>
               <div className={`flex flex-wrap gap-2 rounded-lg p-1 transition-all ${
                 !exchange ? 'animate-pulse bg-red-50 ring-2 ring-red-300' : ''
