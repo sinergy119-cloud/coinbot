@@ -198,19 +198,6 @@ export default function ScheduleTab({ defaultExchange, onExchangeChange }: Sched
     e.preventDefault()
     setError('')
     if (!exchange) { setError('거래소를 선택해주세요.'); return }
-
-    // cron 실행 여부 확인
-    try {
-      const cronRes = await fetch('/api/cron')
-      const cronData = await cronRes.json()
-      if (!cronData.running) {
-        setError('⚠️ 스케줄러가 실행 중이 아닙니다. 터미널에서 node cron-local.js를 먼저 실행해주세요.')
-        return
-      }
-    } catch {
-      setError('⚠️ 스케줄러 상태를 확인할 수 없습니다. node cron-local.js가 실행 중인지 확인해주세요.')
-      return
-    }
     if (!coin.trim()) { setError('코인을 입력해주세요.'); return }
     if (tradeType !== 'SELL' && amountKrw < 5100) { setError('최소 거래 금액은 5,100원입니다.'); return }
     if (selectedIds.length === 0) { setError('계정을 1개 이상 선택해주세요.'); return }

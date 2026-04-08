@@ -1,20 +1,5 @@
 import { NextRequest } from 'next/server'
 import { createServerClient } from '@/lib/supabase'
-
-// GET /api/cron → cron 실행 중 여부 확인 (Supabase heartbeat 기반)
-export async function GET() {
-  const db = createServerClient()
-  const { data } = await db
-    .from('system_settings')
-    .select('value')
-    .eq('key', 'cron_last_ping')
-    .single()
-
-  if (!data?.value) return Response.json({ running: false, lastPing: null })
-  const lastPing = new Date(data.value).getTime()
-  const running = Date.now() - lastPing < 2 * 60 * 1000
-  return Response.json({ running, lastPing: data.value })
-}
 import {
   placeMarketOrder,
   placeCycleOrder,
@@ -58,7 +43,7 @@ function buildTelegramMessage(
   return lines.join('\n')
 }
 
-// POST /api/cron → cron-job.org 에서 매 1분 호출
+// POST /api/cron → AWS EC2 crontab에서 매 1분 호출
 export async function POST(req: NextRequest) {
   // 보안: CRON_SECRET 검증
   const authHeader = req.headers.get('authorization')
@@ -68,9 +53,6 @@ export async function POST(req: NextRequest) {
 
   const { now, today } = getKSTDateTime()
   const db = createServerClient()
-
-  // heartbeat 기록 (Supabase)
-  await db.from('system_settings').upsert({ key: 'cron_last_ping', value: now.toISOString() })
 
   // 1) 실행 대상 조회: 날짜 범위만 DB 필터, 시간은 JS에서 비교 (HH:MM / HH:MM:SS 포맷 무관)
   const { data: allActiveJobs } = await db
