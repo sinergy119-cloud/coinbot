@@ -20,7 +20,7 @@ async function coinonePrivate(
   }
   const json = JSON.stringify(body)
   const payload = Buffer.from(json, 'utf8').toString('base64')
-  const signature = createHmac('sha512', Buffer.from(secretKey, 'utf8'))
+  const signature = createHmac('sha512', Buffer.from(secretKey.toUpperCase(), 'utf8'))
     .update(payload, 'utf8')
     .digest('hex')
 
