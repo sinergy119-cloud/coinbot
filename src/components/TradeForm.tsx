@@ -34,7 +34,6 @@ export default function TradeForm({ onExecute, onSchedule, loading }: TradeFormP
   const [exchange, setExchange] = useState<Exchange | null>(null)
   const [coin, setCoin] = useState('')
   const [coinSuggestions, setCoinSuggestions] = useState<CoinInfo[]>([])
-  const [showSuggestions, setShowSuggestions] = useState(false)
   const [tradeType, setTradeType] = useState<TradeType>('CYCLE')
   const [amountKrw, setAmountKrw] = useState(5100)
   const [amountDisplay, setAmountDisplay] = useState('5,100')
@@ -44,6 +43,7 @@ export default function TradeForm({ onExecute, onSchedule, loading }: TradeFormP
   const [error, setError] = useState('')
   const [allCoins, setAllCoins] = useState<CoinInfo[]>([])
   const [coinsLoading, setCoinsLoading] = useState(false)
+  const [coinFocused, setCoinFocused] = useState(false)
 
   function handleSetExchange(ex: Exchange) {
     setExchange(ex)
@@ -62,32 +62,28 @@ export default function TradeForm({ onExecute, onSchedule, loading }: TradeFormP
   useEffect(() => {
     if (coin.length >= 1 && allCoins.length > 0) {
       const upper = coin.toUpperCase()
-      const filtered = allCoins.filter((c) =>
-        c.code.startsWith(upper) || c.name.includes(coin)
-      ).slice(0, 8)
-      setCoinSuggestions(filtered)
-      setShowSuggestions(filtered.length > 0)
+      setCoinSuggestions(
+        allCoins.filter((c) => c.code.startsWith(upper) || c.name.includes(coin)).slice(0, 8)
+      )
     }
   }, [allCoins])  // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleCoinChange(value: string) {
-    setCoin(value.toUpperCase())
-    if (value.length >= 1 && allCoins.length > 0) {
-      const upper = value.toUpperCase()
-      // 코드(영문) 또는 한국어 이름으로 검색
-      const filtered = allCoins.filter((c) =>
-        c.code.startsWith(upper) || c.name.includes(value)
-      ).slice(0, 8)
-      setCoinSuggestions(filtered)
-      setShowSuggestions(filtered.length > 0)
+    const upper = value.toUpperCase()
+    setCoin(upper)
+    if (upper.length >= 1 && allCoins.length > 0) {
+      setCoinSuggestions(
+        allCoins.filter((c) => c.code.startsWith(upper) || c.name.includes(value)).slice(0, 8)
+      )
     } else {
-      setShowSuggestions(false)
+      setCoinSuggestions([])
     }
   }
 
   function handleCoinSelect(selected: CoinInfo) {
     setCoin(selected.code)
-    setShowSuggestions(false)
+    setCoinSuggestions([])
+    setCoinFocused(false)
   }
 
   // 거래소 변경 시 계정 목록 조회 → 전체 디폴트 체크
@@ -176,14 +172,14 @@ export default function TradeForm({ onExecute, onSchedule, loading }: TradeFormP
           type="text"
           value={coin}
           onChange={(e) => handleCoinChange(e.target.value)}
-          onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-          onFocus={() => coin.length >= 1 && coinSuggestions.length > 0 && setShowSuggestions(true)}
+          onFocus={() => setCoinFocused(true)}
+          onBlur={() => setTimeout(() => setCoinFocused(false), 150)}
           placeholder={coinsLoading ? '코인 목록 로딩 중...' : '코드(BTC) 또는 이름(비트코인) 입력'}
           disabled={coinsLoading}
           className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400"
         />
-        {showSuggestions && (
-          <ul className="absolute z-10 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg">
+        {coinFocused && coinSuggestions.length > 0 && (
+          <ul className="absolute z-50 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg">
             {coinSuggestions.map((c) => (
               <li
                 key={c.code}
