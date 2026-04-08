@@ -223,12 +223,18 @@ function renderMarkdown(md: string) {
       continue
     }
 
-    // > 블록쿼트 → 강조 배너
+    // > 블록쿼트 → 강조 배너 (⚠ 시작이면 빨간색, 아니면 파란색)
     if (line.startsWith('> ')) {
       flushList()
+      const text = line.slice(2).trim()
+      const isWarningBanner = text.startsWith('⚠')
       elements.push(
-        <p key={i} className="my-2 rounded-lg border-l-4 border-blue-400 bg-blue-50 px-3 py-2.5 text-sm font-medium text-blue-700">
-          {formatInline(line.slice(2).trim())}
+        <p key={i} className={`my-2 rounded-lg border-l-4 px-3 py-2.5 text-sm font-medium ${
+          isWarningBanner
+            ? 'border-red-400 bg-red-50 text-red-700'
+            : 'border-blue-400 bg-blue-50 text-blue-700'
+        }`}>
+          {formatInline(text)}
         </p>
       )
       continue
