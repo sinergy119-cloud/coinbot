@@ -55,10 +55,10 @@ export async function coinoneGetBalance(
   secretKey: string,
 ): Promise<{ krw: number }> {
   const data = (await coinonePrivate(accessKey, secretKey, '/v2.1/account/balance/all')) as {
-    balances?: Array<{ currency: string; avail: string }>
+    balances?: Array<{ currency: string; available: string }>
   }
   const krwItem = data.balances?.find((b) => b.currency.toLowerCase() === 'krw')
-  return { krw: Number(krwItem?.avail ?? 0) }
+  return { krw: Number(krwItem?.available ?? 0) }
 }
 
 export async function coinoneGetCoinBalance(
@@ -67,10 +67,10 @@ export async function coinoneGetCoinBalance(
   coin: string,
 ): Promise<number> {
   const data = (await coinonePrivate(accessKey, secretKey, '/v2.1/account/balance/all')) as {
-    balances?: Array<{ currency: string; avail: string }>
+    balances?: Array<{ currency: string; available: string }>
   }
   const item = data.balances?.find((b) => b.currency.toLowerCase() === coin.toLowerCase())
-  return Number(item?.avail ?? 0)
+  return Number(item?.available ?? 0)
 }
 
 // ──────────────────────────────────────
@@ -81,12 +81,12 @@ export async function coinoneGetFullBalance(
   secretKey: string,
 ): Promise<{ krw: number; coins: Record<string, number> }> {
   const data = (await coinonePrivate(accessKey, secretKey, '/v2.1/account/balance/all')) as {
-    balances?: Array<{ currency: string; avail: string }>
+    balances?: Array<{ currency: string; available: string }>
   }
   const coins: Record<string, number> = {}
   let krw = 0
   for (const item of data.balances ?? []) {
-    const amount = Number(item.avail)
+    const amount = Number(item.available)
     const cur = item.currency.toUpperCase()
     if (cur === 'KRW') krw = amount
     else if (amount > 0) coins[cur] = amount
