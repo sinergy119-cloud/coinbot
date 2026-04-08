@@ -58,7 +58,7 @@ export default function OgImage() {
             marginBottom: 40,
           }}
         >
-          코인 에어드랍 이벤트 거래용 · 5대 거래소 스케줄 등록 실행
+          코인 에어드랍 이벤트용 · 스케줄 등록으로 자동 실행
         </div>
 
         {/* 거래소 뱃지 */}
