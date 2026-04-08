@@ -88,9 +88,14 @@ export default function AdminDashboard({ loginId }: { loginId: string }) {
     fetchAll()
   }
 
+  // 대상 사용자 선택 시 계정 목록 필터링
+  const filteredAccounts = targetUserId
+    ? accounts.filter((a) => a.user_id === targetUserId)
+    : accounts
+
   // 사용자별 그룹핑
   const grouped = new Map<string, Account[]>()
-  for (const acc of accounts) {
+  for (const acc of filteredAccounts) {
     const list = grouped.get(acc.user_id) ?? []
     list.push(acc)
     grouped.set(acc.user_id, list)
@@ -185,11 +190,25 @@ export default function AdminDashboard({ loginId }: { loginId: string }) {
 
         {/* 전체 계정 목록 */}
         <section className="rounded-xl border border-gray-200 bg-white p-4">
-          <h2 className="mb-3 text-base font-semibold text-gray-900">
-            전체 거래소 계정 ({accounts.length}건)
-          </h2>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-base font-semibold text-gray-900">
+              {targetUserId
+                ? <><span className="text-blue-600">{userMap.get(targetUserId)}</span>의 거래소 계정 ({filteredAccounts.length}건)</>
+                : <>전체 거래소 계정 ({accounts.length}건)</>
+              }
+            </h2>
+            {targetUserId && (
+              <button
+                type="button"
+                onClick={() => setTargetUserId('')}
+                className="text-xs text-gray-400 hover:text-gray-600 hover:underline"
+              >
+                전체 보기
+              </button>
+            )}
+          </div>
 
-          {accounts.length === 0 ? (
+          {filteredAccounts.length === 0 ? (
             <p className="text-sm text-gray-400">등록된 계정이 없습니다.</p>
           ) : (
             <div className="space-y-4">
