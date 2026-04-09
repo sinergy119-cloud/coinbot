@@ -45,7 +45,19 @@ export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) 
   const [showValidation, setShowValidation] = useState(false)
   const [loading, setLoading] = useState(false)
 
-  void userId // used for future features
+  // 대시보드 요약
+  const [summary, setSummary] = useState({ activeSchedules: 0, todayTotal: 0, todaySuccess: 0, todayFail: 0, accountCount: 0 })
+  // 최근 실행 (빠른 실행용)
+  const [lastTrade, setLastTrade] = useState<TradeInput | null>(null)
+
+  void userId
+
+  const fetchSummary = useCallback(async () => {
+    try {
+      const res = await fetch('/api/dashboard')
+      if (res.ok) setSummary(await res.json())
+    } catch { /* 무시 */ }
+  }, [])
 
   const fetchJobs = useCallback(async () => {
     try {
@@ -66,10 +78,11 @@ export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) 
     } catch { /* 무시 */ }
   }, [])
 
-  useEffect(() => { fetchJobs(); fetchAllAccounts() }, [fetchJobs, fetchAllAccounts])
+  useEffect(() => { fetchJobs(); fetchAllAccounts(); fetchSummary() }, [fetchJobs, fetchAllAccounts, fetchSummary])
 
   // ── 지금 실행: 1단계 - 검증 ──
-  async function handleExecute(data: TradeInput) {
+  async function handleExecute(data: TradeInput, skipSave?: boolean) {
+    if (!skipSave) setLastTrade(data)
     setLoading(true)
     try {
       const res = await fetch('/api/validate', {
@@ -131,6 +144,7 @@ export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) 
       setExecutionResults(results)
       setShowValidation(false)
       setPendingTrade(null)
+      fetchSummary()
     } catch {
       alert('네트워크 오류가 발생했습니다.')
     } finally {
@@ -151,6 +165,22 @@ export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) 
       <Header loginId={loginId} isAdmin={isAdmin} />
 
       <main className="mx-auto max-w-2xl px-4 py-4">
+        {/* 대시보드 요약 */}
+        <div className="mb-4 grid grid-cols-3 gap-2">
+          <div className="rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-center">
+            <p className="text-lg font-bold text-blue-600">{summary.activeSchedules}</p>
+            <p className="text-[10px] text-gray-500">활성 스케줄</p>
+          </div>
+          <div className="rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-center">
+            <p className="text-lg font-bold text-green-600">{summary.todaySuccess}<span className="text-xs font-normal text-gray-400">/{summary.todayTotal}</span></p>
+            <p className="text-[10px] text-gray-500">오늘 실행 성공</p>
+          </div>
+          <div className="rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-center">
+            <p className={`text-lg font-bold ${summary.todayFail > 0 ? 'text-red-600' : 'text-gray-300'}`}>{summary.todayFail}</p>
+            <p className="text-[10px] text-gray-500">오늘 실패</p>
+          </div>
+        </div>
+
         {/* 탭 메뉴 */}
         <div className="mb-4 flex border-b border-gray-200">
           {TABS.map((tab) => (
@@ -171,6 +201,15 @@ export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) 
         {/* 탭 콘텐츠 */}
         {activeTab === 'trade' && (
           <div className="space-y-4">
+            {lastTrade && (
+              <button
+                onClick={() => handleExecute(lastTrade, true)}
+                disabled={loading}
+                className="w-full rounded-lg border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-50 transition flex items-center justify-center gap-2"
+              >
+                🔄 최근 실행 다시 실행 ({lastTrade.exchange} · {lastTrade.coin} · {lastTrade.amountKrw?.toLocaleString()}원)
+              </button>
+            )}
             <TradeForm onExecute={handleExecute} loading={loading} />
             <section className="rounded-xl border border-gray-200 bg-white p-4">
               <h2 className="mb-3 text-base font-semibold text-gray-900">

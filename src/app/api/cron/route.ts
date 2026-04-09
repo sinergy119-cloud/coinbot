@@ -201,6 +201,35 @@ export async function POST(req: NextRequest) {
         source: 'schedule',
       }))
       await db.from('trade_logs').insert(logs)
+
+      // 연속 실패 감지: 이번 실행에서 전부 실패했으면 최근 3회 체크
+      const allFailed = orderResults.every((r: { success: boolean }) => !r.success)
+      if (allFailed) {
+        const { data: recentLogs } = await db
+          .from('trade_logs')
+          .select('success')
+          .eq('trade_job_id', job.id)
+          .order('executed_at', { ascending: false })
+          .limit(3)
+        const consecutiveFails = (recentLogs ?? []).length >= 3 && (recentLogs ?? []).every((l) => !l.success)
+        if (consecutiveFails) {
+          // 관리자에게 긴급 알림
+          const adminId = process.env.ADMIN_USER_ID
+          if (adminId) {
+            const { data: admin } = await db.from('users').select('telegram_chat_id').eq('user_id', adminId).single()
+            if (admin?.telegram_chat_id) {
+              await sendTelegramMessage(admin.telegram_chat_id, [
+                `🚨 <b>연속 실패 경고</b>`,
+                ``,
+                `거래소: ${job.exchange}`,
+                `코인: ${job.coin}`,
+                `스케줄이 3회 연속 실패했습니다.`,
+                `확인이 필요합니다.`,
+              ].join('\n'))
+            }
+          }
+        }
+      }
     } catch { /* 로그 저장 실패는 무시 */ }
 
     // 텔레그램 알림 발송 (스케줄 등록자 + 계정 소유자 모두에게)
