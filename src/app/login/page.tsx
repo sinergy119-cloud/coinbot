@@ -922,7 +922,7 @@ export default function LoginPage() {
                   onClick={() => { setGuideExchange(ex.key); setActiveModal('apikey-detail') }}
                   className="rounded-full bg-purple-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-purple-700"
                 >
-                  {ex.label} → 상세보기
+                  {ex.label}
                 </button>
               ))}
             </div>
