@@ -156,7 +156,7 @@ function TelegramSettings() {
               value={chatId}
               onChange={(e) => setChatId(e.target.value)}
               placeholder="예: 123456789"
-              className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+              className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
             />
             <button
               onClick={handleSave}
@@ -361,7 +361,7 @@ export default function ScheduleTab({ defaultExchange, onExchangeChange }: Sched
             <label className="mb-1 block text-sm font-medium text-gray-700">코인</label>
             <input type="text" value={coin} onChange={(e) => setCoin(e.target.value.toUpperCase())}
               placeholder="예: BTC, ETH, USDT"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
           </div>
 
           {/* 거래 방식 */}
@@ -397,7 +397,7 @@ export default function ScheduleTab({ defaultExchange, onExchangeChange }: Sched
                   setAmountDisplay(num === 0 ? '' : num.toLocaleString())
                 }}
                 placeholder="5,100"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
               <p className="mt-1 text-xs text-gray-400">최소 거래 금액: 5,100원</p>
             </div>
           )}
@@ -435,10 +435,10 @@ export default function ScheduleTab({ defaultExchange, onExchangeChange }: Sched
             <label className="mb-1 block text-sm font-medium text-gray-700">실행 기간</label>
             <div className="flex items-center gap-2">
               <input type="date" value={scheduleFrom} onChange={(e) => setScheduleFrom(e.target.value)}
-                className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
+                className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none" />
               <span className="text-gray-400">~</span>
               <input type="date" value={scheduleTo} onChange={(e) => setScheduleTo(e.target.value)}
-                className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
+                className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none" />
             </div>
           </div>
 
@@ -446,7 +446,7 @@ export default function ScheduleTab({ defaultExchange, onExchangeChange }: Sched
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">실행 시간 (KST)</label>
             <input type="time" value={scheduleTime} onChange={(e) => setScheduleTime(e.target.value)}
-              className="w-32 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
+              className="w-32 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none" />
           </div>
 
           {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
@@ -483,16 +483,16 @@ export default function ScheduleTab({ defaultExchange, onExchangeChange }: Sched
                 <label className="mb-1 block text-xs font-medium text-gray-600">실행 기간</label>
                 <div className="flex items-center gap-2">
                   <input type="date" value={editFrom} onChange={(e) => setEditFrom(e.target.value)}
-                    className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+                    className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900" />
                   <span className="text-gray-400">~</span>
                   <input type="date" value={editTo} onChange={(e) => setEditTo(e.target.value)}
-                    className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+                    className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900" />
                 </div>
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-gray-600">실행 시간 (KST)</label>
                 <input type="time" value={editTime} onChange={(e) => setEditTime(e.target.value)}
-                  className="w-32 rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+                  className="w-32 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900" />
               </div>
               <div className="flex gap-2">
                 <button onClick={handleSaveEdit} disabled={editLoading}

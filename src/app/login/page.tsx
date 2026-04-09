@@ -79,6 +79,21 @@ const EXCHANGE_COLORS: Record<string, string> = {
   '고팍스': 'bg-green-100 text-green-700',
 }
 
+const EXCHANGE_ICON_BG: Record<string, string> = {
+  '빗썸': 'bg-orange-50',
+  '업비트': 'bg-yellow-50',
+  '코인원': 'bg-green-50',
+  '코빗': 'bg-pink-50',
+  '고팍스': 'bg-purple-50',
+}
+const EXCHANGE_ICON_EMOJI: Record<string, string> = {
+  '빗썸': '🟠',
+  '업비트': '🟡',
+  '코인원': '🟢',
+  '코빗': '🔵',
+  '고팍스': '🟣',
+}
+
 // ─── 인라인 서식: **bold**, `code`, [text](url) ──────
 function formatInline(text: string): React.ReactNode {
   const parts: React.ReactNode[] = []
@@ -87,7 +102,7 @@ function formatInline(text: string): React.ReactNode {
   let match
   while ((match = regex.exec(text)) !== null) {
     if (match.index > lastIndex) parts.push(text.slice(lastIndex, match.index))
-    if (match[2]) parts.push(<b key={match.index} className="font-semibold text-gray-900">{match[2]}</b>)
+    if (match[2]) parts.push(<b key={match.index} className="font-semibold text-gray-900">{formatInline(match[2])}</b>)
     else if (match[3]) parts.push(<code key={match.index} className="rounded bg-gray-100 px-1 py-0.5 text-xs font-mono text-pink-600">{match[3]}</code>)
     else if (match[4] && match[5]) parts.push(
       <a key={match.index} href={match[5]} target="_blank" rel="noopener noreferrer"
@@ -117,6 +132,50 @@ function renderMarkdown(md: string) {
 
   function flushList() {
     if (listItems.length === 0) return
+
+    // 거래소 추천 링크 리스트 감지 → 카드형 그리드 렌더링
+    const exchangeNames = ['빗썸', '업비트', '코인원', '코빗', '고팍스']
+    const isReferralList = listItems.length >= 3 && listItems.every(
+      (item) => exchangeNames.some((name) => item.text.includes(`**${name}**`) || item.text.includes(`[${name}]`))
+    )
+
+    if (isReferralList) {
+      const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/
+      elements.push(
+        <div key={`cards-${elements.length}`} className="my-3 grid grid-cols-2 gap-2.5">
+          {listItems.map((item) => {
+            const linkMatch = item.text.match(linkRegex)
+            const boldMatch = item.text.match(/\*\*([^[*]+)\*\*/)
+            const name = linkMatch?.[1] ?? boldMatch?.[1] ?? ''
+            const url = linkMatch?.[2] ?? ''
+            const hasLink = !!url
+            const desc = item.text.includes('추천 없음') ? '추천 없음' : '추천 가입'
+            const iconBg = EXCHANGE_ICON_BG[name] ?? 'bg-gray-50'
+            const emoji = EXCHANGE_ICON_EMOJI[name] ?? '⚪'
+
+            if (!hasLink) {
+              return (
+                <div key={item.key} className="flex items-center gap-2.5 rounded-xl border border-gray-100 bg-white px-3 py-3 opacity-40">
+                  <span className={`flex h-9 w-9 items-center justify-center rounded-lg text-lg ${iconBg}`}>{emoji}</span>
+                  <span className="flex-1"><span className="block text-xs font-bold text-gray-900">{name}</span><span className="block text-[10px] text-gray-400">{desc}</span></span>
+                </div>
+              )
+            }
+            return (
+              <a key={item.key} href={url} target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-2.5 rounded-xl border border-gray-200 bg-white px-3 py-3 transition hover:border-blue-300 hover:bg-blue-50 hover:shadow-sm">
+                <span className={`flex h-9 w-9 items-center justify-center rounded-lg text-lg ${iconBg}`}>{emoji}</span>
+                <span className="flex-1"><span className="block text-xs font-bold text-gray-900">{name}</span><span className="block text-[10px] text-gray-500">{desc}</span></span>
+                <span className="text-sm text-gray-300">›</span>
+              </a>
+            )
+          })}
+        </div>
+      )
+      listItems = []
+      return
+    }
+
     elements.push(
       <ul key={`list-${elements.length}`} className="my-2 space-y-1.5">
         {listItems.map((item) => (

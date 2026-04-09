@@ -90,29 +90,29 @@ export default function EventManager() {
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-600">코인</label>
               <input type="text" value={coin} onChange={(e) => setCoin(e.target.value.toUpperCase())}
-                placeholder="예: CROSS" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+                placeholder="예: CROSS" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900" />
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-600">조건</label>
               <input type="text" value={condition} onChange={(e) => setCondition(e.target.value)}
-                placeholder="예: 일일 1만원 이상" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+                placeholder="예: 일일 1만원 이상" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900" />
             </div>
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-600">제목</label>
             <input type="text" value={title} onChange={(e) => setTitle(e.target.value)}
-              placeholder="예: CROSS 에어드랍 이벤트" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+              placeholder="예: CROSS 에어드랍 이벤트" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-600">시작일</label>
               <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900" />
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-600">종료일</label>
               <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900" />
             </div>
           </div>
           {error && <p className="text-xs text-red-600">{error}</p>}

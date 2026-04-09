@@ -317,16 +317,16 @@ export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) 
                 <label className="mb-1 block text-xs font-medium text-gray-600">실행 기간</label>
                 <div className="flex items-center gap-2">
                   <input type="date" value={editFrom} onChange={(e) => setEditFrom(e.target.value)}
-                    className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+                    className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900" />
                   <span className="text-gray-400">~</span>
                   <input type="date" value={editTo} onChange={(e) => setEditTo(e.target.value)}
-                    className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+                    className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900" />
                 </div>
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-gray-600">실행 시간 (KST)</label>
                 <input type="time" value={editTime} onChange={(e) => setEditTime(e.target.value)}
-                  className="w-32 rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+                  className="w-32 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900" />
               </div>
               <div className="flex gap-2">
                 <button onClick={handleSaveEdit} disabled={editLoading}

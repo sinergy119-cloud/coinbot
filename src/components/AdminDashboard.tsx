@@ -188,7 +188,7 @@ export default function AdminDashboard({ loginId, embedded }: { loginId: string;
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">대상 사용자</label>
               <select value={targetUserId} onChange={(e) => setTargetUserId(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
                 <option value="">선택...</option>
                 {users.map((u) => (
                   <option key={u.id} value={u.id}>{u.user_id}</option>
@@ -214,17 +214,17 @@ export default function AdminDashboard({ loginId, embedded }: { loginId: string;
               <label className="mb-1 block text-sm font-medium text-gray-700">계정 이름</label>
               <input type="text" value={accountName} onChange={(e) => setAccountName(e.target.value)}
                 placeholder="예: 홍길동"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">API Key</label>
               <input type="password" value={accessKey} onChange={(e) => setAccessKey(e.target.value)} autoComplete="off"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">Secret Key</label>
               <input type="password" value={secretKey} onChange={(e) => setSecretKey(e.target.value)} autoComplete="off"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
             </div>
             {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
             {success && <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">{success}</p>}

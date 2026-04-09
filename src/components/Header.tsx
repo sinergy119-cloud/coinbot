@@ -214,7 +214,7 @@ export default function Header({ loginId, isAdmin = false, showBackToHome = fals
                   value={currentPw}
                   onChange={e => setCurrentPw(e.target.value)}
                   required
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
                 />
               </div>
               <div>
@@ -225,7 +225,7 @@ export default function Header({ loginId, isAdmin = false, showBackToHome = fals
                   onChange={e => setNewPw(e.target.value)}
                   required
                   placeholder="8자 이상 (영문+숫자+특수문자)"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
                 />
                 <PasswordStrengthMini password={newPw} />
               </div>
@@ -236,7 +236,7 @@ export default function Header({ loginId, isAdmin = false, showBackToHome = fals
                   value={confirmPw}
                   onChange={e => setConfirmPw(e.target.value)}
                   required
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
                 />
               </div>
               {pwError && <p className="text-xs text-red-500">{pwError}</p>}
@@ -267,19 +267,19 @@ export default function Header({ loginId, isAdmin = false, showBackToHome = fals
                 <label className="mb-1 block text-xs font-medium text-gray-600">이름</label>
                 <input type="text" value={profileName} onChange={e => setProfileName(e.target.value)}
                   placeholder="실명을 입력하세요"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none" />
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-gray-600">전화번호</label>
                 <input type="tel" value={profilePhone} onChange={e => setProfilePhone(e.target.value)}
                   placeholder="010-1234-5678"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none" />
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-gray-600">이메일</label>
                 <input type="email" value={profileEmail} onChange={e => setProfileEmail(e.target.value)}
                   placeholder="example@gmail.com"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none" />
                 {profileEmail !== originalEmail && originalEmail && (
                   <p className="mt-1 text-[10px] text-amber-600">📩 이메일 변경 시 인증 메일이 발송됩니다.</p>
                 )}

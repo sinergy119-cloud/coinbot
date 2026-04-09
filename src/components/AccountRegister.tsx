@@ -215,7 +215,7 @@ export default function AccountRegister() {
               value={accountName}
               onChange={(e) => setAccountName(e.target.value)}
               placeholder="예: 홍길동"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>
 
@@ -228,7 +228,7 @@ export default function AccountRegister() {
               onChange={(e) => setAccessKey(e.target.value)}
               placeholder="거래소에서 발급받은 Access Key"
               autoComplete="off"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>
 
@@ -241,7 +241,7 @@ export default function AccountRegister() {
               onChange={(e) => setSecretKey(e.target.value)}
               placeholder="거래소에서 발급받은 Secret Key"
               autoComplete="off"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
             <p className="mt-1 text-xs text-gray-400">
               ※ API는 &apos;입출금 권한 제외&apos; 상태로 발급하세요. 저장 시 AES 암호화됩니다.

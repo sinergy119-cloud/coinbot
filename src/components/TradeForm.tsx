@@ -154,7 +154,7 @@ export default function TradeForm({ onExecute, loading }: TradeFormProps) {
           onBlur={() => setTimeout(() => setCoinFocused(false), 150)}
           placeholder={coinsLoading ? '코인 목록 로딩 중...' : '코드(BTC) 또는 이름(비트코인) 입력'}
           disabled={coinsLoading}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400"
+          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400"
         />
         {coinFocused && coinSuggestions.length > 0 && (
           <ul className="absolute z-50 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg">
@@ -221,7 +221,7 @@ export default function TradeForm({ onExecute, loading }: TradeFormProps) {
               setAmountDisplay(amountKrw.toLocaleString())
             }}
             placeholder="5,100"
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
           <p className="mt-1 text-xs text-gray-400">최소 거래 금액: 5,100원</p>
         </div>
