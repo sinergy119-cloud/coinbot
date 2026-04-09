@@ -25,6 +25,7 @@ function TelegramSettings() {
   const [loaded, setLoaded] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [teleError, setTeleError] = useState('')
 
   useEffect(() => {
     fetch('/api/user/profile')
@@ -41,16 +42,27 @@ function TelegramSettings() {
 
   async function handleSave() {
     setSaving(true)
-    await fetch('/api/user/profile', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ telegramChatId: chatId }),
-    })
+    setTeleError('')
+    try {
+      const res = await fetch('/api/user/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ telegramChatId: chatId }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        setTeleError(data.error || '저장 실패')
+        setSaving(false)
+        return
+      }
+      setSavedId(chatId)
+      setSaved(true)
+      if (chatId) setOpen(false)
+      setTimeout(() => setSaved(false), 2000)
+    } catch {
+      setTeleError('네트워크 오류')
+    }
     setSaving(false)
-    setSavedId(chatId)
-    setSaved(true)
-    if (chatId) setOpen(false)
-    setTimeout(() => setSaved(false), 2000)
   }
 
   async function handleDelete() {
@@ -117,6 +129,7 @@ function TelegramSettings() {
               </button>
             )}
           </div>
+          {teleError && <p className="mt-1.5 text-xs text-red-600">{teleError}</p>}
         </div>
       )}
     </div>
