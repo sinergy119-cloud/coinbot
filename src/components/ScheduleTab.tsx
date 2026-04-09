@@ -99,10 +99,10 @@ function TelegramSettings() {
           <p className="mb-2 text-xs text-gray-500">
             거래 실행 후 텔레그램으로 결과를 받으려면 Chat ID를 입력하세요.
           </p>
-          <div className="mb-2 rounded bg-gray-50 p-2 text-xs text-gray-600">
-            <p className="font-medium">Chat ID 확인 방법</p>
-            <p>1. 텔레그램에서 <b>@raw_info_bot</b> 검색 → 시작</p>
-            <p>2. 표시되는 숫자(ID)를 아래에 입력</p>
+          <div className="mb-2 rounded bg-gray-50 p-2 text-xs text-gray-600 space-y-0.5">
+            <p className="font-medium">설정 방법</p>
+            <p>1. 텔레그램에서 <b>@Coinbot_KR_bot</b> 검색 → <b>/start</b> 전송</p>
+            <p>2. <b>@raw_info_bot</b> 검색 → 시작 → 표시되는 숫자(ID)를 아래에 입력</p>
           </div>
           <div className="flex gap-2">
             <input
