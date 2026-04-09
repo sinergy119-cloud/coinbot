@@ -12,15 +12,27 @@
 
 ---
 
-## 🏦 연계 은행 및 가입 추천 링크
+## 🏦 연계 은행
 
-| 거래소 | 연계 은행 | 추천 링크 |
-|--------|---------|-----------|
-| 빗썸 | 국민은행 | [빗썸 가입하기](https://m.bithumb.com/react/referral/guide?referral=XRFYNXZA48) |
-| 업비트 | 케이뱅크 | 추천 없음 |
-| 코인원 | 카카오뱅크 | [코인원 가입하기](https://coinone.co.kr/user/signup?ref=I6T0K0RB) |
-| 코빗 | 신한은행 | [코빗 가입하기](https://exchange.korbit.co.kr/sign-up/?referral_code=624912) |
-| 고팍스 | 전북은행 | [고팍스 가입하기](https://gopax.page.link/NBr3KXjjhirrQEUP9) |
+| 거래소 | 연계 은행 |
+|--------|---------|
+| 빗썸 | 국민은행 |
+| 업비트 | 케이뱅크 |
+| 코인원 | 카카오뱅크 |
+| 코빗 | 신한은행 |
+| 고팍스 | 전북은행 |
+
+---
+
+## 📋 가입 추천 링크
+
+| 거래소 | 추천 링크 |
+|--------|-----------|
+| 빗썸 | [빗썸 가입하기](https://m.bithumb.com/react/referral/guide?referral=XRFYNXZA48) |
+| 업비트 | 추천 없음 |
+| 코인원 | [코인원 가입하기](https://coinone.co.kr/user/signup?ref=I6T0K0RB) |
+| 코빗 | [코빗 가입하기](https://exchange.korbit.co.kr/sign-up/?referral_code=624912) |
+| 고팍스 | [고팍스 가입하기](https://gopax.page.link/NBr3KXjjhirrQEUP9) |
 
 ---
 
