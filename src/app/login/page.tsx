@@ -377,6 +377,10 @@ export default function LoginPage() {
   const [successMsg, setSuccessMsg] = useState('')
   const [loading, setLoading] = useState(false)
   const [activeModal, setActiveModal] = useState<'service' | 'exchange' | null>(null)
+  const [guideFolded, setGuideFolded] = useState(() => {
+    if (typeof window !== 'undefined') return localStorage.getItem('coinbot_guide_folded') === 'true'
+    return false
+  })
 
   // 저장된 아이디 불러오기
   useEffect(() => {
@@ -453,22 +457,46 @@ export default function LoginPage() {
           {mode === 'login' ? '로그인' : '회원 생성'}
         </p>
 
-        {/* 가이드 버튼 */}
-        <div className="mb-5 flex gap-2">
+        {/* 처음이신가요? 접이식 배너 */}
+        <div className="mb-5 rounded-lg border border-gray-200 bg-gray-50 overflow-hidden">
           <button
             type="button"
-            onClick={() => setActiveModal('service')}
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 text-sm font-medium text-blue-700 transition hover:bg-blue-100"
+            onClick={() => {
+              const next = !guideFolded
+              setGuideFolded(next)
+              localStorage.setItem('coinbot_guide_folded', String(next))
+            }}
+            className="flex w-full items-center justify-between px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-100 transition"
           >
-            📢 서비스 소개
+            <span>{guideFolded ? '📌 처음이신가요?' : '📌 처음이신가요?'}</span>
+            <span className="text-xs text-gray-400">{guideFolded ? '펼치기 ▼' : '접기 ▲'}</span>
           </button>
-          <button
-            type="button"
-            onClick={() => setActiveModal('exchange')}
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-green-200 bg-green-50 px-3 py-2.5 text-sm font-medium text-green-700 transition hover:bg-green-100"
-          >
-            🏦 거래소 가이드
-          </button>
+          {!guideFolded && (
+            <div className="border-t border-gray-200 px-4 pb-3 pt-2 space-y-2">
+              <button
+                type="button"
+                onClick={() => setActiveModal('service')}
+                className="flex w-full items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 text-sm font-medium text-blue-700 transition hover:bg-blue-100"
+              >
+                <span>📢</span>
+                <div className="text-left">
+                  <p className="font-semibold">서비스 소개</p>
+                  <p className="text-xs font-normal text-blue-500">에어드랍 이벤트란? MyCoinBot 작동 원리</p>
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveModal('exchange')}
+                className="flex w-full items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2.5 text-sm font-medium text-green-700 transition hover:bg-green-100"
+              >
+                <span>🏦</span>
+                <div className="text-left">
+                  <p className="font-semibold">거래소 가이드</p>
+                  <p className="text-xs font-normal text-green-500">친구 추천 가입 · API Key 발급 방법</p>
+                </div>
+              </button>
+            </div>
+          )}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
