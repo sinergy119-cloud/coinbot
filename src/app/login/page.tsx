@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { X } from 'lucide-react'
+import ExchangeApiGuide from '@/components/ExchangeApiGuide'
 
 const SAVED_ID_KEY = 'coinbot_saved_id'
 
@@ -357,7 +358,7 @@ function renderMarkdown(md: string) {
 }
 
 // ─── 범용 가이드 모달 ───────────────────────────────
-function GuideModal({ apiUrl, onClose }: { apiUrl: string; onClose: () => void }) {
+function GuideModal({ apiUrl, onClose, footer }: { apiUrl: string; onClose: () => void; footer?: React.ReactNode }) {
   const [content, setContent] = useState<string | null>(null)
 
   useEffect(() => {
@@ -392,6 +393,7 @@ function GuideModal({ apiUrl, onClose }: { apiUrl: string; onClose: () => void }
         ) : (
           <>
             <div>{renderMarkdown(content)}</div>
+            {footer}
             <div className="mt-5 border-t border-gray-100 pt-4">
               <button
                 onClick={onClose}
@@ -585,7 +587,8 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
   const [loading, setLoading] = useState(false)
-  const [activeModal, setActiveModal] = useState<'service' | 'exchange' | 'signup' | 'apikey' | 'find-id' | 'find-pw' | 'privacy' | null>(null)
+  const [activeModal, setActiveModal] = useState<'service' | 'exchange' | 'signup' | 'apikey' | 'apikey-detail' | 'find-id' | 'find-pw' | 'privacy' | null>(null)
+  const [guideExchange, setGuideExchange] = useState('BITHUMB')
   const [guideFolded, setGuideFolded] = useState(() => {
     if (typeof window !== 'undefined') return localStorage.getItem('coinbot_guide_folded') === 'true'
     return false
@@ -902,7 +905,33 @@ export default function LoginPage() {
       {activeModal === 'service' && <GuideModal apiUrl="/api/guide" onClose={() => setActiveModal(null)} />}
       {activeModal === 'exchange' && <GuideModal apiUrl="/api/guide-exchange" onClose={() => setActiveModal(null)} />}
       {activeModal === 'signup' && <GuideModal apiUrl="/api/guide-signup" onClose={() => setActiveModal(null)} />}
-      {activeModal === 'apikey' && <GuideModal apiUrl="/api/guide-apikey" onClose={() => setActiveModal(null)} />}
+      {activeModal === 'apikey' && (
+        <GuideModal apiUrl="/api/guide-apikey" onClose={() => setActiveModal(null)} footer={
+          <div className="mt-4 rounded-lg border border-purple-200 bg-purple-50 p-3">
+            <p className="mb-2 text-xs font-bold text-purple-800">📖 거래소별 상세 발급 가이드</p>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { key: 'BITHUMB', label: '🟠 빗썸' },
+                { key: 'UPBIT', label: '🔵 업비트' },
+                { key: 'COINONE', label: '🟢 코인원' },
+                { key: 'KORBIT', label: '🟣 코빗' },
+                { key: 'GOPAX', label: '🟡 고팍스' },
+              ].map((ex) => (
+                <button
+                  key={ex.key}
+                  onClick={() => { setGuideExchange(ex.key); setActiveModal('apikey-detail') }}
+                  className="rounded-full bg-purple-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-purple-700"
+                >
+                  {ex.label} → 상세보기
+                </button>
+              ))}
+            </div>
+          </div>
+        } />
+      )}
+      {activeModal === 'apikey-detail' && (
+        <ExchangeApiGuide exchange={guideExchange} onClose={() => setActiveModal('apikey')} />
+      )}
       {activeModal === 'find-id' && <FindIdModal onClose={() => setActiveModal(null)} />}
       {activeModal === 'find-pw' && <FindPwModal onClose={() => setActiveModal(null)} />}
       {activeModal === 'privacy' && <PrivacyModal onClose={() => setActiveModal(null)} />}
