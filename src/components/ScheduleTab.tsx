@@ -205,8 +205,13 @@ export default function ScheduleTab({ defaultExchange, onExchangeChange }: Sched
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
-  // 스케줄 목록
+  // 스케줄 목록 + 수정
   const [jobs, setJobs] = useState<TradeJobRow[]>([])
+  const [editJob, setEditJob] = useState<TradeJobRow | null>(null)
+  const [editFrom, setEditFrom] = useState('')
+  const [editTo, setEditTo] = useState('')
+  const [editTime, setEditTime] = useState('')
+  const [editLoading, setEditLoading] = useState(false)
 
   // 전체 계정 맵 (id → account_name)
   const [accountMap, setAccountMap] = useState<Record<string, string>>({})
@@ -290,6 +295,28 @@ export default function ScheduleTab({ defaultExchange, onExchangeChange }: Sched
       setScheduleTime('')
     } catch { setError('네트워크 오류가 발생했습니다.') }
     finally { setSubmitting(false) }
+  }
+
+  function handleEditJob(job: TradeJobRow) {
+    setEditJob(job)
+    setEditFrom(job.schedule_from)
+    setEditTo(job.schedule_to)
+    setEditTime(job.schedule_time.slice(0, 5))
+  }
+
+  async function handleSaveEdit() {
+    if (!editJob) return
+    setEditLoading(true)
+    try {
+      const res = await fetch(`/api/trade-jobs/${editJob.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scheduleFrom: editFrom, scheduleTo: editTo, scheduleTime: editTime }),
+      })
+      if (res.ok) { setEditJob(null); fetchJobs() }
+      else alert('수정 실패')
+    } catch { alert('네트워크 오류') }
+    finally { setEditLoading(false) }
   }
 
   async function handleDelete(id: string) {
@@ -436,8 +463,51 @@ export default function ScheduleTab({ defaultExchange, onExchangeChange }: Sched
         <h2 className="mb-3 text-base font-semibold text-gray-900">
           등록된 스케줄 <span className="text-sm font-normal text-gray-400">({jobs.length}개)</span>
         </h2>
-        <ScheduleList jobs={jobs} accountMap={accountMap} onDelete={handleDelete} />
+        <ScheduleList jobs={jobs} accountMap={accountMap} onDelete={handleDelete} onEdit={handleEditJob} />
       </section>
+
+      {/* 스케줄 수정 모달 */}
+      {editJob && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl">
+            <h2 className="mb-4 text-base font-semibold text-gray-900">스케줄 수정</h2>
+            <div className="mb-3 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-600">
+              <span className="font-medium">{EXCHANGE_EMOJI[editJob.exchange as Exchange]} {EXCHANGE_LABELS[editJob.exchange as Exchange]}</span>
+              <span className="mx-1">·</span>
+              <span className="font-bold">{editJob.coin}</span>
+              <span className="mx-1">·</span>
+              <span>{editJob.trade_type === 'SELL' ? '전량 매도' : `${Number(editJob.amount_krw).toLocaleString()}원`}</span>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">실행 기간</label>
+                <div className="flex items-center gap-2">
+                  <input type="date" value={editFrom} onChange={(e) => setEditFrom(e.target.value)}
+                    className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+                  <span className="text-gray-400">~</span>
+                  <input type="date" value={editTo} onChange={(e) => setEditTo(e.target.value)}
+                    className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+                </div>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">실행 시간 (KST)</label>
+                <input type="time" value={editTime} onChange={(e) => setEditTime(e.target.value)}
+                  className="w-32 rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+              </div>
+              <div className="flex gap-2">
+                <button onClick={handleSaveEdit} disabled={editLoading}
+                  className="flex-1 rounded-lg bg-blue-600 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
+                  {editLoading ? '저장 중...' : '수정'}
+                </button>
+                <button onClick={() => setEditJob(null)}
+                  className="flex-1 rounded-lg bg-gray-200 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-300">
+                  취소
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
