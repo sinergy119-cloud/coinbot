@@ -665,7 +665,7 @@ export default function LoginPage() {
       <div className="rounded-xl bg-white p-8 shadow-lg">
         <h1 className="mb-1 text-center text-2xl font-bold text-gray-900">MyCoinBot</h1>
         <p className="mb-3 text-center text-sm text-gray-500">
-          {mode === 'login' ? '로그인' : '회원 생성'}
+          {mode === 'login' ? '로그인' : '회원 가입'}
         </p>
 
         {/* 처음이신가요? 접이식 배너 */}
@@ -834,7 +834,7 @@ export default function LoginPage() {
               disabled={loading}
               className="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
             >
-              {loading ? '처리 중...' : mode === 'login' ? '로그인' : '회원 생성'}
+              {loading ? '처리 중...' : mode === 'login' ? '로그인' : '회원 가입'}
             </button>
           )}
         </form>
@@ -874,7 +874,7 @@ export default function LoginPage() {
           }}
           className="mt-4 w-full text-center text-sm text-blue-600 hover:underline"
         >
-          {mode === 'login' ? '계정이 없으신가요? 회원 생성' : '이미 계정이 있으신가요? 로그인'}
+          {mode === 'login' ? '계정이 없으신가요? 회원 가입' : '이미 계정이 있으신가요? 로그인'}
         </button>
 
       </div>
