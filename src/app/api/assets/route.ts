@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
         const price = priceMap[coin] ?? 0
         return { coin, qty, price, value: qty * price }
       })
-      .filter((h) => h.price > 0 && h.value >= 100)
+      .filter((h) => h.price > 0 && h.value >= 1)
     return { accountId: acc.id, accountName: acc.account_name, krw, coins: holdings }
   })
 
