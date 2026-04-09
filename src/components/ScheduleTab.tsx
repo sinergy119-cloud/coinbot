@@ -99,10 +99,56 @@ function TelegramSettings() {
           <p className="mb-2 text-xs text-gray-500">
             거래 실행 후 텔레그램으로 결과를 받으려면 Chat ID를 입력하세요.
           </p>
-          <div className="mb-2 rounded bg-gray-50 p-2 text-xs text-gray-600 space-y-0.5">
-            <p className="font-medium">설정 방법</p>
-            <p>1. 텔레그램에서 <b>@Coinbot_KR_bot</b> 검색 → <b>/start</b> 전송</p>
-            <p>2. <b>@raw_info_bot</b> 검색 → 시작 → 표시되는 숫자(ID)를 아래에 입력</p>
+          {/* Step 1: 봇 시작 */}
+          <div className="mb-3 rounded-lg bg-gray-50 p-3">
+            <p className="mb-2 text-xs font-bold text-gray-700">Step 1. 텔레그램에서 봇 시작</p>
+            <div className="mb-2 flex items-center gap-2">
+              <code className="rounded bg-gray-200 px-2 py-1 text-xs font-mono text-gray-800">@Coinbot_KR_bot</code>
+              <button type="button" onClick={() => { navigator.clipboard.writeText('@Coinbot_KR_bot'); }}
+                className="rounded bg-blue-100 px-2 py-1 text-[10px] font-medium text-blue-700 hover:bg-blue-200">복사</button>
+            </div>
+            <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
+              <div className="flex items-center gap-2 bg-[#1B2836] px-3 py-2">
+                <span className="text-xs text-white">Telegram</span>
+                <div className="flex-1 rounded bg-[#243447] px-2 py-1 text-[10px] text-gray-300">🔍 @Coinbot_KR_bot</div>
+              </div>
+              <div className="bg-[#0E1621] p-3">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-400 text-xs font-bold text-white">C</div>
+                  <div>
+                    <p className="text-xs font-bold text-white">Coinbot</p>
+                    <p className="text-[10px] text-gray-400">봇</p>
+                  </div>
+                </div>
+                <div className="flex justify-center">
+                  <span className="rounded-full bg-blue-500 px-4 py-1.5 text-xs font-bold text-white">/start 전송</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          {/* Step 2: Chat ID 확인 */}
+          <div className="mb-3 rounded-lg bg-gray-50 p-3">
+            <p className="mb-2 text-xs font-bold text-gray-700">Step 2. Chat ID 확인</p>
+            <div className="mb-2 flex items-center gap-2">
+              <code className="rounded bg-gray-200 px-2 py-1 text-xs font-mono text-gray-800">@raw_info_bot</code>
+              <button type="button" onClick={() => { navigator.clipboard.writeText('@raw_info_bot'); }}
+                className="rounded bg-blue-100 px-2 py-1 text-[10px] font-medium text-blue-700 hover:bg-blue-200">복사</button>
+            </div>
+            <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
+              <div className="flex items-center gap-2 bg-[#1B2836] px-3 py-2">
+                <span className="text-xs text-white">Telegram</span>
+                <div className="flex-1 rounded bg-[#243447] px-2 py-1 text-[10px] text-gray-300">🔍 @raw_info_bot</div>
+              </div>
+              <div className="bg-[#0E1621] p-3">
+                <div className="rounded-lg bg-[#182533] p-2.5">
+                  <p className="text-[10px] text-gray-400">👤 User info</p>
+                  <p className="text-xs text-white mt-1">├ Chat ID: <b className="text-blue-400">123456789</b> ← 이 숫자</p>
+                  <p className="text-[10px] text-gray-400">├ First name: ...</p>
+                  <p className="text-[10px] text-gray-400">└ Username: ...</p>
+                </div>
+              </div>
+            </div>
+            <p className="mt-1.5 text-[10px] text-gray-400">위 Chat ID 숫자를 아래 입력란에 붙여넣기</p>
           </div>
           <div className="flex gap-2">
             <input
