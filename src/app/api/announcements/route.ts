@@ -9,7 +9,9 @@ export async function GET() {
   if (!session) return Response.json({ error: '로그인 필요' }, { status: 401 })
 
   const db = createServerClient()
-  const today = new Date().toISOString().slice(0, 10)
+  // KST 기준 오늘 날짜
+  const kst = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul' }))
+  const today = `${kst.getFullYear()}-${String(kst.getMonth() + 1).padStart(2, '0')}-${String(kst.getDate()).padStart(2, '0')}`
 
   const { data } = await db
     .from('announcements')
