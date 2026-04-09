@@ -118,22 +118,23 @@ export async function coinoneGetTradeHistory(
     to_ts: toTs,
     size: limit,
   })) as {
-    orders?: Array<{
+    completed_orders?: Array<{
+      trade_id: string
       order_id: string
-      side: string
+      is_ask: boolean
       target_currency: string
-      executed_qty: string
-      avg_price: string
-      created_at: number
+      qty: string
+      price: string
+      timestamp: number
     }>
   }
-  return (data.orders ?? []).map((o) => ({
-    id: o.order_id,
-    datetime: new Date(o.created_at).toISOString(),
+  return (data.completed_orders ?? []).map((o) => ({
+    id: o.trade_id || o.order_id,
+    datetime: new Date(o.timestamp).toISOString(),
     coin: o.target_currency.toUpperCase(),
-    side: (o.side === 'BUY' ? 'buy' : 'sell') as 'buy' | 'sell',
-    quantity: Number(o.executed_qty),
-    total: Number(o.avg_price) * Number(o.executed_qty),
+    side: (o.is_ask ? 'sell' : 'buy') as 'buy' | 'sell',
+    quantity: Number(o.qty),
+    total: Number(o.price) * Number(o.qty),
   }))
 }
 
