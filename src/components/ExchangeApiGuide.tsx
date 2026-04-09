@@ -234,9 +234,10 @@ export default function ExchangeApiGuide({ exchange, onClose }: { exchange: stri
       className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 px-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-2xl">
-        {/* 거래소 탭 */}
-        <div className="sticky top-0 z-10 rounded-t-2xl bg-white border-b">
+      <div className="relative w-full max-w-lg max-h-[90vh] flex flex-col rounded-2xl bg-white shadow-2xl">
+        {/* 고정 헤더: 거래소 탭 + 단계 인디케이터 */}
+        <div className="shrink-0 rounded-t-2xl bg-white border-b">
+          {/* 거래소 탭 */}
           <div className="flex overflow-x-auto px-2 pt-2 gap-1">
             {EXCHANGE_KEYS.map((key) => {
               const g = EXCHANGE_GUIDES[key]
@@ -262,52 +263,51 @@ export default function ExchangeApiGuide({ exchange, onClose }: { exchange: stri
               <X size={18} />
             </button>
           </div>
+          {/* 단계 인디케이터 + 네비게이션 */}
+          <div className="flex items-center justify-center gap-1.5 py-2.5">
+            <button
+              onClick={() => setCurrentStep(Math.max(0, currentStep - 1))}
+              disabled={currentStep === 0}
+              className="flex items-center gap-0.5 rounded-full bg-gray-200 px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-300 disabled:opacity-20 transition"
+            >
+              <ChevronLeft size={14} /> 이전
+            </button>
+            {guide.steps.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setCurrentStep(i)}
+                className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition ${
+                  i === currentStep
+                    ? 'text-white shadow-md'
+                    : i < currentStep
+                    ? 'bg-green-100 text-green-600'
+                    : 'bg-gray-100 text-gray-400'
+                }`}
+                style={i === currentStep ? { backgroundColor: guide.color } : undefined}
+              >
+                {i < currentStep ? '✓' : i + 1}
+              </button>
+            ))}
+            {currentStep < totalSteps - 1 ? (
+              <button
+                onClick={() => setCurrentStep(currentStep + 1)}
+                className="flex items-center gap-0.5 rounded-full bg-gray-900 px-2.5 py-1 text-xs font-bold text-white animate-pulse hover:bg-black transition"
+              >
+                다음 <ChevronRight size={14} />
+              </button>
+            ) : (
+              <button
+                onClick={onClose}
+                className="flex items-center gap-0.5 rounded-full bg-gray-900 px-2.5 py-1 text-xs font-bold text-white animate-pulse hover:bg-black transition"
+              >
+                완료
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* 단계 인디케이터 + 네비게이션 */}
-        <div className="flex items-center justify-center gap-1.5 py-3 border-b border-gray-100">
-          <button
-            onClick={() => setCurrentStep(Math.max(0, currentStep - 1))}
-            disabled={currentStep === 0}
-            className="rounded-full p-1 text-gray-400 hover:bg-gray-200 disabled:opacity-20 transition"
-          >
-            <ChevronLeft size={18} />
-          </button>
-          {guide.steps.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => setCurrentStep(i)}
-              className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition ${
-                i === currentStep
-                  ? 'text-white shadow-md'
-                  : i < currentStep
-                  ? 'bg-green-100 text-green-600'
-                  : 'bg-gray-100 text-gray-400'
-              }`}
-              style={i === currentStep ? { backgroundColor: guide.color } : undefined}
-            >
-              {i < currentStep ? '✓' : i + 1}
-            </button>
-          ))}
-          {currentStep < totalSteps - 1 ? (
-            <button
-              onClick={() => setCurrentStep(currentStep + 1)}
-              className="flex items-center gap-0.5 rounded-full bg-gray-900 px-3 py-1 text-xs font-bold text-white animate-pulse hover:bg-black transition"
-            >
-              다음 <ChevronRight size={14} />
-            </button>
-          ) : (
-            <button
-              onClick={onClose}
-              className="flex items-center gap-0.5 rounded-full bg-gray-900 px-3 py-1 text-xs font-bold text-white animate-pulse hover:bg-black transition"
-            >
-              완료
-            </button>
-          )}
-        </div>
-
-        {/* 단계 내용 */}
-        <div className="px-5 py-4 space-y-4">
+        {/* 단계 내용 (스크롤 영역) */}
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
           {/* 제목 + 행동 */}
           <div>
             <h3 className="text-sm font-bold text-gray-900 mb-1">
