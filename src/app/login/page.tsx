@@ -581,6 +581,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [showPw, setShowPw] = useState(false)
   const [autoLogin, setAutoLogin] = useState(false)
+  const [showAutoLoginConfirm, setShowAutoLoginConfirm] = useState(false)
   const [error, setError] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
   const [loading, setLoading] = useState(false)
@@ -813,8 +814,7 @@ export default function LoginPage() {
                   checked={autoLogin}
                   onChange={(e) => {
                     if (e.target.checked) {
-                      const ok = confirm('자동 로그인을 사용하시겠습니까?\n\n이 기기에 로그인 정보가 저장됩니다.\n공용 PC 또는 타인과 함께 사용하는 기기라면\n사용하지 않는 것을 권장합니다.')
-                      if (ok) setAutoLogin(true)
+                      setShowAutoLoginConfirm(true)
                     } else {
                       setAutoLogin(false)
                       localStorage.removeItem('coinbot_auto_login')
@@ -935,6 +935,32 @@ export default function LoginPage() {
       {activeModal === 'find-id' && <FindIdModal onClose={() => setActiveModal(null)} />}
       {activeModal === 'find-pw' && <FindPwModal onClose={() => setActiveModal(null)} />}
       {activeModal === 'privacy' && <PrivacyModal onClose={() => setActiveModal(null)} />}
+
+      {/* 자동 로그인 확인 모달 */}
+      {showAutoLoginConfirm && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 px-4">
+          <div className="w-full max-w-xs rounded-2xl bg-white p-6 shadow-2xl text-center">
+            <div className="mb-3 text-3xl">🔒</div>
+            <h3 className="mb-2 text-base font-bold text-gray-900">자동 로그인</h3>
+            <p className="mb-1 text-sm text-gray-600">이 기기에 로그인 정보가 저장됩니다.</p>
+            <p className="mb-4 text-xs text-gray-400">공용 PC 또는 타인과 함께 사용하는 기기라면<br />사용하지 않는 것을 권장합니다.</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setAutoLogin(true); setShowAutoLoginConfirm(false) }}
+                className="flex-1 rounded-lg bg-blue-600 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition"
+              >
+                확인
+              </button>
+              <button
+                onClick={() => setShowAutoLoginConfirm(false)}
+                className="flex-1 rounded-lg bg-gray-200 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-300 transition"
+              >
+                취소
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
