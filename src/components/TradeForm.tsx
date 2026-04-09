@@ -201,7 +201,10 @@ export default function TradeForm({ onExecute, loading }: TradeFormProps) {
         </div>
       ) : (
         <div className="mb-4">
-          <label className="mb-1 block text-sm font-medium text-gray-700">거래 금액 (KRW)</label>
+          <label className="mb-1 block text-sm font-medium text-gray-700">
+            거래 금액 (KRW)
+            {tradeType === 'CYCLE' && <span className="ml-1 text-xs font-normal text-red-500">※ 매수 후 전량 매도 (기존 보유 포함)</span>}
+          </label>
           <input
             type="text"
             inputMode="numeric"
