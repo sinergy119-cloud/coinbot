@@ -580,10 +580,7 @@ export default function LoginPage() {
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
   const [showPw, setShowPw] = useState(false)
-  const [autoLogin, setAutoLogin] = useState(() => {
-    if (typeof window !== 'undefined') return localStorage.getItem('coinbot_auto_login') === 'true'
-    return false
-  })
+  const [autoLogin, setAutoLogin] = useState(false)
   const [error, setError] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
   const [loading, setLoading] = useState(false)
@@ -815,8 +812,11 @@ export default function LoginPage() {
                   type="checkbox"
                   checked={autoLogin}
                   onChange={(e) => {
-                    setAutoLogin(e.target.checked)
-                    if (!e.target.checked) {
+                    if (e.target.checked) {
+                      const ok = confirm('자동 로그인을 사용하시겠습니까?\n\n이 기기에 로그인 정보가 저장됩니다.\n공용 PC 또는 타인과 함께 사용하는 기기라면\n사용하지 않는 것을 권장합니다.')
+                      if (ok) setAutoLogin(true)
+                    } else {
+                      setAutoLogin(false)
                       localStorage.removeItem('coinbot_auto_login')
                       localStorage.removeItem(SAVED_ID_KEY)
                     }
