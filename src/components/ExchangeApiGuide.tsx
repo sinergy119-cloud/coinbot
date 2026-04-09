@@ -264,8 +264,15 @@ export default function ExchangeApiGuide({ exchange, onClose }: { exchange: stri
           </div>
         </div>
 
-        {/* 단계 인디케이터 */}
+        {/* 단계 인디케이터 + 네비게이션 */}
         <div className="flex items-center justify-center gap-1.5 py-3 border-b border-gray-100">
+          <button
+            onClick={() => setCurrentStep(Math.max(0, currentStep - 1))}
+            disabled={currentStep === 0}
+            className="rounded-full p-1 text-gray-400 hover:bg-gray-200 disabled:opacity-20 transition"
+          >
+            <ChevronLeft size={18} />
+          </button>
           {guide.steps.map((_, i) => (
             <button
               key={i}
@@ -282,7 +289,21 @@ export default function ExchangeApiGuide({ exchange, onClose }: { exchange: stri
               {i < currentStep ? '✓' : i + 1}
             </button>
           ))}
-          <span className="ml-2 text-xs text-gray-400">{currentStep + 1} / {totalSteps}</span>
+          {currentStep < totalSteps - 1 ? (
+            <button
+              onClick={() => setCurrentStep(currentStep + 1)}
+              className="flex items-center gap-0.5 rounded-full bg-gray-900 px-3 py-1 text-xs font-bold text-white animate-pulse hover:bg-black transition"
+            >
+              다음 <ChevronRight size={14} />
+            </button>
+          ) : (
+            <button
+              onClick={onClose}
+              className="flex items-center gap-0.5 rounded-full bg-gray-900 px-3 py-1 text-xs font-bold text-white animate-pulse hover:bg-black transition"
+            >
+              완료
+            </button>
+          )}
         </div>
 
         {/* 단계 내용 */}
@@ -308,32 +329,8 @@ export default function ExchangeApiGuide({ exchange, onClose }: { exchange: stri
           <StepMockup step={step} guide={guide} />
         </div>
 
-        {/* 네비게이션 */}
-        <div className="sticky bottom-0 flex items-center justify-between rounded-b-2xl border-t bg-gray-50 px-5 py-3">
-          <button
-            onClick={() => setCurrentStep(Math.max(0, currentStep - 1))}
-            disabled={currentStep === 0}
-            className="flex items-center gap-1 rounded-lg px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-200 disabled:opacity-30 disabled:hover:bg-transparent transition"
-          >
-            <ChevronLeft size={16} /> 이전
-          </button>
-          {currentStep < totalSteps - 1 ? (
-            <button
-              onClick={() => setCurrentStep(currentStep + 1)}
-              className="flex items-center gap-1 rounded-lg px-4 py-2 text-sm font-bold text-white transition"
-              style={{ backgroundColor: guide.color }}
-            >
-              다음 <ChevronRight size={16} />
-            </button>
-          ) : (
-            <button
-              onClick={onClose}
-              className="rounded-lg bg-gray-800 px-4 py-2 text-sm font-bold text-white hover:bg-gray-900 transition"
-            >
-              완료
-            </button>
-          )}
-        </div>
+        {/* 하단 여백 */}
+        <div className="h-4" />
       </div>
     </div>
   )
