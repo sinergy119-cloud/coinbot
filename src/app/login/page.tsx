@@ -864,7 +864,12 @@ export default function LoginPage() {
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={() => alert('카카오 로그인은 준비 중입니다.')}
+                onClick={() => {
+                  const clientId = process.env.NEXT_PUBLIC_KAKAO_REST_API_KEY
+                  if (!clientId) { alert('카카오 로그인 설정이 필요합니다.'); return }
+                  const redirectUri = encodeURIComponent(`${window.location.origin}/api/auth/kakao/callback`)
+                  window.location.href = `https://kauth.kakao.com/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code`
+                }}
                 className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#FEE500] py-2.5 text-sm font-medium text-[#3C1E1E] hover:brightness-95 transition"
               >
                 💬 카카오
