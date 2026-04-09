@@ -10,6 +10,7 @@ export interface ExecutionResultItem {
   accountName: string
   exchange: string
   orderSummary: string
+  balanceBefore: number
   balance: number
   success: boolean
   reason: string
@@ -77,6 +78,13 @@ export async function POST(req: NextRequest) {
   // 전부 동시에 실행 (planning.md 8.4)
   const results: ExecutionResultItem[] = await Promise.all(
     accounts.map(async (acc) => {
+      // 실행 전 잔고 조회
+      let balanceBefore = 0
+      try {
+        const bb = await getBalance(exchange as Exchange, acc.access_key, acc.secret_key)
+        balanceBefore = bb.krw
+      } catch { /* 무시 */ }
+
       try {
         // CYCLE: 매수 후 전량 매도
         if (tt === 'CYCLE') {
@@ -97,6 +105,7 @@ export async function POST(req: NextRequest) {
             accountName: acc.account_name,
             exchange: acc.exchange,
             orderSummary,
+            balanceBefore,
             balance,
             success: result.success,
             reason: result.success
@@ -114,6 +123,7 @@ export async function POST(req: NextRequest) {
               accountName: acc.account_name,
               exchange: acc.exchange,
               orderSummary,
+              balanceBefore,
               balance: 0,
               success: false,
               reason: `FAIL (보유 ${upperCoin} 없음)`,
@@ -136,6 +146,7 @@ export async function POST(req: NextRequest) {
             accountName: acc.account_name,
             exchange: acc.exchange,
             orderSummary,
+            balanceBefore,
             balance,
             success: result.success,
             reason: result.success ? 'SUCCESS' : `FAIL (${result.reason})`,
@@ -163,6 +174,7 @@ export async function POST(req: NextRequest) {
           accountName: acc.account_name,
           exchange: acc.exchange,
           orderSummary,
+          balanceBefore,
           balance,
           success: result.success,
           reason: result.success ? 'SUCCESS' : `FAIL (${result.reason})`,
@@ -174,6 +186,7 @@ export async function POST(req: NextRequest) {
           accountName: acc.account_name,
           exchange: acc.exchange,
           orderSummary,
+          balanceBefore,
           balance: 0,
           success: false,
           reason: `FAIL (${msg.slice(0, 60)})`,
@@ -195,6 +208,7 @@ export async function POST(req: NextRequest) {
       success: r.success,
       order_id: r.reason?.match(/[a-f0-9-]{8}/)?.[0] || null,
       reason: r.reason?.slice(0, 200),
+      balance_before: r.balanceBefore,
       balance: r.balance,
       source: 'manual',
     }))

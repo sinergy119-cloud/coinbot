@@ -4,11 +4,13 @@ import { useState } from 'react'
 import Header from '@/components/Header'
 import AdminDashboard from '@/components/AdminDashboard'
 import MemberStatus from '@/components/MemberStatus'
+import EventManager from '@/components/EventManager'
 
-type TabType = 'accounts' | 'members'
+type TabType = 'accounts' | 'members' | 'events'
 const TABS: { id: TabType; label: string }[] = [
   { id: 'accounts', label: '계정 관리' },
   { id: 'members', label: '회원 현황' },
+  { id: 'events', label: '이벤트 관리' },
 ]
 
 export default function AdminTabs({ loginId }: { loginId: string }) {
@@ -38,6 +40,7 @@ export default function AdminTabs({ loginId }: { loginId: string }) {
 
         {activeTab === 'accounts' && <AdminDashboard loginId={loginId} embedded />}
         {activeTab === 'members' && <MemberStatus />}
+        {activeTab === 'events' && <EventManager />}
       </main>
     </div>
   )

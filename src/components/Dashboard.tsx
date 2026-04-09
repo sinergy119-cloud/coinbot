@@ -11,7 +11,8 @@ import ResultPanel from '@/components/ResultPanel'
 import AssetPanel from '@/components/AssetPanel'
 import TradeHistoryPanel from '@/components/TradeHistoryPanel'
 import ScheduleTab from '@/components/ScheduleTab'
-import type { TradeJobRow } from '@/types/database'
+import type { TradeJobRow, Exchange } from '@/types/database'
+import { EXCHANGE_EMOJI, EXCHANGE_LABELS } from '@/types/database'
 import type { ValidationItem } from '@/app/api/validate/route'
 import type { ExecutionResultItem } from '@/app/api/execute/route'
 
@@ -46,9 +47,11 @@ export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) 
   const [loading, setLoading] = useState(false)
 
   // 대시보드 요약
-  const [summary, setSummary] = useState({ activeSchedules: 0, todayTotal: 0, todaySuccess: 0, todayFail: 0, accountCount: 0 })
+  const [summary, setSummary] = useState({ activeSchedules: 0, todayTotal: 0, todaySuccess: 0, todayFail: 0, monthlyCost: 0, monthlyTrades: 0 })
   // 최근 실행 (빠른 실행용)
   const [lastTrade, setLastTrade] = useState<TradeInput | null>(null)
+  // 이벤트 배너
+  const [events, setEvents] = useState<{ id: string; exchange: string; coin: string; title: string; condition: string | null; start_date: string; end_date: string }[]>([])
 
   void userId
 
@@ -56,6 +59,13 @@ export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) 
     try {
       const res = await fetch('/api/dashboard')
       if (res.ok) setSummary(await res.json())
+    } catch { /* 무시 */ }
+  }, [])
+
+  const fetchEvents = useCallback(async () => {
+    try {
+      const res = await fetch('/api/announcements')
+      if (res.ok) setEvents(await res.json())
     } catch { /* 무시 */ }
   }, [])
 
@@ -78,7 +88,7 @@ export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) 
     } catch { /* 무시 */ }
   }, [])
 
-  useEffect(() => { fetchJobs(); fetchAllAccounts(); fetchSummary() }, [fetchJobs, fetchAllAccounts, fetchSummary])
+  useEffect(() => { fetchJobs(); fetchAllAccounts(); fetchSummary(); fetchEvents() }, [fetchJobs, fetchAllAccounts, fetchSummary, fetchEvents])
 
   // ── 지금 실행: 1단계 - 검증 ──
   async function handleExecute(data: TradeInput, skipSave?: boolean) {
@@ -173,13 +183,30 @@ export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) 
           </div>
           <div className="rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-center">
             <p className="text-lg font-bold text-green-600">{summary.todaySuccess}<span className="text-xs font-normal text-gray-400">/{summary.todayTotal}</span></p>
-            <p className="text-[10px] text-gray-500">오늘 실행 성공</p>
+            <p className="text-[10px] text-gray-500">오늘 성공</p>
           </div>
           <div className="rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-center">
-            <p className={`text-lg font-bold ${summary.todayFail > 0 ? 'text-red-600' : 'text-gray-300'}`}>{summary.todayFail}</p>
-            <p className="text-[10px] text-gray-500">오늘 실패</p>
+            <p className="text-lg font-bold text-amber-600">{summary.monthlyCost.toLocaleString()}<span className="text-xs font-normal">원</span></p>
+            <p className="text-[10px] text-gray-500">이번 달 비용</p>
           </div>
         </div>
+
+        {/* 이벤트 배너 */}
+        {events.length > 0 && (
+          <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
+            <p className="mb-1.5 text-xs font-bold text-amber-800">🎁 진행 중인 이벤트</p>
+            <div className="space-y-1">
+              {events.map((ev) => (
+                <div key={ev.id} className="flex items-center gap-2 text-xs">
+                  <span>{EXCHANGE_EMOJI[ev.exchange as Exchange]} {EXCHANGE_LABELS[ev.exchange as Exchange]}</span>
+                  <span className="font-bold text-gray-800">{ev.coin}</span>
+                  <span className="text-gray-400">{ev.start_date}~{ev.end_date}</span>
+                  {ev.condition && <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-700">{ev.condition}</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* 탭 메뉴 */}
         <div className="mb-4 flex border-b border-gray-200">

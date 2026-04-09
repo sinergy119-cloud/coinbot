@@ -28,17 +28,33 @@ export async function GET() {
   const todaySuccess = todayLogs?.filter((l) => l.success).length ?? 0
   const todayFail = todayTotal - todaySuccess
 
-  // 3) 거래소 계정 수
-  const { count: accountCount } = await db
-    .from('exchange_accounts')
-    .select('id', { count: 'exact', head: true })
+  // 3) 이번 달 거래 비용
+  const monthStart = new Date()
+  monthStart.setDate(1)
+  monthStart.setHours(0, 0, 0, 0)
+  const { data: monthLogs } = await db
+    .from('trade_logs')
+    .select('balance_before, balance, success')
     .eq('user_id', session.userId)
+    .eq('success', true)
+    .gte('executed_at', monthStart.toISOString())
+
+  let monthlyCost = 0
+  let monthlyTrades = 0
+  for (const log of monthLogs ?? []) {
+    if (log.balance_before && log.balance && log.balance_before > 0) {
+      const cost = Number(log.balance_before) - Number(log.balance)
+      if (cost > 0) monthlyCost += cost
+      monthlyTrades++
+    }
+  }
 
   return Response.json({
     activeSchedules: activeSchedules ?? 0,
     todayTotal,
     todaySuccess,
     todayFail,
-    accountCount: accountCount ?? 0,
+    monthlyCost: Math.round(monthlyCost),
+    monthlyTrades,
   })
 }
