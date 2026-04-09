@@ -104,8 +104,8 @@ function TelegramSettings() {
             <p className="mb-2 text-xs font-bold text-gray-700">Step 1. 텔레그램에서 봇 시작</p>
             <div className="mb-2 flex items-center gap-2">
               <code className="rounded bg-gray-200 px-2 py-1 text-xs font-mono text-gray-800">@Coinbot_KR_bot</code>
-              <button type="button" onClick={() => { navigator.clipboard.writeText('@Coinbot_KR_bot'); }}
-                className="rounded bg-blue-100 px-2 py-1 text-[10px] font-medium text-blue-700 hover:bg-blue-200">복사</button>
+              <button type="button" onClick={(e) => { navigator.clipboard.writeText('@Coinbot_KR_bot'); const t = e.currentTarget; t.textContent = '복사됨!'; setTimeout(() => { t.textContent = '복사'; }, 1500); }}
+                className="rounded bg-blue-100 px-2 py-1 text-[10px] font-medium text-blue-700 hover:bg-blue-200 active:bg-blue-300">복사</button>
             </div>
             <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
               <div className="flex items-center gap-2 bg-[#1B2836] px-3 py-2">
@@ -121,18 +121,18 @@ function TelegramSettings() {
                   </div>
                 </div>
                 <div className="flex justify-center">
-                  <span className="rounded-full bg-blue-500 px-4 py-1.5 text-xs font-bold text-white">/start 전송</span>
+                  <span className="rounded-full bg-blue-500 px-4 py-1.5 text-xs font-bold text-white">Start Bot</span>
                 </div>
               </div>
             </div>
           </div>
           {/* Step 2: Chat ID 확인 */}
           <div className="mb-3 rounded-lg bg-gray-50 p-3">
-            <p className="mb-2 text-xs font-bold text-gray-700">Step 2. Chat ID 확인</p>
+            <p className="mb-2 text-xs font-bold text-gray-700">Step 2. 본인 Chat ID 확인</p>
             <div className="mb-2 flex items-center gap-2">
               <code className="rounded bg-gray-200 px-2 py-1 text-xs font-mono text-gray-800">@raw_info_bot</code>
-              <button type="button" onClick={() => { navigator.clipboard.writeText('@raw_info_bot'); }}
-                className="rounded bg-blue-100 px-2 py-1 text-[10px] font-medium text-blue-700 hover:bg-blue-200">복사</button>
+              <button type="button" onClick={(e) => { navigator.clipboard.writeText('@raw_info_bot'); const t = e.currentTarget; t.textContent = '복사됨!'; setTimeout(() => { t.textContent = '복사'; }, 1500); }}
+                className="rounded bg-blue-100 px-2 py-1 text-[10px] font-medium text-blue-700 hover:bg-blue-200 active:bg-blue-300">복사</button>
             </div>
             <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
               <div className="flex items-center gap-2 bg-[#1B2836] px-3 py-2">
@@ -142,7 +142,7 @@ function TelegramSettings() {
               <div className="bg-[#0E1621] p-3">
                 <div className="rounded-lg bg-[#182533] p-2.5">
                   <p className="text-[10px] text-gray-400">👤 User info</p>
-                  <p className="text-xs text-white mt-1">├ Chat ID: <b className="text-blue-400">123456789</b> ← 이 숫자</p>
+                  <p className="text-xs text-white mt-1">├ Chat ID: <b className="text-blue-400">123456789</b> ← 이 숫자를 등록</p>
                   <p className="text-[10px] text-gray-400">├ First name: ...</p>
                   <p className="text-[10px] text-gray-400">└ Username: ...</p>
                 </div>
