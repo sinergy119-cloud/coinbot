@@ -61,13 +61,14 @@ export async function POST(req: NextRequest) {
     .lte('schedule_from', today)
     .gte('schedule_to', today)
 
-  // ±1분 허용: cron 지연 발생 시 놓치지 않도록
+  // 스케줄 시간 이후 2분 이내에만 실행 (10:00 설정 → 10:00~10:02 사이 실행)
   const kstMs = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Seoul' })).getTime()
   const jobs = (allActiveJobs ?? []).filter((job: TradeJobRow) => {
     const [hh, mm] = (job.schedule_time as string).split(':').map(Number)
     const jobMs = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Seoul' }))
     jobMs.setHours(hh, mm, 0, 0)
-    return Math.abs(kstMs - jobMs.getTime()) <= 60_000
+    const diff = kstMs - jobMs.getTime()
+    return diff >= 0 && diff <= 120_000  // 0초~2분 이내
   })
 
   if (jobs.length === 0) {
