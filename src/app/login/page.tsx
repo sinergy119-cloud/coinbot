@@ -149,7 +149,9 @@ function renderMarkdown(md: string) {
             const name = linkMatch?.[1] ?? boldMatch?.[1] ?? ''
             const url = linkMatch?.[2] ?? ''
             const hasLink = !!url
-            const desc = item.text.includes('추천 없음') ? '추천 없음' : '추천 가입'
+            const codeMatch = item.text.match(/추천코드:\s*(\S+)/)
+            const referralCode = codeMatch?.[1] ?? ''
+            const desc = item.text.includes('추천 없음') ? '추천 없음' : referralCode ? `추천코드: ${referralCode}` : '추천 가입'
             const iconBg = EXCHANGE_ICON_BG[name] ?? 'bg-gray-50'
             const emoji = EXCHANGE_ICON_EMOJI[name] ?? '⚪'
 
@@ -165,7 +167,13 @@ function renderMarkdown(md: string) {
               <a key={item.key} href={url} target="_blank" rel="noopener noreferrer"
                 className="flex items-center gap-2.5 rounded-xl border border-gray-200 bg-white px-3 py-3 transition hover:border-blue-300 hover:bg-blue-50 hover:shadow-sm">
                 <span className={`flex h-9 w-9 items-center justify-center rounded-lg text-lg ${iconBg}`}>{emoji}</span>
-                <span className="flex-1"><span className="block text-xs font-bold text-gray-900">{name}</span><span className="block text-[10px] text-gray-500">{desc}</span></span>
+                <span className="flex-1">
+                  <span className="block text-xs font-bold text-gray-900">{name}</span>
+                  {referralCode
+                    ? <span className="block text-[10px] text-amber-600">추천코드: <b>{referralCode}</b></span>
+                    : <span className="block text-[10px] text-gray-500">{desc}</span>
+                  }
+                </span>
                 <span className="text-sm text-gray-300">›</span>
               </a>
             )
