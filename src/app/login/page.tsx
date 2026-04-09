@@ -585,7 +585,7 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
   const [loading, setLoading] = useState(false)
-  const [activeModal, setActiveModal] = useState<'service' | 'exchange' | 'find-id' | 'find-pw' | 'privacy' | null>(null)
+  const [activeModal, setActiveModal] = useState<'service' | 'exchange' | 'signup' | 'apikey' | 'find-id' | 'find-pw' | 'privacy' | null>(null)
   const [guideFolded, setGuideFolded] = useState(() => {
     if (typeof window !== 'undefined') return localStorage.getItem('coinbot_guide_folded') === 'true'
     return false
@@ -697,13 +697,24 @@ export default function LoginPage() {
               </button>
               <button
                 type="button"
-                onClick={() => setActiveModal('exchange')}
+                onClick={() => setActiveModal('signup')}
                 className="flex w-full items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2.5 text-sm font-medium text-green-700 transition hover:bg-green-100"
               >
                 <span>🏦</span>
                 <div className="text-left">
-                  <p className="font-semibold">거래소 가이드</p>
-                  <p className="text-xs font-normal text-green-500">친구 추천 가입 · API Key 발급 방법</p>
+                  <p className="font-semibold">거래소 가입</p>
+                  <p className="text-xs font-normal text-green-500">친구 추천 가입 링크</p>
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveModal('apikey')}
+                className="flex w-full items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm font-medium text-amber-700 transition hover:bg-amber-100"
+              >
+                <span>🔑</span>
+                <div className="text-left">
+                  <p className="font-semibold">API Key 발급</p>
+                  <p className="text-xs font-normal text-amber-500">거래소별 API Key 발급 방법</p>
                 </div>
               </button>
             </div>
@@ -890,6 +901,8 @@ export default function LoginPage() {
       {/* 모달 */}
       {activeModal === 'service' && <GuideModal apiUrl="/api/guide" onClose={() => setActiveModal(null)} />}
       {activeModal === 'exchange' && <GuideModal apiUrl="/api/guide-exchange" onClose={() => setActiveModal(null)} />}
+      {activeModal === 'signup' && <GuideModal apiUrl="/api/guide-signup" onClose={() => setActiveModal(null)} />}
+      {activeModal === 'apikey' && <GuideModal apiUrl="/api/guide-apikey" onClose={() => setActiveModal(null)} />}
       {activeModal === 'find-id' && <FindIdModal onClose={() => setActiveModal(null)} />}
       {activeModal === 'find-pw' && <FindPwModal onClose={() => setActiveModal(null)} />}
       {activeModal === 'privacy' && <PrivacyModal onClose={() => setActiveModal(null)} />}
