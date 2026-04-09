@@ -18,7 +18,7 @@ export async function GET() {
   // 사용자 목록 조회
   const { data: users, error: uerr } = await db
     .from('users')
-    .select('id, user_id, delegated, created_at, last_login_at')
+    .select('id, user_id, name, phone, email, status, delegated, created_at, last_login_at')
     .order('created_at')
   if (uerr) return Response.json({ error: uerr.message }, { status: 500 })
 
@@ -29,7 +29,14 @@ export async function GET() {
     .order('created_at', { ascending: false })
   if (aerr) return Response.json({ error: aerr.message }, { status: 500 })
 
-  return Response.json({ users: users ?? [], accounts: accounts ?? [] })
+  // 로그인 이력 (최근 5건씩)
+  const { data: loginHistory } = await db
+    .from('login_history')
+    .select('user_id, login_at, ip_address')
+    .order('login_at', { ascending: false })
+    .limit(100)
+
+  return Response.json({ users: users ?? [], accounts: accounts ?? [], loginHistory: loginHistory ?? [] })
 }
 
 // POST /api/admin/accounts → 특정 사용자에게 계정 대리 등록

@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
   const db = createServerClient()
   const { data: user } = await db
     .from('users')
-    .select('id, user_id, password_hash')
+    .select('id, user_id, password_hash, status')
     .eq('user_id', userId)
     .single()
 
@@ -47,9 +47,30 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: '아이디 또는 비밀번호가 올바르지 않습니다.' }, { status: 401 })
   }
 
-  // 로그인 성공 시 실패 카운트 초기화 + 마지막 로그인 시간 갱신
+  // 이메일 미인증 사용자
+  if (user.status === 'pending') {
+    return Response.json({ error: '이메일 인증을 완료해주세요. 메일함을 확인해주세요.' }, { status: 403 })
+  }
+
+  // 정지된 사용자
+  if (user.status === 'suspended') {
+    return Response.json({ error: '계정이 정지되었습니다. 관리자에게 문의해주세요.' }, { status: 403 })
+  }
+
+  // 로그인 성공
   loginAttempts.delete(ip)
   await db.from('users').update({ last_login_at: new Date().toISOString() }).eq('id', user.id)
+
+  // 로그인 이력 저장
+  try {
+    const userAgent = req.headers.get('user-agent') ?? ''
+    await db.from('login_history').insert({
+      user_id: user.id,
+      ip_address: ip,
+      user_agent: userAgent.slice(0, 200),
+    })
+  } catch { /* 이력 저장 실패는 무시 */ }
+
   await createSession(user.id, user.user_id)
   return Response.json({ ok: true, loginId: user.user_id })
 }

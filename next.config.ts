@@ -10,7 +10,7 @@ const buildTime = (() => {
 })()
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ['ccxt'],
+  serverExternalPackages: ['ccxt', 'nodemailer'],
   env: {
     NEXT_PUBLIC_BUILD_TIME: buildTime,
   },

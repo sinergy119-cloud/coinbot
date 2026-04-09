@@ -369,8 +369,12 @@ export default function LoginPage() {
   const [userId, setUserId] = useState('')
   const [password, setPassword] = useState('')
   const [passwordConfirm, setPasswordConfirm] = useState('')
+  const [name, setName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [email, setEmail] = useState('')
   const [saveId, setSaveId] = useState(false)
   const [error, setError] = useState('')
+  const [successMsg, setSuccessMsg] = useState('')
   const [loading, setLoading] = useState(false)
   const [activeModal, setActiveModal] = useState<'service' | 'exchange' | null>(null)
 
@@ -386,24 +390,30 @@ export default function LoginPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
+    setSuccessMsg('')
 
     if (!userId.trim() || !password) {
       setError('사용자 ID와 비밀번호를 입력해주세요.')
       return
     }
 
-    if (mode === 'signup' && password !== passwordConfirm) {
-      setError('비밀번호가 일치하지 않습니다.')
-      return
+    if (mode === 'signup') {
+      if (password !== passwordConfirm) { setError('비밀번호가 일치하지 않습니다.'); return }
+      if (!name.trim()) { setError('이름을 입력해주세요.'); return }
+      if (!phone.trim()) { setError('전화번호를 입력해주세요.'); return }
+      if (!email.trim()) { setError('이메일을 입력해주세요.'); return }
     }
 
     setLoading(true)
     try {
       const endpoint = mode === 'login' ? '/api/auth/login' : '/api/auth/signup'
+      const body = mode === 'login'
+        ? { userId: userId.trim(), password }
+        : { userId: userId.trim(), password, name: name.trim(), phone: phone.trim(), email: email.trim() }
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: userId.trim(), password }),
+        body: JSON.stringify(body),
       })
       const data = await res.json()
 
@@ -412,7 +422,13 @@ export default function LoginPage() {
         return
       }
 
-      // 아이디 저장 처리
+      // 회원가입 → 이메일 인증 안내
+      if (data.needVerification) {
+        setSuccessMsg(data.message)
+        return
+      }
+
+      // 로그인 → 아이디 저장 + 이동
       if (saveId) {
         localStorage.setItem(SAVED_ID_KEY, userId.trim())
       } else {
@@ -481,17 +497,50 @@ export default function LoginPage() {
           </div>
 
           {mode === 'signup' && (
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">비밀번호 확인</label>
-              <input
-                type="password"
-                value={passwordConfirm}
-                onChange={(e) => setPasswordConfirm(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                placeholder="비밀번호를 다시 입력하세요"
-                autoComplete="new-password"
-              />
-            </div>
+            <>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">비밀번호 확인</label>
+                <input
+                  type="password"
+                  value={passwordConfirm}
+                  onChange={(e) => setPasswordConfirm(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  placeholder="비밀번호를 다시 입력하세요"
+                  autoComplete="new-password"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">이름</label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  placeholder="실명을 입력하세요"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">전화번호</label>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  placeholder="010-1234-5678"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">이메일</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  placeholder="example@gmail.com"
+                />
+                <p className="mt-1 text-xs text-gray-400">인증 메일이 발송됩니다.</p>
+              </div>
+            </>
           )}
 
           {/* 아이디 저장 (로그인 모드만) */}
@@ -510,14 +559,21 @@ export default function LoginPage() {
           {error && (
             <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
           )}
+          {successMsg && (
+            <div className="rounded-lg bg-green-50 border border-green-200 px-3 py-3 text-center">
+              <p className="text-sm font-medium text-green-700">✅ {successMsg}</p>
+            </div>
+          )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-          >
-            {loading ? '처리 중...' : mode === 'login' ? '로그인' : '회원 생성'}
-          </button>
+          {!successMsg && (
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            >
+              {loading ? '처리 중...' : mode === 'login' ? '로그인' : '회원 생성'}
+            </button>
+          )}
         </form>
 
         <button
