@@ -17,13 +17,13 @@ export interface SessionPayload {
 }
 
 // JWT 생성 → httpOnly 세션 쿠키 저장
-// autoLogin=true → 30일 유지, false → 브라우저 종료 시 삭제
+// autoLogin=true → 30일 유지, false → 7일 유지
 export async function createSession(userId: string, loginId: string, autoLogin = false) {
-  const expiry = autoLogin ? '30d' : '7d'
+  const days = autoLogin ? 30 : 7
   const token = await new SignJWT({ userId, loginId } satisfies SessionPayload)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
-    .setExpirationTime(expiry)
+    .setExpirationTime(`${days}d`)
     .sign(getSecret())
 
   const cookieStore = await cookies()
@@ -32,7 +32,7 @@ export async function createSession(userId: string, loginId: string, autoLogin =
     secure: process.env.SECURE_COOKIE === 'true',
     sameSite: 'lax',
     path: '/',
-    ...(autoLogin ? { maxAge: 30 * 24 * 60 * 60 } : {}),
+    maxAge: days * 24 * 60 * 60,
   })
 }
 
