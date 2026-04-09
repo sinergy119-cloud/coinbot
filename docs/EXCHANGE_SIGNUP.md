@@ -26,13 +26,13 @@
 
 ## 📋 가입 추천 링크
 
-| 거래소 | 추천 링크 |
-|--------|-----------|
-| 빗썸 | [빗썸 가입하기](https://m.bithumb.com/react/referral/guide?referral=XRFYNXZA48) |
-| 업비트 | 추천 없음 |
-| 코인원 | [코인원 가입하기](https://coinone.co.kr/user/signup?ref=I6T0K0RB) |
-| 코빗 | [코빗 가입하기](https://exchange.korbit.co.kr/sign-up/?referral_code=624912) |
-| 고팍스 | [고팍스 가입하기](https://gopax.page.link/NBr3KXjjhirrQEUP9) |
+아래 거래소명을 클릭하면 가입 페이지로 이동합니다.
+
+- **[빗썸](https://m.bithumb.com/react/referral/guide?referral=XRFYNXZA48)** — 추천 가입
+- **업비트** — 추천 없음
+- **[코인원](https://coinone.co.kr/user/signup?ref=I6T0K0RB)** — 추천 가입
+- **[코빗](https://exchange.korbit.co.kr/sign-up/?referral_code=624912)** — 추천 가입
+- **[고팍스](https://gopax.page.link/NBr3KXjjhirrQEUP9)** — 추천 가입
 
 ---
 
