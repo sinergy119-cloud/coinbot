@@ -230,39 +230,64 @@ export default function TradeHistoryPanel({ defaultExchange, onExchangeChange }:
 
       {/* 거래 내역 테이블 */}
       {!loading && filteredHistory.length > 0 && (
-        <div className="overflow-x-auto">
+        <>
           <div className="mb-1 text-right text-xs text-gray-400">{filteredHistory.length}건</div>
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b text-xs text-gray-500">
-                <th className="pb-2 pr-3">거래일시</th>
-                <th className="pb-2 pr-3">자산</th>
-                <th className="pb-2 pr-3">구분</th>
-                <th className="pb-2 pr-3 text-right">수량</th>
-                <th className="pb-2 text-right">금액</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredHistory.map((item) => (
-                <tr key={item.id} className="border-b border-gray-50">
-                  <td className="py-2 pr-3 text-xs text-gray-500">{formatDatetime(item.datetime)}</td>
-                  <td className="py-2 pr-3 font-medium">{item.coin}/KRW</td>
-                  <td className="py-2 pr-3">
+          {/* PC 테이블 */}
+          <div className="hidden sm:block overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b text-xs text-gray-500">
+                  <th className="pb-2 pr-3">거래일시</th>
+                  <th className="pb-2 pr-3">자산</th>
+                  <th className="pb-2 pr-3">구분</th>
+                  <th className="pb-2 pr-3 text-right">수량</th>
+                  <th className="pb-2 text-right">금액</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredHistory.map((item) => (
+                  <tr key={item.id} className="border-b border-gray-50">
+                    <td className="py-2 pr-3 text-xs text-gray-500">{formatDatetime(item.datetime)}</td>
+                    <td className="py-2 pr-3 font-medium">{item.coin}/KRW</td>
+                    <td className="py-2 pr-3">
+                      <span className={`font-medium ${item.side === 'buy' ? 'text-red-500' : 'text-blue-500'}`}>
+                        {item.side === 'buy' ? '매수' : '매도'}
+                      </span>
+                    </td>
+                    <td className="py-2 pr-3 text-right text-xs">
+                      {item.quantity.toFixed(8).replace(/\.?0+$/, '') || '0'}
+                    </td>
+                    <td className="py-2 text-right text-xs">
+                      {item.total > 0 ? `${Math.floor(item.total).toLocaleString()}원` : '-'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {/* 모바일 카드 */}
+          <div className="sm:hidden space-y-2">
+            {filteredHistory.map((item) => (
+              <div key={item.id} className="rounded-lg border border-gray-100 px-3 py-2">
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <span className="font-bold">{item.coin}/KRW</span>
                     <span className={`font-medium ${item.side === 'buy' ? 'text-red-500' : 'text-blue-500'}`}>
                       {item.side === 'buy' ? '매수' : '매도'}
                     </span>
-                  </td>
-                  <td className="py-2 pr-3 text-right text-xs">
-                    {item.quantity.toFixed(8).replace(/\.?0+$/, '') || '0'}
-                  </td>
-                  <td className="py-2 text-right text-xs">
+                  </div>
+                  <span className="text-xs text-gray-600">
                     {item.total > 0 ? `${Math.floor(item.total).toLocaleString()}원` : '-'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-[10px] text-gray-400">
+                  <span>{formatDatetime(item.datetime)}</span>
+                  <span>{item.quantity.toFixed(8).replace(/\.?0+$/, '') || '0'}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       {!loading && selectedAccountId && filteredHistory.length === 0 && !error && history.length > 0 && (
