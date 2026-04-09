@@ -101,7 +101,7 @@ function TelegramSettings() {
           </p>
           <div className="mb-2 rounded bg-gray-50 p-2 text-xs text-gray-600">
             <p className="font-medium">Chat ID 확인 방법</p>
-            <p>1. 텔레그램에서 <b>@userinfobot</b> 검색 → 시작</p>
+            <p>1. 텔레그램에서 <b>@raw_info_bot</b> 검색 → 시작</p>
             <p>2. 표시되는 숫자(ID)를 아래에 입력</p>
           </div>
           <div className="flex gap-2">
