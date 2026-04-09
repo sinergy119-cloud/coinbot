@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
     loginAttempts.set(ip, { count: 0, resetAt: now + WINDOW_MS })
   }
 
-  const { userId, password } = await req.json()
+  const { userId, password, autoLogin } = await req.json()
 
   if (!userId || !password) {
     return Response.json({ error: '사용자 ID와 비밀번호를 입력해주세요.' }, { status: 400 })
@@ -71,6 +71,6 @@ export async function POST(req: NextRequest) {
     })
   } catch { /* 이력 저장 실패는 무시 */ }
 
-  await createSession(user.id, user.user_id)
+  await createSession(user.id, user.user_id, !!autoLogin)
   return Response.json({ ok: true, loginId: user.user_id })
 }

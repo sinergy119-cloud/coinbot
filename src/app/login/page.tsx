@@ -363,6 +363,167 @@ function GuideModal({ apiUrl, onClose }: { apiUrl: string; onClose: () => void }
   )
 }
 
+// ─── 아이디 찾기 모달 ───────────────────────────────
+function FindIdModal({ onClose }: { onClose: () => void }) {
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [result, setResult] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setError(''); setResult('')
+    if (!name.trim() || !email.trim()) { setError('이름과 이메일을 입력해주세요.'); return }
+    setLoading(true)
+    try {
+      const res = await fetch('/api/auth/find-id', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.trim(), email: email.trim() }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setError(data.error); return }
+      setResult(data.userId)
+    } catch { setError('네트워크 오류') }
+    finally { setLoading(false) }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
+      <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
+        <h2 className="mb-4 text-lg font-bold text-gray-900">아이디 찾기</h2>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="이름"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="이메일"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+          {error && <p className="text-sm text-red-600">{error}</p>}
+          {result && (
+            <div className="rounded-lg bg-blue-50 border border-blue-200 px-3 py-3 text-center">
+              <p className="text-xs text-gray-500 mb-1">회원님의 아이디</p>
+              <p className="text-lg font-bold text-blue-700">{result}</p>
+            </div>
+          )}
+          <div className="flex gap-2">
+            {!result && (
+              <button type="submit" disabled={loading}
+                className="flex-1 rounded-lg bg-blue-600 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
+                {loading ? '조회 중...' : '아이디 찾기'}
+              </button>
+            )}
+            <button type="button" onClick={onClose}
+              className="flex-1 rounded-lg bg-gray-200 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-300">
+              닫기
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// ─── 비밀번호 찾기 모달 ─────────────────────────────
+function FindPwModal({ onClose }: { onClose: () => void }) {
+  const [userId, setUserId] = useState('')
+  const [email, setEmail] = useState('')
+  const [sent, setSent] = useState(false)
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setError(''); setSent(false)
+    if (!userId.trim() || !email.trim()) { setError('아이디와 이메일을 입력해주세요.'); return }
+    setLoading(true)
+    try {
+      const res = await fetch('/api/auth/find-pw', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: userId.trim(), email: email.trim() }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setError(data.error); return }
+      setSent(true)
+    } catch { setError('네트워크 오류') }
+    finally { setLoading(false) }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
+      <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
+        <h2 className="mb-4 text-lg font-bold text-gray-900">비밀번호 찾기</h2>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <input type="text" value={userId} onChange={(e) => setUserId(e.target.value)} placeholder="아이디"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="가입 시 등록한 이메일"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+          {error && <p className="text-sm text-red-600">{error}</p>}
+          {sent && (
+            <div className="rounded-lg bg-green-50 border border-green-200 px-3 py-3 text-center">
+              <p className="text-sm font-medium text-green-700">✅ 임시 비밀번호를 이메일로 보냈습니다.</p>
+              <p className="text-xs text-green-600 mt-1">로그인 후 반드시 비밀번호를 변경해주세요.</p>
+            </div>
+          )}
+          <div className="flex gap-2">
+            {!sent && (
+              <button type="submit" disabled={loading}
+                className="flex-1 rounded-lg bg-blue-600 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
+                {loading ? '발송 중...' : '임시 비밀번호 발급'}
+              </button>
+            )}
+            <button type="button" onClick={onClose}
+              className="flex-1 rounded-lg bg-gray-200 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-300">
+              닫기
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// ─── 개인정보처리방침 모달 ───────────────────────────
+function PrivacyModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
+      <div className="relative max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
+        <button onClick={onClose} className="absolute right-3 top-3 rounded-full p-1 text-gray-400 hover:bg-gray-100" aria-label="닫기">
+          <X size={20} />
+        </button>
+        <h2 className="mb-4 text-lg font-bold text-gray-900">개인정보처리방침</h2>
+        <div className="space-y-4 text-sm text-gray-600 leading-relaxed">
+          <section>
+            <h3 className="font-semibold text-gray-800 mb-1">1. 수집하는 개인정보</h3>
+            <p>회원가입 시 아이디, 비밀번호(해시), 이름, 전화번호, 이메일을 수집합니다.</p>
+          </section>
+          <section>
+            <h3 className="font-semibold text-gray-800 mb-1">2. 수집 목적</h3>
+            <p>서비스 제공, 본인 확인, 고객 연락, 거래 실행을 위해 사용됩니다.</p>
+          </section>
+          <section>
+            <h3 className="font-semibold text-gray-800 mb-1">3. 보유 기간</h3>
+            <p>회원 탈퇴 시까지 보유하며, 탈퇴 시 즉시 파기합니다.</p>
+          </section>
+          <section>
+            <h3 className="font-semibold text-gray-800 mb-1">4. 제3자 제공</h3>
+            <p>수집된 개인정보는 제3자에게 제공하지 않습니다.</p>
+          </section>
+          <section>
+            <h3 className="font-semibold text-gray-800 mb-1">5. 보안 조치</h3>
+            <p>비밀번호는 bcrypt 해싱, API Key는 AES-256-GCM 암호화하여 저장합니다. 접속 이력(IP)은 보안 목적으로 기록됩니다.</p>
+          </section>
+          <section>
+            <h3 className="font-semibold text-gray-800 mb-1">6. 문의</h3>
+            <p>개인정보 관련 문의는 관리자에게 연락해주세요.</p>
+          </section>
+        </div>
+        <div className="mt-5 border-t border-gray-100 pt-4">
+          <button onClick={onClose} className="w-full rounded-lg bg-gray-800 py-2.5 text-sm font-medium text-white hover:bg-gray-900">닫기</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function LoginPage() {
   const router = useRouter()
   const [mode, setMode] = useState<'login' | 'signup'>('login')
@@ -372,24 +533,27 @@ export default function LoginPage() {
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
-  const [saveId, setSaveId] = useState(false)
+  const [showPw, setShowPw] = useState(false)
+  const [autoLogin, setAutoLogin] = useState(() => {
+    if (typeof window !== 'undefined') return localStorage.getItem('coinbot_auto_login') === 'true'
+    return false
+  })
   const [error, setError] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
   const [loading, setLoading] = useState(false)
-  const [activeModal, setActiveModal] = useState<'service' | 'exchange' | null>(null)
+  const [activeModal, setActiveModal] = useState<'service' | 'exchange' | 'find-id' | 'find-pw' | 'privacy' | null>(null)
   const [guideFolded, setGuideFolded] = useState(() => {
     if (typeof window !== 'undefined') return localStorage.getItem('coinbot_guide_folded') === 'true'
     return false
   })
 
-  // 저장된 아이디 불러오기
+  // 자동 로그인: 저장된 아이디 불러오기
   useEffect(() => {
-    const saved = localStorage.getItem(SAVED_ID_KEY)
-    if (saved) {
-      setUserId(saved)
-      setSaveId(true)
+    if (autoLogin) {
+      const saved = localStorage.getItem(SAVED_ID_KEY)
+      if (saved) setUserId(saved)
     }
-  }, [])
+  }, [autoLogin])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -412,7 +576,7 @@ export default function LoginPage() {
     try {
       const endpoint = mode === 'login' ? '/api/auth/login' : '/api/auth/signup'
       const body = mode === 'login'
-        ? { userId: userId.trim(), password }
+        ? { userId: userId.trim(), password, autoLogin }
         : { userId: userId.trim(), password, name: name.trim(), phone: phone.trim(), email: email.trim() }
       const res = await fetch(endpoint, {
         method: 'POST',
@@ -432,11 +596,13 @@ export default function LoginPage() {
         return
       }
 
-      // 로그인 → 아이디 저장 + 이동
-      if (saveId) {
+      // 자동 로그인: 아이디 저장
+      if (autoLogin) {
         localStorage.setItem(SAVED_ID_KEY, userId.trim())
+        localStorage.setItem('coinbot_auto_login', 'true')
       } else {
         localStorage.removeItem(SAVED_ID_KEY)
+        localStorage.removeItem('coinbot_auto_login')
       }
 
       router.push('/')
@@ -514,14 +680,24 @@ export default function LoginPage() {
 
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">비밀번호</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              placeholder="비밀번호를 입력하세요"
-              autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-            />
+            <div className="relative">
+              <input
+                type={showPw ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 pr-10 text-sm placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                placeholder="비밀번호를 입력하세요"
+                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPw(!showPw)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600"
+                aria-label={showPw ? '비밀번호 숨기기' : '비밀번호 보기'}
+              >
+                {showPw ? '🙈' : '👁'}
+              </button>
+            </div>
           </div>
 
           {mode === 'signup' && (
@@ -571,17 +747,30 @@ export default function LoginPage() {
             </>
           )}
 
-          {/* 아이디 저장 (로그인 모드만) */}
+          {/* 자동 로그인 + 아이디/비밀번호 찾기 (로그인 모드만) */}
           {mode === 'login' && (
-            <label className="flex cursor-pointer items-center gap-2">
-              <input
-                type="checkbox"
-                checked={saveId}
-                onChange={(e) => setSaveId(e.target.checked)}
-                className="accent-blue-600"
-              />
-              <span className="text-sm text-gray-600">아이디 저장</span>
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={autoLogin}
+                  onChange={(e) => {
+                    setAutoLogin(e.target.checked)
+                    if (!e.target.checked) {
+                      localStorage.removeItem('coinbot_auto_login')
+                      localStorage.removeItem(SAVED_ID_KEY)
+                    }
+                  }}
+                  className="accent-blue-600"
+                />
+                <span className="text-sm text-gray-600">자동 로그인</span>
+              </label>
+              <div className="flex gap-2 text-xs text-gray-400">
+                <button type="button" onClick={() => setActiveModal('find-id')} className="hover:text-gray-600 hover:underline">아이디 찾기</button>
+                <span>|</span>
+                <button type="button" onClick={() => setActiveModal('find-pw')} className="hover:text-gray-600 hover:underline">비밀번호 찾기</button>
+              </div>
+            </div>
           )}
 
           {error && (
@@ -604,10 +793,38 @@ export default function LoginPage() {
           )}
         </form>
 
+        {/* 소셜 로그인 (로그인 모드만) */}
+        {mode === 'login' && (
+          <div className="mt-4">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="h-px flex-1 bg-gray-200" />
+              <span className="text-xs text-gray-400">간편 로그인</span>
+              <div className="h-px flex-1 bg-gray-200" />
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => alert('카카오 로그인은 준비 중입니다.')}
+                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#FEE500] py-2.5 text-sm font-medium text-[#3C1E1E] hover:brightness-95 transition"
+              >
+                💬 카카오
+              </button>
+              <button
+                type="button"
+                onClick={() => alert('네이버 로그인은 준비 중입니다.')}
+                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#03C75A] py-2.5 text-sm font-medium text-white hover:brightness-95 transition"
+              >
+                N 네이버
+              </button>
+            </div>
+          </div>
+        )}
+
         <button
           onClick={() => {
             setMode(mode === 'login' ? 'signup' : 'login')
             setError('')
+            setSuccessMsg('')
           }}
           className="mt-4 w-full text-center text-sm text-blue-600 hover:underline"
         >
@@ -616,14 +833,20 @@ export default function LoginPage() {
 
       </div>
 
-      <p className="mt-2 text-right text-xs text-gray-400">
-        Last updated: {process.env.NEXT_PUBLIC_BUILD_TIME}
-      </p>
+      <div className="mt-2 flex items-center justify-between text-xs text-gray-400">
+        <button type="button" onClick={() => setActiveModal('privacy')} className="hover:text-gray-600 hover:underline">
+          개인정보처리방침
+        </button>
+        <span>Last updated: {process.env.NEXT_PUBLIC_BUILD_TIME}</span>
+      </div>
       </div>
 
-      {/* 서비스 소개 모달 */}
+      {/* 모달 */}
       {activeModal === 'service' && <GuideModal apiUrl="/api/guide" onClose={() => setActiveModal(null)} />}
       {activeModal === 'exchange' && <GuideModal apiUrl="/api/guide-exchange" onClose={() => setActiveModal(null)} />}
+      {activeModal === 'find-id' && <FindIdModal onClose={() => setActiveModal(null)} />}
+      {activeModal === 'find-pw' && <FindPwModal onClose={() => setActiveModal(null)} />}
+      {activeModal === 'privacy' && <PrivacyModal onClose={() => setActiveModal(null)} />}
     </div>
   )
 }
