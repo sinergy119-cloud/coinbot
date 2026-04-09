@@ -6,6 +6,50 @@ import { X } from 'lucide-react'
 
 const SAVED_ID_KEY = 'coinbot_saved_id'
 
+// ─── 비밀번호 강도 체크 ─────────────────────────────
+const PW_RULES = [
+  { label: '8자 이상', test: (pw: string) => pw.length >= 8 },
+  { label: '영문 포함', test: (pw: string) => /[a-zA-Z]/.test(pw) },
+  { label: '숫자 포함', test: (pw: string) => /\d/.test(pw) },
+  { label: '특수문자 포함', test: (pw: string) => /[!@#$%^&*()_+\-=[\]{};':"|,.<>/?~`]/.test(pw) },
+]
+
+function PasswordStrength({ password }: { password: string }) {
+  if (!password) return null
+  const passed = PW_RULES.filter((r) => r.test(password)).length
+  const ratio = passed / PW_RULES.length
+  const barColor = ratio <= 0.25 ? 'bg-red-500' : ratio <= 0.5 ? 'bg-orange-500' : ratio <= 0.75 ? 'bg-yellow-500' : 'bg-green-500'
+
+  return (
+    <div className="mt-2 space-y-1.5">
+      {/* 강도 바 */}
+      <div className="flex items-center gap-2">
+        <div className="h-1.5 flex-1 rounded-full bg-gray-200">
+          <div className={`h-1.5 rounded-full transition-all duration-300 ${barColor}`} style={{ width: `${ratio * 100}%` }} />
+        </div>
+        <span className={`text-xs font-medium ${ratio === 1 ? 'text-green-600' : 'text-gray-400'}`}>
+          {ratio === 1 ? '안전' : ratio >= 0.75 ? '보통' : '약함'}
+        </span>
+      </div>
+      {/* 요건 목록 */}
+      <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+        {PW_RULES.map((rule) => {
+          const ok = rule.test(password)
+          return (
+            <span key={rule.label} className={`text-xs ${ok ? 'text-green-600' : 'text-gray-400'}`}>
+              {ok ? '✅' : '⬜'} {rule.label}
+            </span>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function isPasswordValid(pw: string) {
+  return PW_RULES.every((r) => r.test(pw))
+}
+
 // ─── 섹션 아이콘/색상 매핑 ──────────────────────────
 const SECTION_STYLES: Record<string, { icon: string; color: string }> = {
   '에어드랍':   { icon: '🎁', color: 'text-pink-600' },
@@ -566,6 +610,7 @@ export default function LoginPage() {
     }
 
     if (mode === 'signup') {
+      if (!isPasswordValid(password)) { setError('비밀번호 요건을 모두 충족해주세요. (8자 이상, 영문, 숫자, 특수문자)'); return }
       if (password !== passwordConfirm) { setError('비밀번호가 일치하지 않습니다.'); return }
       if (!name.trim()) { setError('이름을 입력해주세요.'); return }
       if (!phone.trim()) { setError('전화번호를 입력해주세요.'); return }
@@ -698,6 +743,7 @@ export default function LoginPage() {
                 {showPw ? '🙈' : '👁'}
               </button>
             </div>
+            {mode === 'signup' && <PasswordStrength password={password} />}
           </div>
 
           {mode === 'signup' && (

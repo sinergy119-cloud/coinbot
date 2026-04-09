@@ -5,6 +5,34 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { LogOut, Shield, Settings, KeyRound, X } from 'lucide-react'
 
+const PW_RULES = [
+  { label: '8자 이상', test: (pw: string) => pw.length >= 8 },
+  { label: '영문 포함', test: (pw: string) => /[a-zA-Z]/.test(pw) },
+  { label: '숫자 포함', test: (pw: string) => /\d/.test(pw) },
+  { label: '특수문자 포함', test: (pw: string) => /[!@#$%^&*()_+\-=[\]{};':"|,.<>/?~`]/.test(pw) },
+]
+
+function PasswordStrengthMini({ password }: { password: string }) {
+  if (!password) return null
+  const passed = PW_RULES.filter((r) => r.test(password)).length
+  const ratio = passed / PW_RULES.length
+  const barColor = ratio <= 0.25 ? 'bg-red-500' : ratio <= 0.5 ? 'bg-orange-500' : ratio <= 0.75 ? 'bg-yellow-500' : 'bg-green-500'
+  return (
+    <div className="mt-1.5 space-y-1">
+      <div className="h-1 rounded-full bg-gray-200">
+        <div className={`h-1 rounded-full transition-all duration-300 ${barColor}`} style={{ width: `${ratio * 100}%` }} />
+      </div>
+      <div className="flex flex-wrap gap-x-2 gap-y-0">
+        {PW_RULES.map((rule) => (
+          <span key={rule.label} className={`text-[10px] ${rule.test(password) ? 'text-green-600' : 'text-gray-400'}`}>
+            {rule.test(password) ? '✅' : '⬜'} {rule.label}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 interface HeaderProps {
   loginId: string
   isAdmin?: boolean
@@ -34,8 +62,8 @@ export default function Header({ loginId, isAdmin = false, showBackToHome = fals
   async function handlePwChange(e: React.FormEvent) {
     e.preventDefault()
     setPwError('')
+    if (!PW_RULES.every((r) => r.test(newPw))) { setPwError('비밀번호 요건을 모두 충족해주세요.'); return }
     if (newPw !== confirmPw) { setPwError('새 비밀번호가 일치하지 않습니다.'); return }
-    if (newPw.length < 6) { setPwError('새 비밀번호는 6자 이상이어야 합니다.'); return }
     setPwLoading(true)
     try {
       const res = await fetch('/api/auth/password', {
@@ -138,9 +166,10 @@ export default function Header({ loginId, isAdmin = false, showBackToHome = fals
                   value={newPw}
                   onChange={e => setNewPw(e.target.value)}
                   required
-                  placeholder="6자 이상"
+                  placeholder="8자 이상 (영문+숫자+특수문자)"
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
                 />
+                <PasswordStrengthMini password={newPw} />
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-gray-600">새 비밀번호 확인</label>
