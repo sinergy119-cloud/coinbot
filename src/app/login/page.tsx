@@ -788,7 +788,7 @@ export default function LoginPage() {
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   placeholder="example@gmail.com"
                 />
-                <p className="mt-1 text-xs text-gray-400">인증 메일이 발송됩니다.</p>
+                <p className="mt-1.5 rounded bg-amber-50 border border-amber-200 px-2.5 py-1.5 text-xs font-medium text-amber-700">📩 회원 가입 시 인증 메일이 발송됩니다.</p>
               </div>
             </>
           )}
