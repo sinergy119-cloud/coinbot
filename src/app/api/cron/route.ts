@@ -58,6 +58,7 @@ export async function POST(req: NextRequest) {
   const { data: allActiveJobs } = await db
     .from('trade_jobs')
     .select('*')
+    .eq('status', 'active')
     .lte('schedule_from', today)
     .gte('schedule_to', today)
 
@@ -175,9 +176,9 @@ export async function POST(req: NextRequest) {
       }),
     )
 
-    // schedule_to 날짜 마지막 실행이면 스케줄 삭제, 아니면 last_executed_at 갱신
+    // schedule_to 날짜 마지막 실행이면 completed, 아니면 last_executed_at 갱신
     if (today === job.schedule_to) {
-      await db.from('trade_jobs').delete().eq('id', job.id)
+      await db.from('trade_jobs').update({ status: 'completed', last_executed_at: now.toISOString() }).eq('id', job.id)
     } else {
       await db.from('trade_jobs').update({ last_executed_at: now.toISOString() }).eq('id', job.id)
     }

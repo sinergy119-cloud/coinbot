@@ -30,10 +30,16 @@ export default function ScheduleList({ jobs, accountMap, onDelete }: ScheduleLis
           </tr>
         </thead>
         <tbody>
-          {jobs.map((job) => (
-            <tr key={job.id} className="border-b border-gray-100">
+          {jobs.map((job) => {
+            const isCompleted = (job as TradeJobRow & { status?: string }).status === 'completed'
+            return (
+            <tr key={job.id} className={`border-b border-gray-100 ${isCompleted ? 'opacity-50' : ''}`}>
               <td className="py-2 pr-3 whitespace-nowrap">
-                {EXCHANGE_EMOJI[job.exchange as Exchange]} {EXCHANGE_LABELS[job.exchange as Exchange] ?? job.exchange}
+                {isCompleted
+                  ? <span className="rounded bg-gray-200 px-1.5 py-0.5 text-[10px] font-medium text-gray-500">완료</span>
+                  : <span className="rounded bg-green-100 px-1.5 py-0.5 text-[10px] font-medium text-green-700">진행</span>
+                }
+                <span className="ml-1">{EXCHANGE_EMOJI[job.exchange as Exchange]} {EXCHANGE_LABELS[job.exchange as Exchange] ?? job.exchange}</span>
               </td>
               <td className="py-2 pr-3 text-gray-600">
                 {(job.account_ids as string[]).map((id) => accountMap[id] ?? id).join(', ')}
@@ -63,7 +69,8 @@ export default function ScheduleList({ jobs, accountMap, onDelete }: ScheduleLis
                 </button>
               </td>
             </tr>
-          ))}
+            )
+          })}
         </tbody>
       </table>
     </div>

@@ -71,6 +71,7 @@ export interface TradeJobRow {
   schedule_from: string   // 날짜 (YYYY-MM-DD), NOT NULL
   schedule_to: string     // 날짜 (YYYY-MM-DD), NOT NULL
   schedule_time: string   // 시간 (HH:MM), NOT NULL
+  status: string        // active | completed
   last_executed_at: string | null
   created_at: string
 }
