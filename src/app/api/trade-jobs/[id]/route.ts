@@ -7,13 +7,13 @@ const TRADE_TYPE_LABEL: Record<string, string> = { BUY: '매수', SELL: '매도'
 
 type Params = Promise<{ id: string }>
 
-// PATCH /api/trade-jobs/[id] → 날짜/시간만 수정
+// PATCH /api/trade-jobs/[id] → 스케줄 수정 (전체 필드)
 export async function PATCH(req: NextRequest, { params }: { params: Params }) {
   const session = await getSession()
   if (!session) return Response.json({ error: '로그인 필요' }, { status: 401 })
 
   const { id } = await params
-  const { scheduleFrom, scheduleTo, scheduleTime } = await req.json()
+  const body = await req.json()
 
   const db = createServerClient()
 
@@ -25,13 +25,21 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
     .eq('user_id', session.userId)
     .single()
 
+  // 수정 가능 필드
+  const updates: Record<string, unknown> = {}
+  if (body.exchange) updates.exchange = body.exchange
+  if (body.coin) updates.coin = body.coin.toUpperCase()
+  if (body.tradeType) updates.trade_type = body.tradeType
+  if (body.amountKrw !== undefined) updates.amount_krw = body.amountKrw
+  if (body.accountIds) updates.account_ids = body.accountIds
+  if (body.scheduleFrom) updates.schedule_from = body.scheduleFrom
+  if (body.scheduleTo) updates.schedule_to = body.scheduleTo
+  if (body.scheduleTime) updates.schedule_time = body.scheduleTime
+  if (body.status) updates.status = body.status
+
   const { data, error } = await db
     .from('trade_jobs')
-    .update({
-      schedule_from: scheduleFrom,
-      schedule_to: scheduleTo,
-      schedule_time: scheduleTime,
-    })
+    .update(updates)
     .eq('id', id)
     .eq('user_id', session.userId)
     .select()
@@ -54,8 +62,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
         `방식: ${TRADE_TYPE_LABEL[existing.trade_type] ?? existing.trade_type}`,
         ``,
         `변경된 일정`,
-        `기간: ${scheduleFrom} ~ ${scheduleTo}`,
-        `시간: ${scheduleTime}`,
+        `기간: ${data.schedule_from} ~ ${data.schedule_to}`,
+        `시간: ${data.schedule_time}`,
       ].join('\n')
       await sendTelegramMessage(user.telegram_chat_id, msg)
     }

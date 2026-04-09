@@ -185,6 +185,24 @@ export async function POST(req: NextRequest) {
 
     results.push({ jobId: job.id, status: 'DONE', orderResults })
 
+    // 거래 실행 로그 저장
+    try {
+      const logs = orderResults.map((r: { accountId?: string; accountName: string; success: boolean; reason?: string }) => ({
+        user_id: job.user_id,
+        trade_job_id: job.id,
+        exchange: job.exchange,
+        coin: job.coin,
+        trade_type: job.trade_type,
+        amount_krw: job.amount_krw || 0,
+        account_id: r.accountId || null,
+        account_name: r.accountName,
+        success: r.success,
+        reason: r.reason?.slice(0, 200),
+        source: 'schedule',
+      }))
+      await db.from('trade_logs').insert(logs)
+    } catch { /* 로그 저장 실패는 무시 */ }
+
     // 텔레그램 알림 발송 (스케줄 등록자 + 계정 소유자 모두에게)
     try {
       const msg = buildTelegramMessage(job, orderResults)

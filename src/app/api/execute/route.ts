@@ -182,5 +182,24 @@ export async function POST(req: NextRequest) {
     }),
   )
 
+  // 거래 실행 로그 저장
+  try {
+    const logs = results.map((r) => ({
+      user_id: session.userId,
+      exchange,
+      coin,
+      trade_type: tradeType,
+      amount_krw: amountKrw || 0,
+      account_id: r.accountId,
+      account_name: r.accountName,
+      success: r.success,
+      order_id: r.reason?.match(/[a-f0-9-]{8}/)?.[0] || null,
+      reason: r.reason?.slice(0, 200),
+      balance: r.balance,
+      source: 'manual',
+    }))
+    await db.from('trade_logs').insert(logs)
+  } catch { /* 로그 저장 실패는 무시 */ }
+
   return Response.json(results)
 }

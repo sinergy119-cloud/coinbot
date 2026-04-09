@@ -11,11 +11,14 @@ export async function GET() {
   const db = createServerClient()
   const { data } = await db
     .from('users')
-    .select('telegram_chat_id, delegated')
+    .select('name, phone, email, telegram_chat_id, delegated')
     .eq('id', session.userId)
     .single()
 
   return Response.json({
+    name: data?.name ?? '',
+    phone: data?.phone ?? '',
+    email: data?.email ?? '',
     telegramChatId: data?.telegram_chat_id ?? '',
     delegated: data?.delegated ?? false,
   })
@@ -30,6 +33,9 @@ export async function PATCH(req: NextRequest) {
 
   const db = createServerClient()
   const updates: Record<string, unknown> = {}
+  if ('name' in body) updates.name = body.name?.trim() || null
+  if ('phone' in body) updates.phone = body.phone?.replace(/[^0-9]/g, '') || null
+  if ('email' in body) updates.email = body.email?.trim().toLowerCase() || null
   if ('delegated' in body) updates.delegated = !!body.delegated
 
   // 텔레그램 Chat ID 저장 시 테스트 메시지로 유효성 검증
