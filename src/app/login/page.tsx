@@ -751,7 +751,7 @@ export default function LoginPage() {
               type="text"
               value={userId}
               onChange={(e) => setUserId(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               placeholder="ID를 입력하세요"
               autoComplete="username"
             />
@@ -764,7 +764,7 @@ export default function LoginPage() {
                 type={showPw ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 pr-10 text-sm placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 pr-10 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 placeholder="비밀번호를 입력하세요"
                 autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
               />
@@ -788,7 +788,7 @@ export default function LoginPage() {
                   type="password"
                   value={passwordConfirm}
                   onChange={(e) => setPasswordConfirm(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   placeholder="비밀번호를 다시 입력하세요"
                   autoComplete="new-password"
                 />
@@ -799,7 +799,7 @@ export default function LoginPage() {
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   placeholder="실명을 입력하세요"
                 />
               </div>
@@ -809,7 +809,7 @@ export default function LoginPage() {
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   placeholder="010-1234-5678"
                 />
               </div>
@@ -819,7 +819,7 @@ export default function LoginPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   placeholder="example@gmail.com"
                 />
                 <p className="mt-1.5 rounded bg-amber-50 border border-amber-200 px-2.5 py-1.5 text-xs font-medium text-amber-700">📩 회원 가입 시 인증 메일이 발송됩니다.</p>
