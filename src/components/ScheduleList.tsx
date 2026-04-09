@@ -1,6 +1,6 @@
 'use client'
 
-import { Trash2 } from 'lucide-react'
+import { Trash2, Pencil } from 'lucide-react'
 import { EXCHANGE_LABELS, EXCHANGE_EMOJI, TRADE_TYPE_LABELS } from '@/types/database'
 import type { Exchange, TradeType, TradeJobRow } from '@/types/database'
 
@@ -9,9 +9,10 @@ export interface ScheduleListProps {
   jobs: TradeJobRow[]
   accountMap: Record<string, string>
   onDelete: (id: string) => void
+  onEdit?: (job: TradeJobRow) => void
 }
 
-export default function ScheduleList({ jobs, accountMap, onDelete }: ScheduleListProps) {
+export default function ScheduleList({ jobs, accountMap, onDelete, onEdit }: ScheduleListProps) {
   if (jobs.length === 0) {
     return <p className="text-sm text-gray-400">등록된 스케줄이 없습니다.</p>
   }
@@ -64,7 +65,13 @@ export default function ScheduleList({ jobs, accountMap, onDelete }: ScheduleLis
                 <td className="py-2 pr-3 whitespace-nowrap text-gray-500">
                   {job.schedule_time.slice(0, 5)}
                 </td>
-                <td className="py-2">
+                <td className="py-2 flex gap-1">
+                  {onEdit && !isCompleted && (
+                    <button onClick={() => onEdit(job)}
+                      className="rounded p-1 text-gray-400 hover:bg-blue-50 hover:text-blue-600">
+                      <Pencil size={14} />
+                    </button>
+                  )}
                   <button onClick={() => onDelete(job.id)}
                     className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600">
                     <Trash2 size={14} />
@@ -93,10 +100,18 @@ export default function ScheduleList({ jobs, accountMap, onDelete }: ScheduleLis
                     {EXCHANGE_EMOJI[job.exchange as Exchange]} {EXCHANGE_LABELS[job.exchange as Exchange]}
                   </span>
                 </div>
-                <button onClick={() => onDelete(job.id)}
-                  className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600">
-                  <Trash2 size={14} />
-                </button>
+                <div className="flex gap-1">
+                  {onEdit && !isCompleted && (
+                    <button onClick={() => onEdit(job)}
+                      className="rounded p-1 text-gray-400 hover:bg-blue-50 hover:text-blue-600">
+                      <Pencil size={14} />
+                    </button>
+                  )}
+                  <button onClick={() => onDelete(job.id)}
+                    className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600">
+                    <Trash2 size={14} />
+                  </button>
+                </div>
               </div>
               <div className="flex items-center gap-2 text-xs mb-1">
                 <span className="font-bold">{job.coin}</span>

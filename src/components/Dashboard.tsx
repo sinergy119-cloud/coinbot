@@ -10,6 +10,7 @@ import ValidationModal from '@/components/ValidationModal'
 import ResultPanel from '@/components/ResultPanel'
 import AssetPanel from '@/components/AssetPanel'
 import TradeHistoryPanel from '@/components/TradeHistoryPanel'
+import TradeLogPanel from '@/components/TradeLogPanel'
 import ScheduleTab from '@/components/ScheduleTab'
 import type { TradeJobRow, Exchange } from '@/types/database'
 import { EXCHANGE_EMOJI, EXCHANGE_LABELS } from '@/types/database'
@@ -50,6 +51,13 @@ export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) 
   const [summary, setSummary] = useState({ activeSchedules: 0, todayTotal: 0, todaySuccess: 0, todayFail: 0, monthlyCost: 0, monthlyTrades: 0 })
   // 최근 실행 (빠른 실행용)
   const [lastTrade, setLastTrade] = useState<TradeInput | null>(null)
+  // 스케줄 수정
+  const [editJob, setEditJob] = useState<TradeJobRow | null>(null)
+  const [editFrom, setEditFrom] = useState('')
+  const [editTo, setEditTo] = useState('')
+  const [editTime, setEditTime] = useState('')
+  const [editLoading, setEditLoading] = useState(false)
+
   // 이벤트 배너
   const [events, setEvents] = useState<{ id: string; exchange: string; coin: string; title: string; condition: string | null; start_date: string; end_date: string }[]>([])
 
@@ -162,6 +170,29 @@ export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) 
     }
   }
 
+  // ── 스케줄 수정 ──
+  function handleEditJob(job: TradeJobRow) {
+    setEditJob(job)
+    setEditFrom(job.schedule_from)
+    setEditTo(job.schedule_to)
+    setEditTime(job.schedule_time.slice(0, 5))
+  }
+
+  async function handleSaveEdit() {
+    if (!editJob) return
+    setEditLoading(true)
+    try {
+      const res = await fetch(`/api/trade-jobs/${editJob.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scheduleFrom: editFrom, scheduleTo: editTo, scheduleTime: editTime }),
+      })
+      if (res.ok) { setEditJob(null); fetchJobs() }
+      else alert('수정 실패')
+    } catch { alert('네트워크 오류') }
+    finally { setEditLoading(false) }
+  }
+
   // ── 스케줄 삭제 ──
   async function handleDeleteJob(id: string) {
     if (!confirm('이 스케줄을 삭제하시겠습니까?')) return
@@ -242,7 +273,7 @@ export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) 
               <h2 className="mb-3 text-base font-semibold text-gray-900">
                 등록된 스케줄 <span className="text-sm font-normal text-gray-400">({tradeJobs.length}개)</span>
               </h2>
-              <ScheduleList jobs={tradeJobs} accountMap={accountMap} onDelete={handleDeleteJob} />
+              <ScheduleList jobs={tradeJobs} accountMap={accountMap} onDelete={handleDeleteJob} onEdit={handleEditJob} />
             </section>
             {executionResults.length > 0 && (
               <ResultPanel results={executionResults} onClose={() => setExecutionResults([])} />
@@ -251,7 +282,12 @@ export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) 
         )}
         {activeTab === 'schedule' && <ScheduleTab defaultExchange={selectedExchange} onExchangeChange={setSelectedExchange} />}
         {activeTab === 'assets' && <AssetPanel defaultExchange={selectedExchange} onExchangeChange={setSelectedExchange} />}
-        {activeTab === 'history' && <TradeHistoryPanel defaultExchange={selectedExchange} onExchangeChange={setSelectedExchange} />}
+        {activeTab === 'history' && (
+          <div className="space-y-4">
+            <TradeLogPanel />
+            <TradeHistoryPanel defaultExchange={selectedExchange} onExchangeChange={setSelectedExchange} />
+          </div>
+        )}
       </main>
 
       {/* 검증 모달 */}
@@ -262,6 +298,49 @@ export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) 
           onCancel={() => { setShowValidation(false); setPendingTrade(null) }}
           loading={loading}
         />
+      )}
+
+      {/* 스케줄 수정 모달 */}
+      {editJob && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl">
+            <h2 className="mb-4 text-base font-semibold text-gray-900">스케줄 수정</h2>
+            <div className="mb-3 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-600">
+              <span className="font-medium">{EXCHANGE_EMOJI[editJob.exchange as Exchange]} {EXCHANGE_LABELS[editJob.exchange as Exchange]}</span>
+              <span className="mx-1">·</span>
+              <span className="font-bold">{editJob.coin}</span>
+              <span className="mx-1">·</span>
+              <span>{editJob.trade_type === 'SELL' ? '전량 매도' : `${Number(editJob.amount_krw).toLocaleString()}원`}</span>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">실행 기간</label>
+                <div className="flex items-center gap-2">
+                  <input type="date" value={editFrom} onChange={(e) => setEditFrom(e.target.value)}
+                    className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+                  <span className="text-gray-400">~</span>
+                  <input type="date" value={editTo} onChange={(e) => setEditTo(e.target.value)}
+                    className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+                </div>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">실행 시간 (KST)</label>
+                <input type="time" value={editTime} onChange={(e) => setEditTime(e.target.value)}
+                  className="w-32 rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+              </div>
+              <div className="flex gap-2">
+                <button onClick={handleSaveEdit} disabled={editLoading}
+                  className="flex-1 rounded-lg bg-blue-600 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
+                  {editLoading ? '저장 중...' : '수정'}
+                </button>
+                <button onClick={() => setEditJob(null)}
+                  className="flex-1 rounded-lg bg-gray-200 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-300">
+                  취소
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
     </div>
