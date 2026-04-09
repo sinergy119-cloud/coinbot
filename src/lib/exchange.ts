@@ -395,12 +395,6 @@ export async function placeCycleOrder(
   coin: string,
   amountKrw: number,
 ): Promise<CycleOrderResult> {
-  // 0) 매수 전 기존 잔고 snapshot (기존 보유량 제외하기 위함)
-  let snapshotQty = 0
-  try {
-    snapshotQty = await getCoinBalance(exchange, encAccessKey, encSecretKey, coin)
-  } catch { /* 조회 실패 시 0으로 처리 */ }
-
   // 1) 매수
   const buyResult = await placeMarketOrder(exchange, encAccessKey, encSecretKey, coin, 'buy', amountKrw)
   if (!buyResult.success) {
@@ -408,13 +402,12 @@ export async function placeCycleOrder(
   }
 
   // 2) 매수 체결 대기 — 점진적 딜레이로 최대 8회 폴링
-  //    이번에 매수한 수량 = 현재 잔고 - 매수 전 snapshot
+  //    전체 보유량이 0보다 크면 체결된 것으로 판단
   let coinQty = 0
   for (let i = 0; i < POLL_DELAYS_MS.length; i++) {
     await sleep(POLL_DELAYS_MS[i])
     try {
-      const currentQty = await getCoinBalance(exchange, encAccessKey, encSecretKey, coin)
-      coinQty = parseFloat((currentQty - snapshotQty).toFixed(8))
+      coinQty = await getCoinBalance(exchange, encAccessKey, encSecretKey, coin)
     } catch { /* 잠시 후 재시도 */ }
     if (coinQty > 0) break
   }
@@ -427,16 +420,15 @@ export async function placeCycleOrder(
     }
   }
 
-  // 3) 이번에 매수한 수량만 매도 — 실패 시 최대 3회 재시도 (1s/2s/4s)
+  // 3) 전체 보유량 매도 (기존 잔량 + 매수량) — 실패 시 최대 3회 재시도 (1s/2s/4s)
   const SELL_RETRY_DELAYS_MS = [1000, 2000, 4000]
   let sellResult = await placeMarketOrderByCoinQty(exchange, encAccessKey, encSecretKey, coin, coinQty)
   for (let i = 0; !sellResult.success && i < SELL_RETRY_DELAYS_MS.length; i++) {
     await sleep(SELL_RETRY_DELAYS_MS[i])
-    // 재시도 전 최신 잔고 재조회 (잔고 변동 대비)
+    // 재시도 전 최신 잔고 재조회
     try {
       const latestQty = await getCoinBalance(exchange, encAccessKey, encSecretKey, coin)
-      const retryQty = parseFloat((latestQty - snapshotQty).toFixed(8))
-      if (retryQty > 0) coinQty = retryQty
+      if (latestQty > 0) coinQty = latestQty
     } catch { /* 재조회 실패 시 기존 coinQty 유지 */ }
     sellResult = await placeMarketOrderByCoinQty(exchange, encAccessKey, encSecretKey, coin, coinQty)
   }
