@@ -585,6 +585,7 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
   const [loading, setLoading] = useState(false)
+  const [checking, setChecking] = useState(true)
   const [activeModal, setActiveModal] = useState<'service' | 'exchange' | 'signup' | 'apikey' | 'apikey-detail' | 'find-id' | 'find-pw' | 'privacy' | null>(null)
   const [guideExchange, setGuideExchange] = useState('BITHUMB')
   const [guideFolded, setGuideFolded] = useState(() => {
@@ -592,13 +593,26 @@ export default function LoginPage() {
     return false
   })
 
+  // 세션 체크: 이미 로그인되어 있으면 대시보드로 이동
   // 자동 로그인: 저장된 아이디 불러오기
   useEffect(() => {
-    if (autoLogin) {
+    // 1) 세션 체크
+    fetch('/api/auth/me')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.loginId) { router.push('/'); router.refresh(); return }
+        setChecking(false)
+      })
+      .catch(() => setChecking(false))
+
+    // 2) 저장된 아이디 불러오기
+    const savedAutoLogin = localStorage.getItem('coinbot_auto_login') === 'true'
+    if (savedAutoLogin) {
       const saved = localStorage.getItem(SAVED_ID_KEY)
       if (saved) setUserId(saved)
+      setAutoLogin(true)
     }
-  }, [autoLogin])
+  }, [router])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -658,6 +672,14 @@ export default function LoginPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  if (checking) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <p className="text-sm text-gray-400 animate-pulse">로딩 중...</p>
+      </div>
+    )
   }
 
   return (
