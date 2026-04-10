@@ -48,8 +48,6 @@ export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) 
   const [showValidation, setShowValidation] = useState(false)
   const [loading, setLoading] = useState(false)
 
-  // 대시보드 요약
-  const [summary, setSummary] = useState({ activeSchedules: 0, todayTotal: 0, todaySuccess: 0, todayFail: 0, monthlyCost: 0, monthlyTrades: 0 })
   // 최근 실행 (빠른 실행용)
   const [lastTrade, setLastTrade] = useState<TradeInput | null>(null)
   // 스케줄 수정
@@ -69,13 +67,6 @@ export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) 
   const [eventsExpanded, setEventsExpanded] = useState(true)
 
   void userId
-
-  const fetchSummary = useCallback(async () => {
-    try {
-      const res = await fetch('/api/dashboard')
-      if (res.ok) setSummary(await res.json())
-    } catch { /* 무시 */ }
-  }, [])
 
   const fetchEvents = useCallback(async () => {
     try {
@@ -103,7 +94,7 @@ export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) 
     } catch { /* 무시 */ }
   }, [])
 
-  useEffect(() => { fetchJobs(); fetchAllAccounts(); fetchSummary(); fetchEvents() }, [fetchJobs, fetchAllAccounts, fetchSummary, fetchEvents])
+  useEffect(() => { fetchJobs(); fetchAllAccounts(); fetchEvents() }, [fetchJobs, fetchAllAccounts, fetchEvents])
 
   // ── 지금 실행: 1단계 - 검증 ──
   async function handleExecute(data: TradeInput, skipSave?: boolean) {
@@ -169,7 +160,6 @@ export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) 
       setExecutionResults(results)
       setShowValidation(false)
       setPendingTrade(null)
-      fetchSummary()
     } catch {
       alert('네트워크 오류가 발생했습니다.')
     } finally {
@@ -213,22 +203,6 @@ export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) 
       <Header loginId={loginId} isAdmin={isAdmin} />
 
       <main className="mx-auto max-w-2xl px-4 py-4">
-        {/* 대시보드 요약 */}
-        <div className="mb-4 grid grid-cols-3 gap-2">
-          <div className="rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-center">
-            <p className="text-lg font-bold text-blue-600">{summary.activeSchedules}</p>
-            <p className="text-[10px] text-gray-500">활성 스케줄</p>
-          </div>
-          <div className="rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-center">
-            <p className="text-lg font-bold text-green-600">{summary.todaySuccess}<span className="text-xs font-normal text-gray-400">/{summary.todayTotal}</span></p>
-            <p className="text-[10px] text-gray-500">오늘 성공</p>
-          </div>
-          <div className="rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-center">
-            <p className="text-lg font-bold text-amber-600">{summary.monthlyCost.toLocaleString()}<span className="text-xs font-normal">원</span></p>
-            <p className="text-[10px] text-gray-500">이번 달 비용</p>
-          </div>
-        </div>
-
         {/* 이벤트 배너 (아코디언) */}
         {events.length > 0 && (
           <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 overflow-hidden">
