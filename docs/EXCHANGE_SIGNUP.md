@@ -31,7 +31,7 @@
 - **[빗썸](https://m.bithumb.com/react/referral/guide?referral=XRFYNXZA48)** — 추천코드: XRFYNXZA48
 - **업비트** — 추천 없음
 - **[코인원](https://coinone.co.kr/user/signup?ref=I6T0K0RB)** — 추천코드: I6T0K0RB
-- **[코빗](https://exchange.korbit.co.kr/sign-up/?referral_code=624912)** — 추천 가입
+- **[코빗](https://exchange.korbit.co.kr/sign-up/?referral_code=624912)** — 추천코드: 624912
 - **[고팍스](https://gopax.onelink.me/Vs7Z/wvekgu0d)** — 추천코드: C5Y944
 
 ---
