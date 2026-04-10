@@ -31,7 +31,7 @@ export default function EventManager() {
   const [coin, setCoin] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
-  const [amount, setAmount] = useState('')
+  const [amount, setAmount] = useState('1만원(일일)')
   const [requireApply, setRequireApply] = useState(false)
   const [apiAllowed, setApiAllowed] = useState(true)
   const [link, setLink] = useState('')
@@ -42,7 +42,7 @@ export default function EventManager() {
 
   function resetForm() {
     setEditingId(null)
-    setExchange(null); setCoin(''); setAmount(''); setRequireApply(false); setApiAllowed(true)
+    setExchange(null); setCoin(''); setAmount('1만원(일일)'); setRequireApply(false); setApiAllowed(true)
     setLink(''); setNotes(''); setStartDate(''); setEndDate(''); setAllCoins([])
   }
 
@@ -84,7 +84,8 @@ export default function EventManager() {
 
   function handleSetExchange(ex: Exchange) {
     setExchange(ex)
-    setCoin('')
+    // 수정 모드가 아닐 때만 코인 초기화
+    if (!editingId) setCoin('')
     setAllCoins([])
     setCoinsLoading(true)
     fetch(`/api/markets?exchange=${ex}`)
@@ -210,7 +211,7 @@ export default function EventManager() {
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-600">금액</label>
             <input type="text" value={amount} onChange={(e) => setAmount(e.target.value)}
-              placeholder="예: 일일 1만원"
+              placeholder="1만원(일일)"
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900" />
           </div>
 
@@ -288,12 +289,12 @@ export default function EventManager() {
                     <span className="font-bold text-sm">{ev.coin}</span>
                     {ev.require_apply && (
                       <span className="rounded-full bg-amber-100 border border-amber-400 px-2 py-0.5 text-[10px] font-semibold text-amber-800">
-                        🎟️ 신청 필요
+                        🎟️ 이벤트 신청 필요
                       </span>
                     )}
                     {!ev.api_allowed && (
                       <span className="rounded-full bg-red-100 border border-red-400 px-2 py-0.5 text-[10px] font-semibold text-red-800">
-                        ⛔ API 불가
+                        ⛔ 거래소 앱에서 처리(API 미허용)
                       </span>
                     )}
                   </div>
