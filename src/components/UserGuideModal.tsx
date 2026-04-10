@@ -110,8 +110,8 @@ export default function UserGuideModal({ onClose }: { onClose: () => void }) {
           {/* 참고사항 */}
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
             <p className="text-xs font-bold text-amber-800 mb-1.5">📌 참고사항</p>
-            <p className="text-[11px] text-amber-700 leading-relaxed">
-              • 텔레그램 Chat ID를 등록하면 <b>스케줄 정보와 거래 결과</b>를 실시간 알림으로 받을 수 있어요 😊<br />
+            <p className="text-[11px] text-amber-700 leading-relaxed break-keep">
+              • <b>텔레그램</b> Chat ID를 등록하면 <b>스케줄 정보와 거래 결과</b>를 실시간 알림으로 받을 수 있어요. 😊<br />
               • <b>시장가 거래</b>만 가능해요. (지정가 X)
             </p>
           </div>
