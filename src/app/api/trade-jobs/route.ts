@@ -6,19 +6,49 @@ import { sendTelegramMessage } from '@/lib/telegram'
 const TRADE_TYPE_LABEL: Record<string, string> = { BUY: '매수', SELL: '매도', CYCLE: '매수 & 매도' }
 
 // GET /api/trade-jobs → 거래 목록 조회
+// 본인이 등록한 스케줄 + 본인 계정이 포함된 타인의 스케줄
 export async function GET() {
   const session = await getSession()
   if (!session) return Response.json({ error: '로그인 필요' }, { status: 401 })
 
   const db = createServerClient()
-  const { data, error } = await db
+
+  // 1) 본인이 등록한 스케줄
+  const { data: myJobs } = await db
     .from('trade_jobs')
     .select('*')
     .eq('user_id', session.userId)
     .order('created_at', { ascending: false })
 
-  if (error) return Response.json({ error: error.message }, { status: 500 })
-  return Response.json(data ?? [])
+  // 2) 본인 계정 ID 목록
+  const { data: myAccounts } = await db
+    .from('exchange_accounts')
+    .select('id')
+    .eq('user_id', session.userId)
+  const myAccountIds = new Set((myAccounts ?? []).map((a) => a.id))
+
+  // 3) 본인 계정이 포함된 타인의 스케줄
+  let delegatedJobs: typeof myJobs = []
+  if (myAccountIds.size > 0) {
+    const { data: allOtherJobs } = await db
+      .from('trade_jobs')
+      .select('*')
+      .neq('user_id', session.userId)
+      .order('created_at', { ascending: false })
+
+    delegatedJobs = (allOtherJobs ?? []).filter((job) =>
+      (job.account_ids as string[]).some((id) => myAccountIds.has(id))
+    )
+  }
+
+  // 4) 합치기 (중복 제거)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const jobMap = new Map<string, any>()
+  for (const job of [...(myJobs ?? []), ...(delegatedJobs ?? [])]) {
+    if (!jobMap.has(job.id)) jobMap.set(job.id, job)
+  }
+
+  return Response.json(Array.from(jobMap.values()))
 }
 
 // POST /api/trade-jobs → 스케줄 등록

@@ -273,7 +273,7 @@ export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) 
               <h2 className="mb-3 text-base font-semibold text-gray-900">
                 등록된 스케줄 <span className="text-sm font-normal text-gray-400">({tradeJobs.length}개)</span>
               </h2>
-              <ScheduleList jobs={tradeJobs} accountMap={accountMap} onDelete={handleDeleteJob} onEdit={handleEditJob} />
+              <ScheduleList jobs={tradeJobs} accountMap={accountMap} onDelete={handleDeleteJob} onEdit={handleEditJob} currentUserId={userId} />
             </section>
             {executionResults.length > 0 && (
               <ResultPanel results={executionResults} onClose={() => setExecutionResults([])} />

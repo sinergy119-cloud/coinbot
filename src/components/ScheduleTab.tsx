@@ -213,6 +213,8 @@ export default function ScheduleTab({ defaultExchange, onExchangeChange }: Sched
   const [editTime, setEditTime] = useState('')
   const [editLoading, setEditLoading] = useState(false)
 
+  const [currentUserId, setCurrentUserId] = useState('')
+
   // 전체 계정 맵 (id → account_name)
   const [accountMap, setAccountMap] = useState<Record<string, string>>({})
 
@@ -239,6 +241,7 @@ export default function ScheduleTab({ defaultExchange, onExchangeChange }: Sched
   useEffect(() => {
     fetchJobs()
     fetchAllAccounts()
+    fetch('/api/auth/me').then((r) => r.json()).then((d) => { if (d.userId) setCurrentUserId(d.userId) }).catch(() => {})
   }, [fetchJobs, fetchAllAccounts])
 
   // 거래소 변경 → 계정 로드 (전체 디폴트 선택)
@@ -477,7 +480,7 @@ export default function ScheduleTab({ defaultExchange, onExchangeChange }: Sched
         <h2 className="mb-3 text-base font-semibold text-gray-900">
           등록된 스케줄 <span className="text-sm font-normal text-gray-400">({jobs.length}개)</span>
         </h2>
-        <ScheduleList jobs={jobs} accountMap={accountMap} onDelete={handleDelete} onEdit={handleEditJob} />
+        <ScheduleList jobs={jobs} accountMap={accountMap} onDelete={handleDelete} onEdit={handleEditJob} currentUserId={currentUserId} />
       </section>
 
       {/* 스케줄 수정 모달 */}

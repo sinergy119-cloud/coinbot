@@ -10,9 +10,10 @@ export interface ScheduleListProps {
   accountMap: Record<string, string>
   onDelete: (id: string) => void
   onEdit?: (job: TradeJobRow) => void
+  currentUserId?: string
 }
 
-export default function ScheduleList({ jobs, accountMap, onDelete, onEdit }: ScheduleListProps) {
+export default function ScheduleList({ jobs, accountMap, onDelete, onEdit, currentUserId }: ScheduleListProps) {
   if (jobs.length === 0) {
     return <p className="text-sm text-gray-400">등록된 스케줄이 없습니다.</p>
   }
@@ -66,16 +67,22 @@ export default function ScheduleList({ jobs, accountMap, onDelete, onEdit }: Sch
                   {job.schedule_time.slice(0, 5)}
                 </td>
                 <td className="py-2 flex gap-1">
-                  {onEdit && !isCompleted && (
-                    <button onClick={() => onEdit(job)}
-                      className="rounded p-1 text-gray-400 hover:bg-blue-50 hover:text-blue-600">
-                      <Pencil size={14} />
-                    </button>
+                  {(!currentUserId || job.user_id === currentUserId) ? (
+                    <>
+                      {onEdit && !isCompleted && (
+                        <button onClick={() => onEdit(job)}
+                          className="rounded p-1 text-gray-400 hover:bg-blue-50 hover:text-blue-600">
+                          <Pencil size={14} />
+                        </button>
+                      )}
+                      <button onClick={() => onDelete(job.id)}
+                        className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600">
+                        <Trash2 size={14} />
+                      </button>
+                    </>
+                  ) : (
+                    <span className="text-[10px] text-gray-400">위임</span>
                   )}
-                  <button onClick={() => onDelete(job.id)}
-                    className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600">
-                    <Trash2 size={14} />
-                  </button>
                 </td>
               </tr>
               )
@@ -101,16 +108,22 @@ export default function ScheduleList({ jobs, accountMap, onDelete, onEdit }: Sch
                   </span>
                 </div>
                 <div className="flex gap-1">
-                  {onEdit && !isCompleted && (
-                    <button onClick={() => onEdit(job)}
-                      className="rounded p-1 text-gray-400 hover:bg-blue-50 hover:text-blue-600">
-                      <Pencil size={14} />
-                    </button>
+                  {(!currentUserId || job.user_id === currentUserId) ? (
+                    <>
+                      {onEdit && !isCompleted && (
+                        <button onClick={() => onEdit(job)}
+                          className="rounded p-1 text-gray-400 hover:bg-blue-50 hover:text-blue-600">
+                          <Pencil size={14} />
+                        </button>
+                      )}
+                      <button onClick={() => onDelete(job.id)}
+                        className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600">
+                        <Trash2 size={14} />
+                      </button>
+                    </>
+                  ) : (
+                    <span className="text-[10px] text-gray-400">위임</span>
                   )}
-                  <button onClick={() => onDelete(job.id)}
-                    className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600">
-                    <Trash2 size={14} />
-                  </button>
                 </div>
               </div>
               <div className="flex items-center gap-2 text-xs mb-1">
