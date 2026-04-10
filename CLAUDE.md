@@ -141,6 +141,30 @@ UI에 거래소를 노출할 때는 다음 순서로 표시합니다:
 
 ---
 
+### 14. 한글 줄바꿈 규칙 (2026-04-10 추가)
+
+UI에 한글 텍스트를 렌더링할 때는 **단어/어절이 중간에 끊기지 않도록** 아래 CSS를 기본 적용합니다.
+
+- **필수 적용**: `word-break: keep-all` + `word-wrap: break-word` (또는 `overflow-wrap: break-word`)
+- **Tailwind 클래스**: `break-keep` (word-break: keep-all) — Tailwind는 기본적으로 `overflow-wrap: break-word`를 적용하므로 `break-keep` 하나만 추가하면 됨
+- **적용 대상**: 안내 문구, 설명 문구, 사용자 입력이 들어가는 텍스트 등 가독성이 중요한 모든 한글 텍스트
+- **주의**: 영문 URL/긴 토큰이 섞여 있는 경우 `break-all`이 필요할 수 있으니 상황에 따라 판단
+- **예외**: 제목/버튼 등 한 줄로 고정되어야 하는 텍스트는 `whitespace-nowrap` 유지
+
+```tsx
+// ✅ 권장 (Tailwind)
+<p className="text-sm leading-relaxed break-keep">
+  텔레그램 Chat ID를 등록하면 실시간 알림을 받을 수 있어요.
+</p>
+
+// ✅ 권장 (inline style)
+<p style={{ wordBreak: 'keep-all', overflowWrap: 'break-word' }}>
+  텔레그램 Chat ID를 등록하면 실시간 알림을 받을 수 있어요.
+</p>
+```
+
+---
+
 ### 13. 요청 수신 후 착수 전 확인 절차 (2026-04-06 추가)
 
 신규 기능 추가 또는 보완 요청을 받은 경우, 코드 작성에 착수하기 전에 반드시 아래 절차를 따릅니다.
