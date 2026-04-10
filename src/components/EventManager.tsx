@@ -294,7 +294,7 @@ export default function EventManager() {
                     )}
                     {!ev.api_allowed && (
                       <span className="rounded-full bg-red-100 border border-red-400 px-2 py-0.5 text-[10px] font-semibold text-red-800">
-                        ⛔ 거래소 앱에서 처리(API 미허용)
+                        ⛔ [API 거래 미허용] 거래소에서 거래
                       </span>
                     )}
                   </div>
@@ -310,8 +310,10 @@ export default function EventManager() {
                   </div>
                 </div>
                 <div className="text-xs text-gray-500 space-y-0.5">
-                  <div>📅 {ev.start_date} ~ {ev.end_date}</div>
-                  {ev.amount && <div>💰 {ev.amount}</div>}
+                  <div>
+                    📅 {ev.start_date} ~ {ev.end_date}
+                    {ev.amount && <span className="ml-2">💰 <b>{ev.amount}</b></span>}
+                  </div>
                   {ev.link && (
                     <div>🔗 <a href={ev.link} target="_blank" rel="noopener noreferrer"
                       className="text-blue-600 underline">{ev.link.length > 40 ? ev.link.slice(0, 40) + '...' : ev.link}</a></div>
