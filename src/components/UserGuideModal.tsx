@@ -29,7 +29,6 @@ const SECTIONS: GuideSection[] = [
       {
         name: '🏦 거래소 등록',
         desc: '5개 거래소 API 키를 등록하여 자동 거래 준비',
-        sub: '⚠ API 발급 시 출금 권한은 반드시 제외',
       },
     ],
   },
@@ -39,12 +38,12 @@ const SECTIONS: GuideSection[] = [
       {
         name: '에어드랍 이벤트 안내',
         desc: '관리자가 등록한 거래소별 이벤트',
-        sub: '• 이벤트 신청 필요 여부\n• API 거래 허용 여부\n• 금액 · 기간 · 링크',
+        sub: '이벤트 신청 필요 여부, API 거래 허용 여부, 금액 · 기간 · 링크',
       },
     ],
   },
   {
-    title: '📑 메인 탭 (4개)',
+    title: '📑 메인 메뉴',
     items: [
       {
         name: '1️⃣ 거래 실행',
@@ -108,13 +107,11 @@ export default function UserGuideModal({ onClose }: { onClose: () => void }) {
             </div>
           ))}
 
-          {/* 주의사항 */}
+          {/* 참고사항 */}
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
-            <p className="text-xs font-bold text-amber-800 mb-1.5">⚠ 주의사항</p>
+            <p className="text-xs font-bold text-amber-800 mb-1.5">📌 참고사항</p>
             <p className="text-[11px] text-amber-700 leading-relaxed">
-              • API 키는 반드시 <b>출금 권한 제외</b>로 발급<br />
-              • 최소 거래 금액: <b>5,100원</b><br />
-              • 텔레그램 Chat ID를 등록하면 거래 결과를 실시간 알림으로 받을 수 있어요 😊
+              텔레그램 Chat ID를 등록하면 <b>스케줄 정보와 거래 결과</b>를 실시간 알림으로 받을 수 있어요 😊
             </p>
           </div>
 
