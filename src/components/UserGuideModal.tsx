@@ -115,14 +115,6 @@ export default function UserGuideModal({ onClose }: { onClose: () => void }) {
               • <b>시장가 거래</b>만 가능해요. (지정가 X)
             </p>
           </div>
-
-          {/* 추가 문의 안내 */}
-          <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-center">
-            <p className="text-[11px] text-blue-700">
-              💡 더 궁금하신 점이 있으신가요?<br />
-              <b>💬 문의</b> 버튼으로 언제든 물어보세요!
-            </p>
-          </div>
         </div>
 
         {/* 하단 닫기 */}
