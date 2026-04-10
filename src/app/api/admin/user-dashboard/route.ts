@@ -59,17 +59,35 @@ export async function GET(req: NextRequest) {
     )
   }
 
-  // 계정 맵 (id → account_name)
+  // 계정 맵 (id → account_name) — 위임 스케줄에 포함된 다른 계정도 포함
   const accountMap: Record<string, string> = {}
   for (const acc of accounts ?? []) {
     accountMap[acc.id] = acc.account_name
+  }
+  // 위임 스케줄의 account_ids에서 누락된 계정 이름 보충
+  const missingIds = new Set<string>()
+  for (const job of delegatedJobs ?? []) {
+    for (const id of (job.account_ids as string[])) {
+      if (!accountMap[id]) missingIds.add(id)
+    }
+  }
+  if (missingIds.size > 0) {
+    const { data: extraAccs } = await db
+      .from('exchange_accounts')
+      .select('id, account_name')
+      .in('id', Array.from(missingIds))
+    for (const acc of extraAccs ?? []) {
+      accountMap[acc.id] = acc.account_name
+    }
   }
 
   return Response.json({
     user: user ?? null,
     accounts: accounts ?? [],
     accountMap,
-    tradeJobs: [...(tradeJobs ?? []), ...(delegatedJobs ?? [])],
+    tradeJobs: [...(tradeJobs ?? []), ...(delegatedJobs ?? [])].sort((a, b) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    ),
     tradeLogs: tradeLogs ?? [],
   })
 }

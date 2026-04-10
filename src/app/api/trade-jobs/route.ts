@@ -48,7 +48,10 @@ export async function GET() {
     if (!jobMap.has(job.id)) jobMap.set(job.id, job)
   }
 
-  return Response.json(Array.from(jobMap.values()))
+  const sorted = Array.from(jobMap.values()).sort((a, b) =>
+    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  )
+  return Response.json(sorted)
 }
 
 // POST /api/trade-jobs → 스케줄 등록
