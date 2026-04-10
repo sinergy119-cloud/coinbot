@@ -3,15 +3,23 @@ import { createServerClient } from '@/lib/supabase'
 import { createSession } from '@/lib/session'
 import { sendTelegramMessage } from '@/lib/telegram'
 
+// 프록시 뒤에서 origin이 localhost로 잡히므로 실제 origin 복원
+function getOrigin(req: NextRequest) {
+  const host = req.headers.get('x-forwarded-host') ?? req.headers.get('host') ?? req.nextUrl.host
+  const protocol = req.headers.get('x-forwarded-proto') ?? 'http'
+  return `${protocol}://${host}`
+}
+
 // GET /api/auth/kakao/callback?code=xxx → 카카오 로그인 콜백
 export async function GET(req: NextRequest) {
+  const origin = getOrigin(req)
   const code = req.nextUrl.searchParams.get('code')
   if (!code) {
-    return Response.redirect(new URL('/login?error=kakao_failed', req.url))
+    return Response.redirect(`${origin}/login?error=kakao_failed`)
   }
 
   const clientId = process.env.KAKAO_REST_API_KEY
-  const redirectUri = `${req.nextUrl.origin}/api/auth/kakao/callback`
+  const redirectUri = `${origin}/api/auth/kakao/callback`
 
   // 1) 인가 코드로 토큰 발급
   const tokenRes = await fetch('https://kauth.kakao.com/oauth/token', {
@@ -26,7 +34,7 @@ export async function GET(req: NextRequest) {
   })
   const tokenData = await tokenRes.json()
   if (!tokenData.access_token) {
-    return Response.redirect(new URL('/login?error=kakao_token', req.url))
+    return Response.redirect(`${origin}/login?error=kakao_token`)
   }
 
   // 2) 사용자 정보 조회
@@ -52,7 +60,7 @@ export async function GET(req: NextRequest) {
   if (existingUser) {
     // 기존 사용자 → 로그인
     if (existingUser.status === 'suspended') {
-      return Response.redirect(new URL('/login?error=suspended', req.url))
+      return Response.redirect(`${origin}/login?error=suspended`)
     }
     await db.from('users').update({ last_login_at: new Date().toISOString() }).eq('id', existingUser.id)
 
@@ -63,7 +71,7 @@ export async function GET(req: NextRequest) {
     } catch { /* 무시 */ }
 
     await createSession(existingUser.id, existingUser.user_id, true)
-    return Response.redirect(new URL('/', req.url))
+    return Response.redirect(`${origin}/`)
   }
 
   // 4) 신규 사용자 → 자동 가입 (이메일 인증 불필요)
@@ -80,7 +88,7 @@ export async function GET(req: NextRequest) {
     .single()
 
   if (error || !newUser) {
-    return Response.redirect(new URL('/login?error=kakao_signup', req.url))
+    return Response.redirect(`${origin}/login?error=kakao_signup`)
   }
 
   // 5) 관리자 텔레그램 알림
@@ -105,5 +113,5 @@ export async function GET(req: NextRequest) {
   } catch { /* 무시 */ }
 
   await createSession(newUser.id, newUser.user_id, true)
-  return Response.redirect(new URL('/', req.url))
+  return Response.redirect(`${origin}/`)
 }
