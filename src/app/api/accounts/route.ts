@@ -43,11 +43,11 @@ export async function GET(req: NextRequest) {
       if (exchange) dQuery = dQuery.eq('exchange', exchange)
       const { data } = await dQuery
 
-      // 위임 계정에 소유자 loginId와 위임 표시 추가
+      // 위임 계정에 소유자 표시 추가
       delegatedAccounts = (data ?? []).map((acc) => ({
         ...acc,
-        account_name: `${acc.account_name} (${loginIdMap.get(acc.user_id) ?? '위임'})`,
         _delegated: true,
+        _owner_login_id: loginIdMap.get(acc.user_id) ?? '',
       }))
     }
   }
