@@ -66,7 +66,7 @@ export default function TradeForm({ onExecute, loading }: TradeFormProps) {
       .then((data) => {
         const list: Account[] = Array.isArray(data) ? data : []
         setAccounts(list)
-        setSelectedIds(list.map((a) => a.id))
+        setSelectedIds(list.filter((a: Account & { _delegated?: boolean }) => !a._delegated).map((a) => a.id))
       })
       .catch(() => setAccounts([]))
       .finally(() => setAccountsLoading(false))

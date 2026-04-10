@@ -249,7 +249,7 @@ export default function ScheduleTab({ defaultExchange, onExchangeChange }: Sched
       .then((data: Account[]) => {
         const list = Array.isArray(data) ? data : []
         setAccounts(list)
-        setSelectedIds(list.map((a) => a.id))
+        setSelectedIds(list.filter((a) => !a._delegated).map((a) => a.id))
       })
       .catch(() => setAccounts([]))
   }, [exchange])
