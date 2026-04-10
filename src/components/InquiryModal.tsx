@@ -116,6 +116,19 @@ export default function InquiryModal({ onClose }: { onClose: () => void }) {
           {/* 새 문의 작성 */}
           {tab === 'new' && (
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* 친근한 안내 배너 */}
+              <div className="rounded-xl border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 p-3">
+                <div className="flex items-start gap-2">
+                  <span className="text-lg">💌</span>
+                  <div className="flex-1">
+                    <p className="text-xs font-semibold text-blue-900">답변은 텔레그램으로 바로 알려드려요!</p>
+                    <p className="mt-0.5 text-[11px] text-blue-700 leading-relaxed">
+                      궁금하신 내용이나 불편하신 점을 편하게 남겨주세요. 관리자가 확인 후 답변을 등록하면 <b>등록하신 텔레그램으로 즉시 알림</b>을 보내드립니다. 😊
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               <div>
                 <label className="mb-2 block text-xs font-medium text-gray-600">카테고리</label>
                 <div className="grid grid-cols-3 gap-2">

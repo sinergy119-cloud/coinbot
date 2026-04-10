@@ -168,10 +168,11 @@ export default function Header({ loginId, isAdmin = false, showBackToHome = fals
           {/* 문의하기 */}
           <button
             onClick={() => setShowInquiryModal(true)}
-            className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm text-gray-500 hover:bg-gray-100"
+            className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-bold text-gray-700 hover:bg-gray-100"
             title="문의하기"
           >
             <MessageCircle size={15} />
+            <span className="hidden sm:inline">문의</span>
           </button>
 
           {/* 거래소 등록 */}
