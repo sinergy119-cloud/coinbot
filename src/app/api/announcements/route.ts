@@ -3,12 +3,28 @@ import { getSession } from '@/lib/session'
 import { isAdmin } from '@/lib/admin'
 import { createServerClient } from '@/lib/supabase'
 
-// GET /api/announcements → 활성 이벤트 목록 (모든 사용자)
-export async function GET() {
+// GET /api/announcements → 활성 이벤트 목록
+// - 기본: 진행 중 이벤트만 (모든 사용자)
+// - ?all=true: 전체 이벤트 (관리자만)
+export async function GET(req: NextRequest) {
   const session = await getSession()
   if (!session) return Response.json({ error: '로그인 필요' }, { status: 401 })
 
+  const includeAll = req.nextUrl.searchParams.get('all') === 'true'
+  if (includeAll && !isAdmin(session.loginId)) {
+    return Response.json({ error: '관리자만 접근 가능합니다.' }, { status: 403 })
+  }
+
   const db = createServerClient()
+
+  if (includeAll) {
+    const { data } = await db
+      .from('announcements')
+      .select('*')
+      .order('created_at', { ascending: false })
+    return Response.json(data ?? [])
+  }
+
   // KST 기준 오늘 날짜
   const kst = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul' }))
   const today = `${kst.getFullYear()}-${String(kst.getMonth() + 1).padStart(2, '0')}-${String(kst.getDate()).padStart(2, '0')}`

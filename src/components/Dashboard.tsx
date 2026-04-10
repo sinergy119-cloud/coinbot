@@ -246,7 +246,7 @@ export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) 
                         {ev.link && (
                           <div>🔗 <a href={ev.link} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline break-all">{ev.link}</a></div>
                         )}
-                        {ev.notes && <div className="text-gray-700">📝 {ev.notes}</div>}
+                        {ev.notes && <div className="font-semibold text-red-600 animate-pulse">📝 {ev.notes}</div>}
                       </div>
                     </div>
                   )

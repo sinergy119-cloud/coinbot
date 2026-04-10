@@ -78,8 +78,13 @@ export default function EventManager() {
   }, [])
 
   async function fetchEvents() {
-    const res = await fetch('/api/announcements')
+    const res = await fetch('/api/announcements?all=true')
     if (res.ok) setEvents(await res.json())
+  }
+
+  function getTodayKST() {
+    const kst = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul' }))
+    return `${kst.getFullYear()}-${String(kst.getMonth() + 1).padStart(2, '0')}-${String(kst.getDate()).padStart(2, '0')}`
   }
 
   function handleSetExchange(ex: Exchange) {
@@ -270,58 +275,67 @@ export default function EventManager() {
         </form>
       </section>
 
-      {/* 이벤트 목록 */}
+      {/* 이벤트 리스트 */}
       <section className="rounded-xl border border-gray-200 bg-white p-4">
         <h2 className="mb-3 text-base font-semibold text-gray-900">
-          진행 중인 이벤트 <span className="text-sm font-normal text-gray-400">({events.length}건)</span>
+          이벤트 리스트 <span className="text-sm font-normal text-gray-400">({events.length}건)</span>
         </h2>
         {events.length === 0 ? (
           <p className="text-sm text-gray-400">등록된 이벤트가 없습니다.</p>
         ) : (
           <div className="space-y-2">
-            {events.map((ev) => (
-              <div key={ev.id} className="rounded-lg border border-gray-100 p-3">
-                <div className="flex items-center justify-between mb-1.5">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-medium">
-                      {EXCHANGE_EMOJI[ev.exchange as Exchange]} {EXCHANGE_LABELS[ev.exchange as Exchange]}
-                    </span>
-                    <span className="font-bold text-sm">{ev.coin}</span>
-                    {ev.require_apply && (
-                      <span className="rounded-full bg-amber-100 border border-amber-400 px-2 py-0.5 text-[10px] font-semibold text-amber-800">
-                        🎟️ 이벤트 신청 필요
+            {events.map((ev) => {
+              const today = getTodayKST()
+              const isCompleted = ev.end_date < today
+              return (
+                <div key={ev.id} className={`rounded-lg border border-gray-100 p-3 ${isCompleted ? 'opacity-60' : ''}`}>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                        isCompleted ? 'bg-gray-200 text-gray-500' : 'bg-green-100 text-green-700'
+                      }`}>
+                        {isCompleted ? '완료' : '진행중'}
                       </span>
-                    )}
-                    {!ev.api_allowed && (
-                      <span className="rounded-full bg-red-100 border border-red-400 px-2 py-0.5 text-[10px] font-semibold text-red-800">
-                        ⛔ [API 거래 미허용] 거래소에서 거래
+                      <span className="text-sm font-medium">
+                        {EXCHANGE_EMOJI[ev.exchange as Exchange]} {EXCHANGE_LABELS[ev.exchange as Exchange]}
                       </span>
-                    )}
+                      <span className="font-bold text-sm">{ev.coin}</span>
+                      {ev.require_apply && (
+                        <span className="rounded-full bg-amber-100 border border-amber-400 px-2 py-0.5 text-[10px] font-semibold text-amber-800">
+                          🎟️ 이벤트 신청 필요
+                        </span>
+                      )}
+                      {!ev.api_allowed && (
+                        <span className="rounded-full bg-red-100 border border-red-400 px-2 py-0.5 text-[10px] font-semibold text-red-800">
+                          ⛔ [API 거래 미허용] 거래소에서 거래
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex gap-1">
+                      <button onClick={() => startEdit(ev)}
+                        className="rounded p-1 text-gray-400 hover:bg-blue-50 hover:text-blue-600">
+                        <Pencil size={14} />
+                      </button>
+                      <button onClick={() => handleDelete(ev.id)}
+                        className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-600">
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex gap-1">
-                    <button onClick={() => startEdit(ev)}
-                      className="rounded p-1 text-gray-400 hover:bg-blue-50 hover:text-blue-600">
-                      <Pencil size={14} />
-                    </button>
-                    <button onClick={() => handleDelete(ev.id)}
-                      className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-600">
-                      <Trash2 size={14} />
-                    </button>
+                  <div className="text-xs text-gray-500 space-y-0.5">
+                    <div>
+                      📅 {ev.start_date} ~ {ev.end_date}
+                      {ev.amount && <span className="ml-2">💰 <b>{ev.amount}</b></span>}
+                    </div>
+                    {ev.link && (
+                      <div>🔗 <a href={ev.link} target="_blank" rel="noopener noreferrer"
+                        className="text-blue-600 underline">{ev.link.length > 40 ? ev.link.slice(0, 40) + '...' : ev.link}</a></div>
+                    )}
+                    {ev.notes && <div className="font-semibold text-red-600 animate-pulse">📝 {ev.notes}</div>}
                   </div>
                 </div>
-                <div className="text-xs text-gray-500 space-y-0.5">
-                  <div>
-                    📅 {ev.start_date} ~ {ev.end_date}
-                    {ev.amount && <span className="ml-2">💰 <b>{ev.amount}</b></span>}
-                  </div>
-                  {ev.link && (
-                    <div>🔗 <a href={ev.link} target="_blank" rel="noopener noreferrer"
-                      className="text-blue-600 underline">{ev.link.length > 40 ? ev.link.slice(0, 40) + '...' : ev.link}</a></div>
-                  )}
-                  {ev.notes && <div className="text-gray-600">📝 {ev.notes}</div>}
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </section>
