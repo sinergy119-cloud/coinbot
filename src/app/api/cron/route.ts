@@ -22,6 +22,7 @@ function getKSTDateTime() {
 function buildTelegramMessage(
   job: TradeJobRow,
   results: Array<{ accountName: string; success: boolean; reason?: string }>,
+  showAdmin?: boolean,
 ): string {
   const tradeTypeLabel: Record<TradeType, string> = { BUY: '매수', SELL: '매도', CYCLE: '매수 & 매도' }
   const successCount = results.filter((r) => r.success).length
@@ -30,6 +31,7 @@ function buildTelegramMessage(
 
   const lines = [
     `${statusIcon} <b>MyCoinBot 스케줄 실행 결과</b>`,
+    ...(showAdmin ? [``, `🔑 실행자: MyCoinBot`] : []),
     ``,
     `거래소: ${job.exchange}`,
     `코인: ${job.coin}`,
@@ -259,7 +261,8 @@ export async function POST(req: NextRequest) {
             )
 
         if (filteredResults.length === 0) continue
-        const msg = buildTelegramMessage(job, filteredResults)
+        const showAdmin = !isOwner // 본인 등록이 아니면 관리자 대행 표시
+        const msg = buildTelegramMessage(job, filteredResults, showAdmin)
         await sendTelegramMessage(tu.telegram_chat_id, msg)
       }
     } catch { /* 알림 실패는 무시 */ }

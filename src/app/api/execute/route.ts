@@ -245,8 +245,10 @@ export async function POST(req: NextRequest) {
       const successCount = filtered.filter((r) => r.success).length
       const failCount = filtered.length - successCount
       const icon = failCount === 0 ? '✅' : successCount === 0 ? '❌' : '⚠️'
+      const showAdmin = !isExecutor
       const msg = [
         `${icon} <b>MyCoinBot 즉시 실행 결과</b>`,
+        ...(showAdmin ? [``, `🔑 실행자: MyCoinBot`] : []),
         ``,
         `거래소: ${exchange}`,
         `코인: ${upperCoin}`,

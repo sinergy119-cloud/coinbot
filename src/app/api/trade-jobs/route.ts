@@ -117,8 +117,10 @@ export async function POST(req: NextRequest) {
       if (myAccs.length === 0) continue
 
       const accNames = myAccs.map((a) => a.account_name).join(', ')
+      const showAdmin = !isRegistrant
       const msg = [
         `📅 <b>스케줄 등록</b>`,
+        ...(showAdmin ? [``, `🔑 등록자: MyCoinBot`] : []),
         ``,
         `거래소: ${exchange}`,
         `계정: ${accNames}`,
