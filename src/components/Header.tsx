@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { LogOut, Shield, Settings, KeyRound, X, User } from 'lucide-react'
+import { LogOut, Shield, Building2, X, User } from 'lucide-react'
 
 const PW_RULES = [
   { label: '8자 이상', test: (pw: string) => pw.length >= 8 },
@@ -41,8 +41,8 @@ interface HeaderProps {
 
 export default function Header({ loginId, isAdmin = false, showBackToHome = false }: HeaderProps) {
   const router = useRouter()
-  const [showPwModal, setShowPwModal] = useState(false)
-  const [showProfileModal, setShowProfileModal] = useState(false)
+  const [showAccountModal, setShowAccountModal] = useState(false)
+  const [accountTab, setAccountTab] = useState<'profile' | 'password'>('profile')
   const [profileName, setProfileName] = useState('')
   const [profilePhone, setProfilePhone] = useState('')
   const [profileEmail, setProfileEmail] = useState('')
@@ -63,9 +63,11 @@ export default function Header({ loginId, isAdmin = false, showBackToHome = fals
     router.refresh()
   }
 
-  async function openProfileModal() {
+  async function openAccountModal() {
     setProfileError(''); setProfileSuccess('')
-    setShowProfileModal(true)
+    setCurrentPw(''); setNewPw(''); setConfirmPw(''); setPwError('')
+    setAccountTab('profile')
+    setShowAccountModal(true)
     try {
       const res = await fetch('/api/user/profile')
       if (res.ok) {
@@ -103,11 +105,6 @@ export default function Header({ loginId, isAdmin = false, showBackToHome = fals
     finally { setProfileLoading(false) }
   }
 
-  function openPwModal() {
-    setCurrentPw(''); setNewPw(''); setConfirmPw(''); setPwError('')
-    setShowPwModal(true)
-  }
-
   async function handlePwChange(e: React.FormEvent) {
     e.preventDefault()
     setPwError('')
@@ -122,7 +119,7 @@ export default function Header({ loginId, isAdmin = false, showBackToHome = fals
       })
       const data = await res.json()
       if (!res.ok) { setPwError(data.error || '변경 실패'); return }
-      setShowPwModal(false)
+      setShowAccountModal(false)
       alert('비밀번호가 변경되었습니다.')
     } catch {
       setPwError('네트워크 오류가 발생했습니다.')
@@ -157,32 +154,23 @@ export default function Header({ loginId, isAdmin = false, showBackToHome = fals
         <div className="flex items-center gap-1 sm:gap-3">
           <span className="hidden text-sm text-gray-500 sm:inline">{loginId}</span>
 
-          {/* 내 정보 */}
+          {/* 계정 설정 (내 정보 + 비밀번호) */}
           <button
-            onClick={openProfileModal}
+            onClick={openAccountModal}
             className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm text-gray-500 hover:bg-gray-100"
-            title="내 정보"
+            title="계정 설정"
           >
             <User size={15} />
-          </button>
-
-          {/* 비밀번호 변경 */}
-          <button
-            onClick={openPwModal}
-            className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm text-gray-500 hover:bg-gray-100"
-            title="비밀번호 변경"
-          >
-            <KeyRound size={15} />
           </button>
 
           {/* 거래소 등록 */}
           {!showBackToHome && (
             <Link
               href="/register"
-              className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm text-gray-500 hover:bg-gray-100"
+              className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-bold text-gray-700 hover:bg-gray-100"
               title="거래소 등록"
             >
-              <Settings size={15} />
+              <Building2 size={15} />
               <span className="hidden sm:inline">거래소 등록</span>
             </Link>
           )}
@@ -198,104 +186,106 @@ export default function Header({ loginId, isAdmin = false, showBackToHome = fals
         </div>
       </header>
 
-      {/* 비밀번호 변경 모달 */}
-      {showPwModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      {/* 계정 설정 모달 (내 정보 + 비밀번호 통합) */}
+      {showAccountModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-base font-semibold text-gray-900">비밀번호 변경</h2>
-              <button onClick={() => setShowPwModal(false)} className="text-gray-400 hover:text-gray-600">
+              <h2 className="text-base font-semibold text-gray-900">⚙ 계정 설정</h2>
+              <button onClick={() => setShowAccountModal(false)} className="text-gray-400 hover:text-gray-600">
                 <X size={18} />
               </button>
             </div>
-            <form onSubmit={handlePwChange} className="space-y-3">
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">현재 비밀번호</label>
-                <input
-                  type="password"
-                  value={currentPw}
-                  onChange={e => setCurrentPw(e.target.value)}
-                  required
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">새 비밀번호</label>
-                <input
-                  type="password"
-                  value={newPw}
-                  onChange={e => setNewPw(e.target.value)}
-                  required
-                  placeholder="8자 이상 (영문+숫자+특수문자)"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
-                />
-                <PasswordStrengthMini password={newPw} />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">새 비밀번호 확인</label>
-                <input
-                  type="password"
-                  value={confirmPw}
-                  onChange={e => setConfirmPw(e.target.value)}
-                  required
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
-                />
-              </div>
-              {pwError && <p className="text-xs text-red-500">{pwError}</p>}
-              <button
-                type="submit"
-                disabled={pwLoading}
-                className="w-full rounded-lg bg-blue-600 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-              >
-                {pwLoading ? '변경 중...' : '변경하기'}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
 
-      {/* 프로필 수정 모달 */}
-      {showProfileModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-base font-semibold text-gray-900">내 정보 수정</h2>
-              <button onClick={() => setShowProfileModal(false)} className="text-gray-400 hover:text-gray-600">
-                <X size={18} />
+            {/* 탭 */}
+            <div className="mb-4 flex border-b border-gray-200">
+              <button
+                type="button"
+                onClick={() => setAccountTab('profile')}
+                className={`flex-1 px-3 py-2 text-sm font-medium transition-colors ${
+                  accountTab === 'profile'
+                    ? 'border-b-2 border-blue-600 text-blue-600'
+                    : 'text-gray-400 hover:text-gray-600'
+                }`}
+              >
+                내 정보
+              </button>
+              <button
+                type="button"
+                onClick={() => setAccountTab('password')}
+                className={`flex-1 px-3 py-2 text-sm font-medium transition-colors ${
+                  accountTab === 'password'
+                    ? 'border-b-2 border-blue-600 text-blue-600'
+                    : 'text-gray-400 hover:text-gray-600'
+                }`}
+              >
+                비밀번호
               </button>
             </div>
-            <form onSubmit={handleProfileSave} className="space-y-3">
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">이름</label>
-                <input type="text" value={profileName} onChange={e => setProfileName(e.target.value)}
-                  placeholder="실명을 입력하세요"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none" />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">전화번호</label>
-                <input type="tel" value={profilePhone} onChange={e => setProfilePhone(e.target.value)}
-                  placeholder="010-1234-5678"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none" />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">이메일</label>
-                <input type="email" value={profileEmail} onChange={e => setProfileEmail(e.target.value)}
-                  placeholder="example@gmail.com"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none" />
-                {profileEmail !== originalEmail && originalEmail && (
-                  <p className="mt-1 text-[10px] text-amber-600">📩 이메일 변경 시 인증 메일이 발송됩니다.</p>
-                )}
-                {pendingEmail && (
-                  <p className="mt-1 text-[10px] text-blue-600">⏳ {pendingEmail} 인증 대기 중</p>
-                )}
-              </div>
-              {profileError && <p className="text-xs text-red-500">{profileError}</p>}
-              {profileSuccess && <p className="text-xs text-green-600">{profileSuccess}</p>}
-              <button type="submit" disabled={profileLoading}
-                className="w-full rounded-lg bg-blue-600 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
-                {profileLoading ? '저장 중...' : '저장'}
-              </button>
-            </form>
+
+            {/* 내 정보 탭 */}
+            {accountTab === 'profile' && (
+              <form onSubmit={handleProfileSave} className="space-y-3">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-600">이름</label>
+                  <input type="text" value={profileName} onChange={e => setProfileName(e.target.value)}
+                    placeholder="실명을 입력하세요"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-600">전화번호</label>
+                  <input type="tel" value={profilePhone} onChange={e => setProfilePhone(e.target.value)}
+                    placeholder="010-1234-5678"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-600">이메일</label>
+                  <input type="email" value={profileEmail} onChange={e => setProfileEmail(e.target.value)}
+                    placeholder="example@gmail.com"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none" />
+                  {profileEmail !== originalEmail && originalEmail && (
+                    <p className="mt-1 text-[10px] text-amber-600">📩 이메일 변경 시 인증 메일이 발송됩니다.</p>
+                  )}
+                  {pendingEmail && (
+                    <p className="mt-1 text-[10px] text-blue-600">⏳ {pendingEmail} 인증 대기 중</p>
+                  )}
+                </div>
+                {profileError && <p className="text-xs text-red-500">{profileError}</p>}
+                {profileSuccess && <p className="text-xs text-green-600">{profileSuccess}</p>}
+                <button type="submit" disabled={profileLoading}
+                  className="w-full rounded-lg bg-blue-600 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
+                  {profileLoading ? '저장 중...' : '저장'}
+                </button>
+              </form>
+            )}
+
+            {/* 비밀번호 탭 */}
+            {accountTab === 'password' && (
+              <form onSubmit={handlePwChange} className="space-y-3">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-600">현재 비밀번호</label>
+                  <input type="password" value={currentPw} onChange={e => setCurrentPw(e.target.value)} required
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-600">새 비밀번호</label>
+                  <input type="password" value={newPw} onChange={e => setNewPw(e.target.value)} required
+                    placeholder="8자 이상 (영문+숫자+특수문자)"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none" />
+                  <PasswordStrengthMini password={newPw} />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-600">새 비밀번호 확인</label>
+                  <input type="password" value={confirmPw} onChange={e => setConfirmPw(e.target.value)} required
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none" />
+                </div>
+                {pwError && <p className="text-xs text-red-500">{pwError}</p>}
+                <button type="submit" disabled={pwLoading}
+                  className="w-full rounded-lg bg-blue-600 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
+                  {pwLoading ? '변경 중...' : '변경하기'}
+                </button>
+              </form>
+            )}
           </div>
         </div>
       )}
