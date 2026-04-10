@@ -9,6 +9,7 @@ import type { Exchange } from '@/types/database'
 interface User {
   id: string
   user_id: string
+  name?: string
   delegated?: boolean
 }
 interface Account {
@@ -109,7 +110,13 @@ export default function AdminDashboard({ loginId, embedded }: { loginId: string;
   useEffect(() => { fetchAll() }, [fetchAll])
 
   const userMap = new Map(users.map((u) => [u.id, u.user_id]))
+  const userNameMap = new Map(users.map((u) => [u.id, u.name]))
   const getUserName = (uid: string) => userMap.get(uid) ?? uid
+  const getUserLabel = (uid: string) => {
+    const loginId = userMap.get(uid) ?? uid
+    const name = userNameMap.get(uid)
+    return name ? `${loginId} (${name})` : loginId
+  }
 
   // 현재 관리자의 user UUID 찾기
   const adminUser = users.find((u) => u.user_id === loginId)
@@ -140,7 +147,7 @@ export default function AdminDashboard({ loginId, embedded }: { loginId: string;
     }
     return Array.from(byUser.entries()).map(([uid, userAccs]) => ({
       uid,
-      loginId: getUserName(uid),
+      loginId: getUserLabel(uid),
       exchanges: groupByExchange(userAccs),
       total: userAccs.length,
     }))
@@ -191,7 +198,7 @@ export default function AdminDashboard({ loginId, embedded }: { loginId: string;
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
                 <option value="">선택...</option>
                 {users.map((u) => (
-                  <option key={u.id} value={u.id}>{u.user_id}</option>
+                  <option key={u.id} value={u.id}>{u.name ? `${u.user_id} (${u.name})` : u.user_id}</option>
                 ))}
               </select>
             </div>
