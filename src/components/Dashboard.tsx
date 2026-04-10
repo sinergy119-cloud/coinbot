@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { ChevronDown, ChevronUp } from 'lucide-react'
+import { ChevronDown, ChevronUp, BookOpen } from 'lucide-react'
 import Header from '@/components/Header'
+import UserGuideModal from '@/components/UserGuideModal'
 import TradeForm from '@/components/TradeForm'
 import type { TradeInput } from '@/components/TradeForm'
 import ScheduleList from '@/components/ScheduleList'
@@ -65,6 +66,24 @@ export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) 
     start_date: string; end_date: string
   }[]>([])
   const [eventsExpanded, setEventsExpanded] = useState(true)
+
+  // 가이드 배너 (첫 방문 시 펼침, 사용자가 닫으면 localStorage에 저장)
+  const [guideDismissed, setGuideDismissed] = useState(true) // SSR 방지 위해 초기값 true
+  const [showGuideModal, setShowGuideModal] = useState(false)
+
+  useEffect(() => {
+    try {
+      const dismissed = localStorage.getItem('coinbot_guide_dismissed') === 'true'
+      setGuideDismissed(dismissed)
+    } catch { /* 무시 */ }
+  }, [])
+
+  function handleDismissGuide() {
+    setGuideDismissed(true)
+    try {
+      localStorage.setItem('coinbot_guide_dismissed', 'true')
+    } catch { /* 무시 */ }
+  }
 
   void userId
 
@@ -237,6 +256,48 @@ export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) 
       <Header loginId={loginId} isAdmin={isAdmin} />
 
       <main className="mx-auto max-w-2xl px-4 py-4">
+        {/* 사용 가이드 배너 (첫 방문 시만 펼침) */}
+        {!guideDismissed && (
+          <div className="mb-3 rounded-xl border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 overflow-hidden shadow-sm">
+            <div className="flex items-start gap-3 p-3">
+              <div className="mt-0.5 text-2xl">📖</div>
+              <div className="flex-1">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <p className="text-sm font-bold text-blue-900">처음이신가요? 사용 가이드</p>
+                  <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-[9px] font-bold text-white">NEW</span>
+                </div>
+                <p className="text-[11px] text-blue-800 leading-relaxed mb-2">
+                  🎯 5개 한국 거래소 에어드랍 이벤트용 자동 거래 서비스입니다.<br />
+                  👇 아래 버튼으로 전체 메뉴 구성을 확인하세요.
+                </p>
+                <div className="flex gap-1.5">
+                  <button
+                    onClick={() => setShowGuideModal(true)}
+                    className="flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-blue-700"
+                  >
+                    <BookOpen size={12} />
+                    메뉴 가이드 보기
+                  </button>
+                  <button
+                    onClick={handleDismissGuide}
+                    className="rounded-lg bg-white border border-blue-200 px-3 py-1.5 text-[11px] font-medium text-blue-600 hover:bg-blue-50"
+                  >
+                    다시 보지 않기
+                  </button>
+                </div>
+              </div>
+              <button
+                onClick={handleDismissGuide}
+                className="text-blue-400 hover:text-blue-600 p-1"
+                title="닫기"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
+        {showGuideModal && <UserGuideModal onClose={() => setShowGuideModal(false)} />}
+
         {/* 이벤트 배너 (아코디언) */}
         {events.length > 0 && (
           <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 overflow-hidden">

@@ -3,8 +3,9 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { LogOut, Shield, Building2, X, User, MessageCircle } from 'lucide-react'
+import { LogOut, Shield, Building2, X, User, MessageCircle, HelpCircle } from 'lucide-react'
 import InquiryModal from '@/components/InquiryModal'
+import UserGuideModal from '@/components/UserGuideModal'
 
 const PW_RULES = [
   { label: '8자 이상', test: (pw: string) => pw.length >= 8 },
@@ -45,6 +46,7 @@ export default function Header({ loginId, isAdmin = false, showBackToHome = fals
   const [showAccountModal, setShowAccountModal] = useState(false)
   const [accountTab, setAccountTab] = useState<'profile' | 'password'>('profile')
   const [showInquiryModal, setShowInquiryModal] = useState(false)
+  const [showGuideModal, setShowGuideModal] = useState(false)
   const [profileName, setProfileName] = useState('')
   const [profilePhone, setProfilePhone] = useState('')
   const [profileEmail, setProfileEmail] = useState('')
@@ -163,6 +165,15 @@ export default function Header({ loginId, isAdmin = false, showBackToHome = fals
             title="계정 설정"
           >
             <User size={15} />
+          </button>
+
+          {/* 사용 가이드 */}
+          <button
+            onClick={() => setShowGuideModal(true)}
+            className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm text-gray-500 hover:bg-gray-100"
+            title="사용 가이드"
+          >
+            <HelpCircle size={15} />
           </button>
 
           {/* 문의하기 */}
@@ -304,6 +315,9 @@ export default function Header({ loginId, isAdmin = false, showBackToHome = fals
 
       {/* 문의하기 모달 */}
       {showInquiryModal && <InquiryModal onClose={() => setShowInquiryModal(false)} />}
+
+      {/* 사용 가이드 모달 */}
+      {showGuideModal && <UserGuideModal onClose={() => setShowGuideModal(false)} />}
     </>
   )
 }
