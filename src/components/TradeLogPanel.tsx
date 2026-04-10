@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { ChevronDown, ChevronUp } from 'lucide-react'
 import { EXCHANGE_LABELS, EXCHANGE_EMOJI } from '@/types/database'
 import type { Exchange } from '@/types/database'
 
@@ -31,6 +32,7 @@ function toKST(dt: string) {
 export default function TradeLogPanel() {
   const [logs, setLogs] = useState<TradeLog[]>([])
   const [days, setDays] = useState(7)
+  const [expanded, setExpanded] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -46,30 +48,48 @@ export default function TradeLogPanel() {
     .reduce((sum, l) => sum + Math.max(0, Number(l.balance_before) - Number(l.balance)), 0)
 
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-4">
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-base font-semibold text-gray-900">📋 실행 로그</h2>
-        <div className="flex gap-1">
-          {[7, 14, 30].map((d) => (
-            <button key={d} onClick={() => setDays(d)}
-              className={`rounded-full px-2.5 py-1 text-xs font-medium transition ${
-                days === d ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-              }`}>
-              {d}일
-            </button>
-          ))}
+    <section className="rounded-xl border border-gray-200 bg-white">
+      {/* 아코디언 헤더 */}
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="flex w-full items-center justify-between p-4 hover:bg-gray-50 transition"
+      >
+        <div className="flex items-center gap-3">
+          <h2 className="text-base font-semibold text-gray-900">📋 실행 로그</h2>
+          {logs.length > 0 && (
+            <span className="flex gap-2 text-xs">
+              <span className="text-gray-500">총 {logs.length}건</span>
+              <span className="text-green-600">성공 {logs.filter((l) => l.success).length}</span>
+              <span className="text-red-600">실패 {logs.filter((l) => !l.success).length}</span>
+            </span>
+          )}
         </div>
-      </div>
+        {expanded ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
+      </button>
 
-      {/* 요약 */}
-      {logs.length > 0 && (
-        <div className="mb-3 flex gap-3 text-xs">
-          <span className="text-gray-500">총 {logs.length}건</span>
-          <span className="text-green-600">성공 {logs.filter((l) => l.success).length}</span>
-          <span className="text-red-600">실패 {logs.filter((l) => !l.success).length}</span>
-          {totalCost > 0 && <span className="text-amber-600">비용 {Math.round(totalCost).toLocaleString()}원</span>}
+      {/* 아코디언 내용 */}
+      {expanded && (
+      <div className="px-4 pb-4">
+        <div className="flex items-center justify-end mb-3">
+          <div className="flex gap-1">
+            {[7, 14, 30].map((d) => (
+              <button key={d} onClick={(e) => { e.stopPropagation(); setDays(d) }}
+                className={`rounded-full px-2.5 py-1 text-xs font-medium transition ${
+                  days === d ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                }`}>
+                {d}일
+              </button>
+            ))}
+          </div>
         </div>
-      )}
+
+        {/* 비용 요약 */}
+        {logs.length > 0 && totalCost > 0 && (
+          <div className="mb-3 text-xs text-amber-600">
+            비용 {Math.round(totalCost).toLocaleString()}원
+          </div>
+        )}
 
       {logs.length === 0 ? (
         <p className="text-sm text-gray-400">실행 로그가 없습니다.</p>
@@ -149,6 +169,8 @@ export default function TradeLogPanel() {
             })}
           </div>
         </>
+      )}
+      </div>
       )}
     </section>
   )
