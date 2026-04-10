@@ -80,14 +80,6 @@ export async function DELETE(_req: NextRequest, { params }: { params: Params }) 
   const { id } = await params
   const db = createServerClient()
 
-  // 삭제 전 기존 정보 조회 (알림용)
-  const { data: existing } = await db
-    .from('trade_jobs')
-    .select('exchange, coin, trade_type, amount_krw, schedule_from, schedule_to, schedule_time, account_ids')
-    .eq('id', id)
-    .eq('user_id', session.userId)
-    .single()
-
   const { error } = await db
     .from('trade_jobs')
     .delete()
@@ -95,27 +87,6 @@ export async function DELETE(_req: NextRequest, { params }: { params: Params }) 
     .eq('user_id', session.userId)
 
   if (error) return Response.json({ error: error.message }, { status: 500 })
-
-  // 텔레그램 알림
-  try {
-    const { data: user } = await db.from('users').select('telegram_chat_id').eq('id', session.userId).single()
-    if (user?.telegram_chat_id && existing) {
-      const { data: accRows } = await db.from('exchange_accounts').select('id, account_name').in('id', existing.account_ids as string[])
-      const accNames = accRows?.map((a) => a.account_name).join(', ') ?? ''
-      const msg = [
-        `🗑️ <b>스케줄 삭제</b>`,
-        ``,
-        `거래소: ${existing.exchange}`,
-        `계정: ${accNames}`,
-        `코인: ${existing.coin}`,
-        `방식: ${TRADE_TYPE_LABEL[existing.trade_type] ?? existing.trade_type}`,
-        existing.trade_type !== 'SELL' ? `금액: ${Number(existing.amount_krw).toLocaleString()}원` : '',
-        `기간: ${existing.schedule_from} ~ ${existing.schedule_to}`,
-        `시간: ${existing.schedule_time}`,
-      ].filter(Boolean).join('\n')
-      await sendTelegramMessage(user.telegram_chat_id, msg)
-    }
-  } catch { /* 알림 실패 무시 */ }
 
   return Response.json({ ok: true })
 }
