@@ -15,7 +15,7 @@ interface GuideSection {
 
 const SECTIONS: GuideSection[] = [
   {
-    title: '🔝 상단 헤더',
+    title: '🔝 헤더 메뉴',
     items: [
       {
         name: '⚙ 계정 설정',
@@ -111,7 +111,8 @@ export default function UserGuideModal({ onClose }: { onClose: () => void }) {
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
             <p className="text-xs font-bold text-amber-800 mb-1.5">📌 참고사항</p>
             <p className="text-[11px] text-amber-700 leading-relaxed">
-              텔레그램 Chat ID를 등록하면 <b>스케줄 정보와 거래 결과</b>를 실시간 알림으로 받을 수 있어요 😊
+              • 텔레그램 Chat ID를 등록하면 <b>스케줄 정보와 거래 결과</b>를 실시간 알림으로 받을 수 있어요 😊<br />
+              • <b>시장가 거래</b>만 가능해요. (지정가 X)
             </p>
           </div>
 
@@ -119,7 +120,7 @@ export default function UserGuideModal({ onClose }: { onClose: () => void }) {
           <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-center">
             <p className="text-[11px] text-blue-700">
               💡 더 궁금하신 점이 있으신가요?<br />
-              상단 <b>💬 문의</b> 버튼으로 언제든 물어보세요!
+              <b>💬 문의</b> 버튼으로 언제든 물어보세요!
             </p>
           </div>
         </div>
