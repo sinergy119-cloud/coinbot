@@ -81,7 +81,7 @@ export default function ScheduleList({ jobs, accountMap, onDelete, onEdit, curre
                       </button>
                     </>
                   ) : (
-                    <span className="text-[10px] text-gray-400">위임</span>
+                    <span className="text-[10px] text-purple-500">관리자 등록</span>
                   )}
                 </td>
               </tr>
@@ -122,7 +122,7 @@ export default function ScheduleList({ jobs, accountMap, onDelete, onEdit, curre
                       </button>
                     </>
                   ) : (
-                    <span className="text-[10px] text-gray-400">위임</span>
+                    <span className="text-[10px] text-purple-500">관리자 등록</span>
                   )}
                 </div>
               </div>

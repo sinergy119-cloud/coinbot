@@ -3,7 +3,10 @@ import { getSession } from '@/lib/session'
 import { createServerClient } from '@/lib/supabase'
 import { isAdmin } from '@/lib/admin'
 import { placeMarketOrder, placeCycleOrder, placeMarketOrderByCoinQty, getCoinBalance, getBalance } from '@/lib/exchange'
+import { sendTelegramMessage } from '@/lib/telegram'
 import type { Exchange, TradeType } from '@/types/database'
+
+const TRADE_TYPE_LABEL: Record<string, string> = { BUY: '매수', SELL: '매도', CYCLE: '매수 & 매도' }
 
 export interface ExecutionResultItem {
   accountId: string
@@ -214,6 +217,48 @@ export async function POST(req: NextRequest) {
     }))
     await db.from('trade_logs').insert(logs)
   } catch { /* 로그 저장 실패는 무시 */ }
+
+  // 텔레그램 알림: 수신자별 본인 계정 결과만 필터링
+  try {
+    const accOwnerMap = new Map<string, string>()
+    for (const acc of accounts) accOwnerMap.set(acc.id, acc.user_id)
+
+    const targetUserIds = new Set<string>([session.userId])
+    for (const acc of accounts) targetUserIds.add(acc.user_id)
+
+    const { data: targetUsers } = await db
+      .from('users')
+      .select('id, telegram_chat_id')
+      .in('id', Array.from(targetUserIds))
+
+    const upperCoin = coin.toUpperCase()
+    for (const tu of targetUsers ?? []) {
+      if (!tu.telegram_chat_id) continue
+
+      const isExecutor = tu.id === session.userId
+      const filtered = isExecutor
+        ? results
+        : results.filter((r) => accOwnerMap.get(r.accountId) === tu.id)
+
+      if (filtered.length === 0) continue
+
+      const successCount = filtered.filter((r) => r.success).length
+      const failCount = filtered.length - successCount
+      const icon = failCount === 0 ? '✅' : successCount === 0 ? '❌' : '⚠️'
+      const msg = [
+        `${icon} <b>MyCoinBot 즉시 실행 결과</b>`,
+        ``,
+        `거래소: ${exchange}`,
+        `코인: ${upperCoin}`,
+        `방식: ${TRADE_TYPE_LABEL[tradeType] ?? tradeType}`,
+        tt !== 'SELL' ? `금액: ${Number(amountKrw).toLocaleString()}원` : '',
+        ``,
+        `<b>계정별 결과 (${successCount}성공 / ${failCount}실패)</b>`,
+        ...filtered.map((r) => `${r.success ? '✅' : '❌'} ${r.accountName}${r.success ? '' : `: ${r.reason}`}`),
+      ].filter(Boolean).join('\n')
+      await sendTelegramMessage(tu.telegram_chat_id, msg)
+    }
+  } catch { /* 알림 실패는 무시 */ }
 
   return Response.json(results)
 }

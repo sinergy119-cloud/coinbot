@@ -289,7 +289,7 @@ export default function MemberStatus() {
                                       </span>
                                       <span className="text-xs">{EXCHANGE_EMOJI[job.exchange as Exchange]} {EXCHANGE_LABELS[job.exchange as Exchange]}</span>
                                     </div>
-                                    {!isOwner && <span className="text-[10px] text-gray-400">위임</span>}
+                                    {!isOwner && <span className="text-[10px] text-purple-500">관리자 등록</span>}
                                   </div>
                                   <div className="text-xs text-gray-600">
                                     <b>{job.coin}</b> · {TRADE_TYPE_LABELS[job.trade_type as TradeType] ?? job.trade_type} · {job.trade_type === 'SELL' ? '전량' : `${Number(job.amount_krw).toLocaleString()}원`}

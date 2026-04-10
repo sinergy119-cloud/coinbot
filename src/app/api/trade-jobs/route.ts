@@ -89,12 +89,34 @@ export async function POST(req: NextRequest) {
 
   if (error) return Response.json({ error: error.message }, { status: 500 })
 
-  // 텔레그램 알림
+  // 텔레그램 알림: 등록자(전체) + 계정 소유자(본인 계정만)
   try {
-    const { data: user } = await db.from('users').select('telegram_chat_id').eq('id', session.userId).single()
-    if (user?.telegram_chat_id) {
-      const { data: accRows } = await db.from('exchange_accounts').select('id, account_name').in('id', accountIds)
-      const accNames = accRows?.map((a) => a.account_name).join(', ') ?? ''
+    const { data: accRows } = await db
+      .from('exchange_accounts')
+      .select('id, account_name, user_id')
+      .in('id', accountIds)
+
+    const accOwnerMap = new Map<string, string>()
+    for (const acc of accRows ?? []) accOwnerMap.set(acc.id, acc.user_id)
+
+    const targetUserIds = new Set<string>([session.userId])
+    for (const acc of accRows ?? []) targetUserIds.add(acc.user_id)
+
+    const { data: targetUsers } = await db
+      .from('users')
+      .select('id, telegram_chat_id')
+      .in('id', Array.from(targetUserIds))
+
+    for (const tu of targetUsers ?? []) {
+      if (!tu.telegram_chat_id) continue
+
+      const isRegistrant = tu.id === session.userId
+      const myAccs = (accRows ?? []).filter((a) =>
+        isRegistrant ? true : a.user_id === tu.id
+      )
+      if (myAccs.length === 0) continue
+
+      const accNames = myAccs.map((a) => a.account_name).join(', ')
       const msg = [
         `📅 <b>스케줄 등록</b>`,
         ``,
@@ -106,7 +128,7 @@ export async function POST(req: NextRequest) {
         `기간: ${scheduleFrom} ~ ${scheduleTo}`,
         `시간: ${scheduleTime}`,
       ].filter(Boolean).join('\n')
-      await sendTelegramMessage(user.telegram_chat_id, msg)
+      await sendTelegramMessage(tu.telegram_chat_id, msg)
     }
   } catch { /* 알림 실패 무시 */ }
 

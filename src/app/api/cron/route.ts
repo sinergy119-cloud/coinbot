@@ -232,34 +232,35 @@ export async function POST(req: NextRequest) {
       }
     } catch { /* 로그 저장 실패는 무시 */ }
 
-    // 텔레그램 알림 발송 (스케줄 등록자 + 계정 소유자 모두에게)
+    // 텔레그램 알림 발송: 수신자별로 본인 계정 결과만 필터링
     try {
-      const msg = buildTelegramMessage(job, orderResults)
-      const chatIds = new Set<string>()
+      // 계정별 소유자 맵 (accountId → user_id)
+      const accOwnerMap = new Map<string, string>()
+      for (const acc of accounts ?? []) accOwnerMap.set(acc.id, acc.user_id)
 
-      // 1) 스케줄 등록자
-      const { data: owner } = await db
+      // 수신 대상: 스케줄 등록자 + 계정 소유자 (유니크)
+      const targetUserIds = new Set<string>([job.user_id])
+      for (const acc of accounts ?? []) targetUserIds.add(acc.user_id)
+
+      const { data: targetUsers } = await db
         .from('users')
-        .select('telegram_chat_id')
-        .eq('id', job.user_id)
-        .single()
-      if (owner?.telegram_chat_id) chatIds.add(owner.telegram_chat_id)
+        .select('id, telegram_chat_id')
+        .in('id', Array.from(targetUserIds))
 
-      // 2) 계정 소유자 (위임 계정의 실제 소유자)
-      if (accounts && accounts.length > 0) {
-        const accountUserIds = [...new Set(accounts.map((a) => a.user_id))]
-        const { data: accountOwners } = await db
-          .from('users')
-          .select('telegram_chat_id')
-          .in('id', accountUserIds)
-        for (const ao of accountOwners ?? []) {
-          if (ao.telegram_chat_id) chatIds.add(ao.telegram_chat_id)
-        }
-      }
+      for (const tu of targetUsers ?? []) {
+        if (!tu.telegram_chat_id) continue
 
-      // 중복 제거 후 모두에게 발송
-      for (const chatId of chatIds) {
-        await sendTelegramMessage(chatId, msg)
+        const isOwner = tu.id === job.user_id
+        // 스케줄 등록자 → 전체 결과, 계정 소유자 → 본인 계정만
+        const filteredResults = isOwner
+          ? orderResults
+          : orderResults.filter((r: { accountId?: string }) =>
+              r.accountId && accOwnerMap.get(r.accountId) === tu.id
+            )
+
+        if (filteredResults.length === 0) continue
+        const msg = buildTelegramMessage(job, filteredResults)
+        await sendTelegramMessage(tu.telegram_chat_id, msg)
       }
     } catch { /* 알림 실패는 무시 */ }
   }
