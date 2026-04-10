@@ -981,20 +981,17 @@ export default function LoginPage() {
           {mode === 'login' ? '계정이 없으신가요? 회원 가입' : '이미 계정이 있으신가요? 로그인'}
         </button>
 
-        {/* 카카오톡 1:1 문의 배너 (비회원용) */}
-        <div className="mt-4 border-t border-gray-100 pt-4">
+        {/* 카카오톡 1:1 문의 (비회원용) */}
+        <div className="mt-3 border-t border-gray-100 pt-3">
           <a
             href="https://open.kakao.com/o/sUAoiJpi"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 rounded-xl bg-[#FEE500] py-3 text-sm font-bold text-[#3C1E1E] hover:brightness-95 transition shadow-sm"
+            className="flex items-center justify-center gap-1.5 rounded-lg border border-gray-200 bg-white py-1.5 text-xs font-medium text-gray-600 hover:border-yellow-400 hover:bg-yellow-50 transition"
           >
-            <span className="text-lg">💬</span>
-            <span>카카오톡으로 1:1 문의하기</span>
+            <span>💬</span>
+            <span>가입 전 궁금하신가요? <span className="text-yellow-700 font-semibold">카카오톡 1:1 문의</span></span>
           </a>
-          <p className="mt-2 text-center text-[11px] text-gray-400">
-            가입 전 궁금하신 점이 있으신가요? 편하게 물어보세요 😊
-          </p>
         </div>
 
       </div>
