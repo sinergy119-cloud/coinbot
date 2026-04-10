@@ -39,7 +39,7 @@ export async function PATCH(req: NextRequest) {
   // 이름/전화번호: 바로 저장
   if ('name' in body) updates.name = body.name?.trim() || null
   if ('phone' in body) updates.phone = body.phone?.replace(/[^0-9]/g, '') || null
-  if ('delegated' in body) updates.delegated = !!body.delegated
+  // 주의: delegated는 관리자 전용 필드이므로 일반 사용자가 직접 수정 불가
 
   // 이메일 변경: 인증 필요
   if ('email' in body) {
@@ -77,8 +77,8 @@ export async function PATCH(req: NextRequest) {
 
         // 새 이메일로 인증 메일 발송
         try {
-          const host = req.headers.get('host') ?? 'localhost:3000'
-          const proto = host.includes('localhost') ? 'http' : 'http'
+          const host = req.headers.get('x-forwarded-host') ?? req.headers.get('host') ?? 'localhost:3000'
+          const proto = req.headers.get('x-forwarded-proto') ?? (host.includes('localhost') ? 'http' : 'http')
           const verifyUrl = `${proto}://${host}/api/auth/verify-email?token=${token}`
           await sendVerificationEmail(newEmail, currentUser?.name ?? session.loginId, verifyUrl)
         } catch {
@@ -88,6 +88,7 @@ export async function PATCH(req: NextRequest) {
         // 기존 이메일로 알림
         if (currentUser?.email) {
           try {
+            const { escapeHtml } = await import('@/lib/html')
             const nodemailer = await import('nodemailer')
             const transporter = nodemailer.default.createTransport({
               service: 'gmail',
@@ -97,7 +98,7 @@ export async function PATCH(req: NextRequest) {
               from: `MyCoinBot <${process.env.GMAIL_USER}>`,
               to: currentUser.email,
               subject: '[MyCoinBot] 이메일 변경 요청 알림',
-              html: `<p>회원님의 계정에서 이메일 변경이 요청되었습니다.</p><p>새 이메일: <b>${newEmail}</b></p><p>본인이 아닌 경우 관리자에게 문의해주세요.</p>`,
+              html: `<p>회원님의 계정에서 이메일 변경이 요청되었습니다.</p><p>새 이메일: <b>${escapeHtml(newEmail)}</b></p><p>본인이 아닌 경우 관리자에게 문의해주세요.</p>`,
             })
           } catch { /* 알림 실패 무시 */ }
         }

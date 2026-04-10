@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { createServerClient } from '@/lib/supabase'
 import { sendTelegramMessage } from '@/lib/telegram'
+import { escapeHtml } from '@/lib/html'
 
 // GET /api/auth/verify?token=xxx → 이메일 인증 처리
 export async function GET(req: NextRequest) {
@@ -77,12 +78,14 @@ export async function GET(req: NextRequest) {
     }
   } catch { /* 알림 실패 무시 */ }
 
-  return new Response(renderHtml('✅ 인증 완료!', `${user.name}님, 이메일 인증이 완료되었습니다.<br>이제 로그인할 수 있습니다.`), {
+  const safeName = escapeHtml(user.name)
+  return new Response(renderHtml('✅ 인증 완료!', `${safeName}님, 이메일 인증이 완료되었습니다.<br>이제 로그인할 수 있습니다.`), {
     headers: { 'Content-Type': 'text/html; charset=utf-8' },
   })
 }
 
 // 인증 결과 HTML 페이지
+// NOTE: title은 고정 문자열만 전달, message는 호출부에서 escapeHtml로 감싼 것만 허용
 function renderHtml(title: string, message: string) {
   return `<!DOCTYPE html>
 <html lang="ko">

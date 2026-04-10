@@ -11,8 +11,16 @@ function getOrigin(req: NextRequest) {
 }
 
 // GET /api/auth/kakao/callback?code=xxx → 카카오 로그인 콜백
+// 주의: 현재 카카오 로그인은 비활성화 상태입니다 (비즈앱 전환 전).
+// 재활성화 시 반드시 state 파라미터 + PKCE 구현 필요.
 export async function GET(req: NextRequest) {
   const origin = getOrigin(req)
+
+  // 카카오 로그인 비활성화 플래그 — 비즈앱 전환 전까지 콜백 차단
+  if (process.env.KAKAO_LOGIN_ENABLED !== 'true') {
+    return Response.redirect(`${origin}/login?error=kakao_disabled`)
+  }
+
   const code = req.nextUrl.searchParams.get('code')
   if (!code) {
     return Response.redirect(`${origin}/login?error=kakao_failed`)

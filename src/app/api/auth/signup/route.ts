@@ -3,10 +3,12 @@ import bcrypt from 'bcryptjs'
 import { randomBytes } from 'crypto'
 import { createServerClient } from '@/lib/supabase'
 import { sendVerificationEmail } from '@/lib/email'
+import { validatePassword } from '@/lib/password'
 
 function getSiteUrl(req: NextRequest) {
-  const host = req.headers.get('host') ?? 'localhost:3000'
-  const proto = host.includes('localhost') ? 'http' : 'http' // HTTP 환경
+  // 프록시 헤더 우선, 없으면 host 헤더 사용
+  const host = req.headers.get('x-forwarded-host') ?? req.headers.get('host') ?? 'localhost:3000'
+  const proto = req.headers.get('x-forwarded-proto') ?? (host.includes('localhost') ? 'http' : 'http')
   return `${proto}://${host}`
 }
 
@@ -17,8 +19,9 @@ export async function POST(req: NextRequest) {
   if (!userId || !password || !name || !phone || !email) {
     return Response.json({ error: '모든 필수 항목을 입력해주세요.' }, { status: 400 })
   }
-  if (password.length < 6) {
-    return Response.json({ error: '비밀번호는 6자 이상이어야 합니다.' }, { status: 400 })
+  const pwCheck = validatePassword(password)
+  if (!pwCheck.valid) {
+    return Response.json({ error: pwCheck.error }, { status: 400 })
   }
   // 전화번호 형식 검증
   const phoneClean = phone.replace(/[^0-9]/g, '')

@@ -25,7 +25,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
     .eq('user_id', session.userId)
     .single()
 
-  // 수정 가능 필드
+  // 수정 가능 필드 (status, last_executed_at 등은 시스템 전용이므로 사용자 수정 불가)
   const updates: Record<string, unknown> = {}
   if (body.exchange) updates.exchange = body.exchange
   if (body.coin) updates.coin = body.coin.toUpperCase()
@@ -35,7 +35,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
   if (body.scheduleFrom) updates.schedule_from = body.scheduleFrom
   if (body.scheduleTo) updates.schedule_to = body.scheduleTo
   if (body.scheduleTime) updates.schedule_time = body.scheduleTime
-  if (body.status) updates.status = body.status
 
   const { data, error } = await db
     .from('trade_jobs')

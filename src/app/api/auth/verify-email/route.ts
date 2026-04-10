@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { createServerClient } from '@/lib/supabase'
+import { escapeHtml } from '@/lib/html'
 
 // GET /api/auth/verify-email?token=xxx → 이메일 변경 인증
 export async function GET(req: NextRequest) {
@@ -45,9 +46,12 @@ export async function GET(req: NextRequest) {
     email_verify_expires_at: null,
   }).eq('id', user.id)
 
+  const safeName = escapeHtml(user.name ?? '회원')
+  const safeOldEmail = escapeHtml(oldEmail)
+  const safePendingEmail = escapeHtml(user.pending_email)
   return new Response(renderHtml(
     '✅ 이메일 변경 완료',
-    `${user.name ?? '회원'}님의 이메일이 변경되었습니다.<br><b>${oldEmail}</b> → <b>${user.pending_email}</b>`
+    `${safeName}님의 이메일이 변경되었습니다.<br><b>${safeOldEmail}</b> → <b>${safePendingEmail}</b>`
   ), {
     headers: { 'Content-Type': 'text/html; charset=utf-8' },
   })

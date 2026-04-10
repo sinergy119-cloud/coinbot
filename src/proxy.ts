@@ -2,7 +2,12 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { jwtVerify } from 'jose'
 
-const secret = new TextEncoder().encode(process.env.SESSION_SECRET ?? 'fallback-dev-secret')
+// 런타임에 환경변수를 읽음 (빌드 시점에 secret이 없어도 에러 안 남)
+function getSecret() {
+  const raw = process.env.SESSION_SECRET
+  if (!raw) throw new Error('SESSION_SECRET 환경변수가 설정되지 않았습니다.')
+  return new TextEncoder().encode(raw)
+}
 
 const PUBLIC_PATHS = ['/login', '/api/auth/', '/api/cron', '/api/markets', '/api/guide']
 
@@ -26,7 +31,7 @@ export default async function proxy(request: NextRequest) {
   }
 
   try {
-    await jwtVerify(token, secret)
+    await jwtVerify(token, getSecret())
     return NextResponse.next()
   } catch {
     return NextResponse.redirect(new URL('/login', request.url))

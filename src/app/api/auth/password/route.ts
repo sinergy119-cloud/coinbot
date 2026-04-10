@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { getSession } from '@/lib/session'
 import { createServerClient } from '@/lib/supabase'
+import { validatePassword } from '@/lib/password'
 
 // PATCH /api/auth/password → 비밀번호 변경
 export async function PATCH(req: NextRequest) {
@@ -13,8 +14,9 @@ export async function PATCH(req: NextRequest) {
   if (!currentPassword || !newPassword) {
     return Response.json({ error: '현재 비밀번호와 새 비밀번호를 입력해주세요.' }, { status: 400 })
   }
-  if (newPassword.length < 6) {
-    return Response.json({ error: '새 비밀번호는 6자 이상이어야 합니다.' }, { status: 400 })
+  const pwCheck = validatePassword(newPassword)
+  if (!pwCheck.valid) {
+    return Response.json({ error: pwCheck.error }, { status: 400 })
   }
 
   const db = createServerClient()
