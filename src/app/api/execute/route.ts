@@ -4,6 +4,7 @@ import { createServerClient } from '@/lib/supabase'
 import { isAdmin } from '@/lib/admin'
 import { placeMarketOrder, placeCycleOrder, placeMarketOrderByCoinQty, getCoinBalance, getBalance } from '@/lib/exchange'
 import { sendTelegramMessage } from '@/lib/telegram'
+import { isValidExchange, isValidTradeType, isValidCoin, isValidUuidArray, parseAmountKrw } from '@/lib/validation'
 import type { Exchange, TradeType } from '@/types/database'
 
 const TRADE_TYPE_LABEL: Record<string, string> = { BUY: '매수', SELL: '매도', CYCLE: '매수 & 매도' }
@@ -26,15 +27,25 @@ export async function POST(req: NextRequest) {
 
   const { exchange, coin, tradeType, amountKrw, accountIds } = await req.json()
 
-  if (!exchange || !coin || !tradeType || !accountIds?.length) {
-    return Response.json({ error: '필수 항목이 누락되었습니다.' }, { status: 400 })
+  if (!isValidExchange(exchange)) {
+    return Response.json({ error: '유효하지 않은 거래소입니다.' }, { status: 400 })
+  }
+  if (!isValidCoin(coin)) {
+    return Response.json({ error: '유효하지 않은 코인입니다.' }, { status: 400 })
+  }
+  if (!isValidTradeType(tradeType)) {
+    return Response.json({ error: '유효하지 않은 거래 방식입니다.' }, { status: 400 })
+  }
+  if (!isValidUuidArray(accountIds)) {
+    return Response.json({ error: '계정을 선택해주세요.' }, { status: 400 })
   }
 
   const tt = tradeType as TradeType
+  const parsedAmount = parseAmountKrw(amountKrw)
 
   // 매도는 금액 불필요, 매수/사이클은 최소 금액 검증
   if (tt !== 'SELL') {
-    if (!amountKrw || amountKrw < 5100) {
+    if (parsedAmount === null || parsedAmount < 5100) {
       return Response.json({ error: '최소 거래 금액은 5,100원입니다.' }, { status: 400 })
     }
   }
@@ -73,10 +84,10 @@ export async function POST(req: NextRequest) {
 
   const upperCoin = coin.toUpperCase()
   const orderSummary = tt === 'CYCLE'
-    ? `${upperCoin}/KRW 매수(시장가) & 매도(시장가, 전체 수량) ${Number(amountKrw).toLocaleString()}원`
+    ? `${upperCoin}/KRW 매수(시장가) & 매도(시장가, 전체 수량) ${(parsedAmount ?? 0).toLocaleString()}원`
     : tt === 'SELL'
     ? `${upperCoin}/KRW 전량 매도(시장가)`
-    : `${upperCoin}/KRW 매수(시장가) ${Number(amountKrw).toLocaleString()}원`
+    : `${upperCoin}/KRW 매수(시장가) ${(parsedAmount ?? 0).toLocaleString()}원`
 
   // 전부 동시에 실행 (planning.md 8.4)
   const results: ExecutionResultItem[] = await Promise.all(
@@ -96,7 +107,7 @@ export async function POST(req: NextRequest) {
             acc.access_key,
             acc.secret_key,
             coin,
-            amountKrw,
+            parsedAmount ?? 0,
           )
           let balance = 0
           try {
@@ -163,7 +174,7 @@ export async function POST(req: NextRequest) {
           acc.secret_key,
           coin,
           'buy',
-          amountKrw,
+          parsedAmount ?? 0,
         )
 
         let balance = 0
@@ -205,7 +216,7 @@ export async function POST(req: NextRequest) {
       exchange,
       coin,
       trade_type: tradeType,
-      amount_krw: amountKrw || 0,
+      amount_krw: parsedAmount ?? 0,
       account_id: r.accountId,
       account_name: r.accountName,
       success: r.success,
@@ -253,7 +264,7 @@ export async function POST(req: NextRequest) {
         `거래소: ${exchange}`,
         `코인: ${upperCoin}`,
         `방식: ${TRADE_TYPE_LABEL[tradeType] ?? tradeType}`,
-        tt !== 'SELL' ? `금액: ${Number(amountKrw).toLocaleString()}원` : '',
+        tt !== 'SELL' ? `금액: ${(parsedAmount ?? 0).toLocaleString()}원` : '',
         ``,
         `<b>계정별 결과 (${successCount}성공 / ${failCount}실패)</b>`,
         ...filtered.map((r) => `${r.success ? '✅' : '❌'} ${r.accountName}${r.success ? '' : `: ${r.reason}`}`),

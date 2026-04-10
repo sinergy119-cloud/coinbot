@@ -21,8 +21,22 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
   if (body.amount !== undefined) updates.amount = body.amount || null
   if (body.requireApply !== undefined) updates.require_apply = !!body.requireApply
   if (body.apiAllowed !== undefined) updates.api_allowed = !!body.apiAllowed
-  if (body.link !== undefined) updates.link = body.link || null
-  if (body.notes !== undefined) updates.notes = body.notes || null
+  if (body.link !== undefined) {
+    if (body.link && typeof body.link === 'string') {
+      try {
+        const u = new URL(body.link.trim())
+        if (u.protocol !== 'http:' && u.protocol !== 'https:') {
+          return Response.json({ error: '링크는 http 또는 https만 허용됩니다.' }, { status: 400 })
+        }
+        updates.link = u.toString().slice(0, 500)
+      } catch {
+        return Response.json({ error: '유효하지 않은 링크 형식입니다.' }, { status: 400 })
+      }
+    } else {
+      updates.link = null
+    }
+  }
+  if (body.notes !== undefined) updates.notes = body.notes && typeof body.notes === 'string' ? body.notes.slice(0, 2000) : null
   if (body.startDate !== undefined) updates.start_date = body.startDate
   if (body.endDate !== undefined) updates.end_date = body.endDate
 
@@ -34,7 +48,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
     .select()
     .single()
 
-  if (error) return Response.json({ error: error.message }, { status: 500 })
+  if (error) {
+    console.error('[announcements/id] update error:', error)
+    return Response.json({ error: '이벤트 수정에 실패했습니다.' }, { status: 500 })
+  }
   return Response.json(data)
 }
 
@@ -49,6 +66,9 @@ export async function DELETE(_req: NextRequest, { params }: { params: Params }) 
   const db = createServerClient()
   const { error } = await db.from('announcements').delete().eq('id', id)
 
-  if (error) return Response.json({ error: error.message }, { status: 500 })
+  if (error) {
+    console.error('[announcements/id] delete error:', error)
+    return Response.json({ error: '이벤트 삭제에 실패했습니다.' }, { status: 500 })
+  }
   return Response.json({ ok: true })
 }

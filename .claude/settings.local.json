@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:apidocs.bithumb.com)",
+      "WebFetch(domain:docs.upbit.com)",
+      "WebFetch(domain:docs.coinone.co.kr)",
+      "WebFetch(domain:developers.korbit.co.kr)",
+      "WebFetch(domain:eu.apnomad.com)",
+      "WebFetch(domain:medium.com)",
+      "WebFetch(domain:www.forexliga.com)",
+      "WebFetch(domain:wikidocs.net)",
+      "WebFetch(domain:privacy.bithumb.com)",
+      "mcp__Claude_Preview__preview_start",
+      "WebFetch(domain:developers.kakao.com)",
+      "WebFetch(domain:exchange.korbit.co.kr)"
+    ]
+  }
+}

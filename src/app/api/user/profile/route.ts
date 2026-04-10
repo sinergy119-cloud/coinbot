@@ -121,7 +121,10 @@ export async function PATCH(req: NextRequest) {
 
   if (Object.keys(updates).length > 0) {
     const { error } = await db.from('users').update(updates).eq('id', session.userId)
-    if (error) return Response.json({ error: error.message }, { status: 500 })
+    if (error) {
+      console.error('[user/profile] update error:', error)
+      return Response.json({ error: '프로필 수정에 실패했습니다.' }, { status: 500 })
+    }
   }
 
   // 이메일 변경 요청이 있었으면 안내 메시지 반환

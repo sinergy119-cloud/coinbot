@@ -40,7 +40,10 @@ export async function DELETE(_req: NextRequest, { params }: { params: Params }) 
   }
 
   const { error } = await db.from('exchange_accounts').delete().eq('id', id)
-  if (error) return Response.json({ error: error.message }, { status: 500 })
+  if (error) {
+    console.error('[admin/accounts/id] delete error:', error)
+    return Response.json({ error: '계정 삭제에 실패했습니다.' }, { status: 500 })
+  }
 
   return Response.json({ ok: true })
 }

@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { createServerClient } from '@/lib/supabase'
 import { createSession } from '@/lib/session'
 import { sendTelegramMessage } from '@/lib/telegram'
+import { escapeHtml } from '@/lib/html'
 
 // 프록시 뒤에서 origin이 localhost로 잡히므로 실제 origin 복원
 function getOrigin(req: NextRequest) {
@@ -114,8 +115,8 @@ export async function GET(req: NextRequest) {
         await sendTelegramMessage(admin.telegram_chat_id, [
           `🎉 <b>MyCoinBot 신규 가입 (카카오)</b>`,
           ``,
-          `닉네임: ${nickname}`,
-          email ? `이메일: ${email}` : '',
+          `닉네임: ${escapeHtml(nickname)}`,
+          email ? `이메일: ${escapeHtml(email)}` : '',
           `가입: ${now} (KST)`,
           ``,
           `현재 승인 회원: ${count ?? '?'}명`,

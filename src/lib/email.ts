@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer'
+import { escapeHtml } from '@/lib/html'
 
 function getTransporter() {
   const user = process.env.GMAIL_USER
@@ -18,6 +19,8 @@ export async function sendVerificationEmail(
   verifyUrl: string,
 ) {
   const transporter = getTransporter()
+  const safeName = escapeHtml(name)
+  const safeUrl = escapeHtml(verifyUrl)
 
   const html = `
     <div style="max-width:480px;margin:0 auto;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
@@ -27,13 +30,13 @@ export async function sendVerificationEmail(
       </div>
       <div style="padding:24px;background:#f9fafb;border-radius:12px;">
         <p style="font-size:15px;color:#111827;margin:0 0 16px;">
-          안녕하세요, <b>${name}</b>님!
+          안녕하세요, <b>${safeName}</b>님!
         </p>
         <p style="font-size:14px;color:#4b5563;margin:0 0 24px;">
           아래 버튼을 클릭하면 가입이 완료됩니다.
         </p>
         <div style="text-align:center;margin:0 0 24px;">
-          <a href="${verifyUrl}"
+          <a href="${safeUrl}"
             style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:14px;font-weight:600;">
             ✅ 이메일 인증하기
           </a>
@@ -42,7 +45,7 @@ export async function sendVerificationEmail(
           버튼이 안 되면 아래 링크를 브라우저에 붙여넣기:
         </p>
         <p style="font-size:11px;color:#6b7280;word-break:break-all;margin:0 0 16px;">
-          ${verifyUrl}
+          ${safeUrl}
         </p>
         <p style="font-size:12px;color:#ef4444;font-weight:600;margin:0;">
           ⏰ 이 링크는 10분간 유효합니다.

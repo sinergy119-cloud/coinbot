@@ -3,6 +3,7 @@ import { getSession } from '@/lib/session'
 import { createServerClient } from '@/lib/supabase'
 import { isAdmin } from '@/lib/admin'
 import { validateMarket, getBalance, getCoinBalance, getCurrentPrice } from '@/lib/exchange'
+import { isValidExchange, isValidTradeType, isValidCoin, isValidUuidArray, parseAmountKrw } from '@/lib/validation'
 import type { Exchange } from '@/types/database'
 
 export interface ValidationItem {
@@ -24,9 +25,19 @@ export async function POST(req: NextRequest) {
 
   const { exchange, coin, tradeType, amountKrw, accountIds } = await req.json()
 
-  if (!exchange || !coin || !tradeType || !accountIds?.length) {
-    return Response.json({ error: '필수 항목이 누락되었습니다.' }, { status: 400 })
+  if (!isValidExchange(exchange)) {
+    return Response.json({ error: '유효하지 않은 거래소입니다.' }, { status: 400 })
   }
+  if (!isValidCoin(coin)) {
+    return Response.json({ error: '유효하지 않은 코인입니다.' }, { status: 400 })
+  }
+  if (!isValidTradeType(tradeType)) {
+    return Response.json({ error: '유효하지 않은 거래 방식입니다.' }, { status: 400 })
+  }
+  if (!isValidUuidArray(accountIds)) {
+    return Response.json({ error: '계정을 선택해주세요.' }, { status: 400 })
+  }
+  const parsedAmount = parseAmountKrw(amountKrw)
 
   // 1) 코인 유효성 검증
   const { valid, symbol } = await validateMarket(exchange as Exchange, coin)
@@ -70,10 +81,10 @@ export async function POST(req: NextRequest) {
 
   // 주문 요약
   const orderSummary = isCycle
-    ? `${symbol} 매수(시장가) & 매도(시장가, 전체 수량) ${Number(amountKrw).toLocaleString()}원`
+    ? `${symbol} 매수(시장가) & 매도(시장가, 전체 수량) ${(parsedAmount ?? 0).toLocaleString()}원`
     : isSell
     ? `${symbol} 전량 매도(시장가)`
-    : `${symbol} 매수(시장가) ${Number(amountKrw).toLocaleString()}원`
+    : `${symbol} 매수(시장가) ${(parsedAmount ?? 0).toLocaleString()}원`
 
   // 매도/사이클: 현재가 미리 조회
   let currentPrice = 0
@@ -89,7 +100,7 @@ export async function POST(req: NextRequest) {
         // CYCLE: KRW 잔고 검증
         if (isCycle) {
           const { krw } = await getBalance(exchange as Exchange, acc.access_key, acc.secret_key)
-          const feasible = krw >= amountKrw
+          const feasible = krw >= (parsedAmount ?? 0)
           return {
             accountId: acc.id,
             exchange: acc.exchange,
@@ -127,7 +138,7 @@ export async function POST(req: NextRequest) {
 
         // BUY: KRW 잔고 검증
         const { krw } = await getBalance(exchange as Exchange, acc.access_key, acc.secret_key)
-        const feasible = krw >= amountKrw
+        const feasible = krw >= (parsedAmount ?? 0)
         return {
           accountId: acc.id,
           exchange: acc.exchange,

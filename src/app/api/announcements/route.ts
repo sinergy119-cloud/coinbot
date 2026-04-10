@@ -52,6 +52,23 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: '거래소, 코인, 기간은 필수입니다.' }, { status: 400 })
   }
 
+  // 링크 URL 검증 (http/https만 허용, javascript: 등 차단)
+  let safeLink: string | null = null
+  if (link && typeof link === 'string') {
+    try {
+      const u = new URL(link.trim())
+      if (u.protocol !== 'http:' && u.protocol !== 'https:') {
+        return Response.json({ error: '링크는 http 또는 https만 허용됩니다.' }, { status: 400 })
+      }
+      safeLink = u.toString().slice(0, 500)
+    } catch {
+      return Response.json({ error: '유효하지 않은 링크 형식입니다.' }, { status: 400 })
+    }
+  }
+
+  // notes 길이 제한 (2000자)
+  const safeNotes = notes && typeof notes === 'string' ? notes.slice(0, 2000) : null
+
   const db = createServerClient()
   const { data, error } = await db
     .from('announcements')
@@ -61,8 +78,8 @@ export async function POST(req: NextRequest) {
       amount: amount || null,
       require_apply: !!requireApply,
       api_allowed: apiAllowed !== false,
-      link: link || null,
-      notes: notes || null,
+      link: safeLink,
+      notes: safeNotes,
       start_date: startDate,
       end_date: endDate,
       created_by: session.userId,
@@ -70,6 +87,9 @@ export async function POST(req: NextRequest) {
     .select()
     .single()
 
-  if (error) return Response.json({ error: error.message }, { status: 500 })
+  if (error) {
+    console.error('[announcements] insert error:', error)
+    return Response.json({ error: '이벤트 등록에 실패했습니다.' }, { status: 500 })
+  }
   return Response.json(data, { status: 201 })
 }

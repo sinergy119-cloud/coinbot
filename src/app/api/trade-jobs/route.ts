@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { getSession } from '@/lib/session'
 import { createServerClient } from '@/lib/supabase'
 import { sendTelegramMessage } from '@/lib/telegram'
+import { isValidExchange, isValidTradeType, isValidCoin, isValidUuidArray, parseAmountKrw, isValidDate, isValidTime } from '@/lib/validation'
 
 const TRADE_TYPE_LABEL: Record<string, string> = { BUY: '매수', SELL: '매도', CYCLE: '매수 & 매도' }
 
@@ -62,15 +63,25 @@ export async function POST(req: NextRequest) {
   const body = await req.json()
   const { exchange, coin, tradeType, amountKrw, accountIds, scheduleFrom, scheduleTo, scheduleTime } = body
 
-  // 기본 검증
-  if (!exchange || !coin || !tradeType || !accountIds?.length) {
-    return Response.json({ error: '필수 항목을 모두 입력해주세요.' }, { status: 400 })
+  // 입력 검증
+  if (!isValidExchange(exchange)) {
+    return Response.json({ error: '유효하지 않은 거래소입니다.' }, { status: 400 })
   }
-  if (tradeType !== 'SELL' && (!amountKrw || amountKrw < 5100)) {
+  if (!isValidCoin(coin)) {
+    return Response.json({ error: '유효하지 않은 코인입니다.' }, { status: 400 })
+  }
+  if (!isValidTradeType(tradeType)) {
+    return Response.json({ error: '유효하지 않은 거래 방식입니다.' }, { status: 400 })
+  }
+  if (!isValidUuidArray(accountIds)) {
+    return Response.json({ error: '계정을 선택해주세요.' }, { status: 400 })
+  }
+  const parsedAmount = parseAmountKrw(amountKrw)
+  if (tradeType !== 'SELL' && (parsedAmount === null || parsedAmount < 5100)) {
     return Response.json({ error: '최소 거래 금액은 5,100원입니다.' }, { status: 400 })
   }
-  if (!scheduleFrom || !scheduleTo || !scheduleTime) {
-    return Response.json({ error: '스케줄 날짜와 시간을 입력해주세요.' }, { status: 400 })
+  if (!isValidDate(scheduleFrom) || !isValidDate(scheduleTo) || !isValidTime(scheduleTime)) {
+    return Response.json({ error: '스케줄 날짜와 시간을 올바르게 입력해주세요.' }, { status: 400 })
   }
 
   const db = createServerClient()
@@ -81,7 +92,7 @@ export async function POST(req: NextRequest) {
       exchange,
       coin: coin.toUpperCase(),
       trade_type: tradeType,
-      amount_krw: amountKrw,
+      amount_krw: parsedAmount ?? 0,
       account_ids: accountIds,
       schedule_from: scheduleFrom,
       schedule_to: scheduleTo,
@@ -90,7 +101,10 @@ export async function POST(req: NextRequest) {
     .select()
     .single()
 
-  if (error) return Response.json({ error: error.message }, { status: 500 })
+  if (error) {
+    console.error('[trade-jobs] insert error:', error)
+    return Response.json({ error: '스케줄 등록에 실패했습니다.' }, { status: 500 })
+  }
 
   // 텔레그램 알림: 등록자(전체) + 계정 소유자(본인 계정만)
   try {

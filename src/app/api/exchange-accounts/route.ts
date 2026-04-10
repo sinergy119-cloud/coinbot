@@ -17,7 +17,10 @@ export async function GET() {
     .eq('user_id', session.userId)
     .order('created_at', { ascending: false })
 
-  if (error) return Response.json({ error: error.message }, { status: 500 })
+  if (error) {
+    console.error('[exchange-accounts] list error:', error)
+    return Response.json({ error: '계정 조회에 실패했습니다.' }, { status: 500 })
+  }
   return Response.json(data ?? [])
 }
 
