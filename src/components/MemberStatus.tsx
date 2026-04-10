@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { ChevronDown, ChevronUp } from 'lucide-react'
-import { EXCHANGE_LABELS, EXCHANGE_EMOJI } from '@/types/database'
-import type { Exchange } from '@/types/database'
+import { useState, useEffect, useCallback } from 'react'
+import { ChevronDown, ChevronUp, Eye } from 'lucide-react'
+import { EXCHANGE_LABELS, EXCHANGE_EMOJI, TRADE_TYPE_LABELS } from '@/types/database'
+import type { Exchange, TradeType, TradeJobRow } from '@/types/database'
 
 interface User {
   id: string
@@ -69,6 +69,26 @@ export default function MemberStatus() {
       })
       .catch(() => {})
     return () => { cancelled = true }
+  }, [])
+
+  const [viewUserId, setViewUserId] = useState<string | null>(null)
+  const [viewData, setViewData] = useState<{
+    user: User | null
+    accounts: { id: string; exchange: Exchange; account_name: string }[]
+    accountMap: Record<string, string>
+    tradeJobs: TradeJobRow[]
+    tradeLogs: { id: string; exchange: string; coin: string; trade_type: string; amount_krw: number; account_name: string; success: boolean; reason?: string; source: string; executed_at: string }[]
+  } | null>(null)
+  const [viewLoading, setViewLoading] = useState(false)
+  const [viewTab, setViewTab] = useState<'schedule' | 'logs'>('schedule')
+
+  const fetchUserDashboard = useCallback(async (uid: string) => {
+    setViewLoading(true)
+    try {
+      const res = await fetch(`/api/admin/user-dashboard?userId=${uid}`)
+      if (res.ok) setViewData(await res.json())
+    } catch { /* 무시 */ }
+    finally { setViewLoading(false) }
   }, [])
 
   const adminId = process.env.NEXT_PUBLIC_ADMIN_USER_ID
@@ -169,20 +189,32 @@ export default function MemberStatus() {
                   {totalCount > 0 && <span className="text-xs text-gray-400">총 {totalCount}건</span>}
                 </div>
 
-                {/* 마지막 로그인 + 이력 토글 */}
+                {/* 마지막 로그인 + 이력/대시보드 토글 */}
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-gray-400">
                     마지막 로그인: {toKST(user.last_login_at)}
                   </span>
-                  {logs.length > 0 && (
+                  <div className="flex items-center gap-2">
                     <button
-                      onClick={() => setExpandedUser(isExpanded ? null : user.id)}
-                      className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700"
+                      onClick={() => {
+                        if (viewUserId === user.id) { setViewUserId(null); setViewData(null) }
+                        else { setViewUserId(user.id); fetchUserDashboard(user.id) }
+                      }}
+                      className={`flex items-center gap-1 text-xs ${viewUserId === user.id ? 'text-purple-600 font-semibold' : 'text-purple-500 hover:text-purple-700'}`}
                     >
-                      접속 이력
-                      {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                      <Eye size={12} />
+                      대시보드
                     </button>
-                  )}
+                    {logs.length > 0 && (
+                      <button
+                        onClick={() => setExpandedUser(isExpanded ? null : user.id)}
+                        className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700"
+                      >
+                        접속 이력
+                        {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* 접속 이력 (아코디언) */}
@@ -204,6 +236,90 @@ export default function MemberStatus() {
                         ))}
                       </tbody>
                     </table>
+                  </div>
+                )}
+
+                {/* 대시보드 미리보기 */}
+                {viewUserId === user.id && (
+                  <div className="mt-3 rounded-lg border border-purple-200 bg-purple-50/30 p-3">
+                    <div className="mb-2 flex items-center gap-2">
+                      <span className="text-xs font-semibold text-purple-700">👁️ {user.name ?? user.user_id} 대시보드</span>
+                      <span className="text-[10px] text-purple-400">읽기 전용</span>
+                    </div>
+                    {viewLoading ? (
+                      <p className="text-xs text-gray-400 animate-pulse">로딩 중...</p>
+                    ) : viewData ? (
+                      <>
+                        {/* 탭 */}
+                        <div className="flex gap-0 mb-3 border-b border-purple-200">
+                          {([['schedule', '스케줄'], ['logs', '거래 내역']] as const).map(([id, label]) => (
+                            <button key={id} onClick={() => setViewTab(id)}
+                              className={`px-3 py-1.5 text-xs border-b-2 -mb-px ${viewTab === id ? 'border-purple-600 text-purple-600 font-semibold' : 'border-transparent text-gray-400'}`}>
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* 거래소 계정 뱃지 */}
+                        <div className="flex flex-wrap gap-1 mb-3">
+                          {viewData.accounts.map((acc) => (
+                            <span key={acc.id} className="rounded-full bg-white border border-gray-200 px-2 py-0.5 text-[10px] text-gray-600">
+                              {EXCHANGE_EMOJI[acc.exchange]} {acc.account_name}
+                            </span>
+                          ))}
+                          {viewData.accounts.length === 0 && <span className="text-[10px] text-gray-400">등록된 계정 없음</span>}
+                        </div>
+
+                        {/* 스케줄 탭 */}
+                        {viewTab === 'schedule' && (
+                          <div className="space-y-2">
+                            {viewData.tradeJobs.length === 0 && <p className="text-xs text-gray-400">등록된 스케줄 없음</p>}
+                            {viewData.tradeJobs.map((job) => {
+                              const isCompleted = job.status === 'completed'
+                              const isOwner = job.user_id === user.id
+                              return (
+                                <div key={job.id} className={`rounded-lg border border-gray-200 bg-white p-2.5 ${isCompleted ? 'opacity-50' : ''}`}>
+                                  <div className="flex items-center justify-between mb-1">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${isCompleted ? 'bg-gray-200 text-gray-500' : 'bg-green-100 text-green-700'}`}>
+                                        {isCompleted ? '완료' : '진행'}
+                                      </span>
+                                      <span className="text-xs">{EXCHANGE_EMOJI[job.exchange as Exchange]} {EXCHANGE_LABELS[job.exchange as Exchange]}</span>
+                                    </div>
+                                    {!isOwner && <span className="text-[10px] text-gray-400">위임</span>}
+                                  </div>
+                                  <div className="text-xs text-gray-600">
+                                    <b>{job.coin}</b> · {TRADE_TYPE_LABELS[job.trade_type as TradeType] ?? job.trade_type} · {job.trade_type === 'SELL' ? '전량' : `${Number(job.amount_krw).toLocaleString()}원`}
+                                  </div>
+                                  <div className="text-[10px] text-gray-400 mt-1">
+                                    {job.schedule_from} ~ {job.schedule_to} · {(job.schedule_time as string).slice(0, 5)}
+                                  </div>
+                                  <div className="text-[10px] text-gray-400 mt-0.5">
+                                    계정: {(job.account_ids as string[]).map((id) => viewData.accountMap[id] ?? id).join(', ')}
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )}
+
+                        {/* 거래 내역 탭 */}
+                        {viewTab === 'logs' && (
+                          <div className="space-y-1.5">
+                            {viewData.tradeLogs.length === 0 && <p className="text-xs text-gray-400">거래 내역 없음</p>}
+                            {viewData.tradeLogs.slice(0, 20).map((log) => (
+                              <div key={log.id} className="flex items-center gap-2 rounded border border-gray-100 bg-white px-2.5 py-1.5 text-xs">
+                                <span>{log.success ? '✅' : '❌'}</span>
+                                <span className="font-medium">{EXCHANGE_EMOJI[log.exchange as Exchange]} {log.coin}</span>
+                                <span className="text-gray-500">{TRADE_TYPE_LABELS[log.trade_type as TradeType] ?? log.trade_type}</span>
+                                <span className="text-gray-400">{log.account_name}</span>
+                                <span className="ml-auto text-[10px] text-gray-400">{toKST(log.executed_at)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    ) : null}
                   </div>
                 )}
               </div>
