@@ -649,6 +649,7 @@ export default function LoginPage() {
   const [showPw, setShowPw] = useState(false)
   const [autoLogin, setAutoLogin] = useState(false)
   const [showAutoLoginConfirm, setShowAutoLoginConfirm] = useState(false)
+  const [socialLoginMsg, setSocialLoginMsg] = useState('')
   const [error, setError] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
   const [loading, setLoading] = useState(false)
@@ -953,14 +954,14 @@ export default function LoginPage() {
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={() => alert('카카오 로그인은 준비 중입니다.')}
+                onClick={() => setSocialLoginMsg('카카오')}
                 className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#FEE500] py-2.5 text-sm font-medium text-[#3C1E1E] hover:brightness-95 transition"
               >
                 💬 카카오
               </button>
               <button
                 type="button"
-                onClick={() => alert('네이버 로그인은 준비 중입니다.')}
+                onClick={() => setSocialLoginMsg('네이버')}
                 className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#03C75A] py-2.5 text-sm font-medium text-white hover:brightness-95 transition"
               >
                 N 네이버
@@ -1026,6 +1027,24 @@ export default function LoginPage() {
       {activeModal === 'privacy' && <PrivacyModal onClose={() => setActiveModal(null)} />}
 
       {/* 자동 로그인 확인 모달 */}
+      {/* 간편 로그인 준비 중 모달 */}
+      {socialLoginMsg && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 px-4">
+          <div className="w-full max-w-xs rounded-2xl bg-white p-6 shadow-2xl text-center">
+            <div className="mb-3 text-3xl">🚧</div>
+            <h3 className="mb-2 text-base font-bold text-gray-900">{socialLoginMsg} 로그인</h3>
+            <p className="mb-1 text-sm text-gray-600">{socialLoginMsg} 간편 로그인은 현재 준비 중입니다.</p>
+            <p className="mb-4 text-xs text-gray-400">빠른 시일 내 서비스를 제공하겠습니다.<br />일반 회원가입을 이용해주세요.</p>
+            <button
+              onClick={() => setSocialLoginMsg('')}
+              className="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition"
+            >
+              확인
+            </button>
+          </div>
+        </div>
+      )}
+
       {showAutoLoginConfirm && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 px-4">
           <div className="w-full max-w-xs rounded-2xl bg-white p-6 shadow-2xl text-center">
