@@ -24,8 +24,7 @@ const nextConfig: NextConfig = {
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'X-XSS-Protection', value: '1; mode=block' },
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
-          // HSTS: HTTPS 전환 후 활성화 (현재는 HTTP이므로 비활성)
-          // { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
+          { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
           // CSP: 기존 페이지에 영향 있을 수 있으므로 일단 Report-Only
           {
             key: 'Content-Security-Policy-Report-Only',

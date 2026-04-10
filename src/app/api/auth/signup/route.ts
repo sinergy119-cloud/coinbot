@@ -8,7 +8,7 @@ import { validatePassword } from '@/lib/password'
 function getSiteUrl(req: NextRequest) {
   // 프록시 헤더 우선, 없으면 host 헤더 사용
   const host = req.headers.get('x-forwarded-host') ?? req.headers.get('host') ?? 'localhost:3000'
-  const proto = req.headers.get('x-forwarded-proto') ?? (host.includes('localhost') ? 'http' : 'http')
+  const proto = req.headers.get('x-forwarded-proto') ?? (host.includes('localhost') ? 'http' : 'https')
   return `${proto}://${host}`
 }
 

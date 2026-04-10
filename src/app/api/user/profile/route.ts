@@ -78,7 +78,7 @@ export async function PATCH(req: NextRequest) {
         // 새 이메일로 인증 메일 발송
         try {
           const host = req.headers.get('x-forwarded-host') ?? req.headers.get('host') ?? 'localhost:3000'
-          const proto = req.headers.get('x-forwarded-proto') ?? (host.includes('localhost') ? 'http' : 'http')
+          const proto = req.headers.get('x-forwarded-proto') ?? (host.includes('localhost') ? 'http' : 'https')
           const verifyUrl = `${proto}://${host}/api/auth/verify-email?token=${token}`
           await sendVerificationEmail(newEmail, currentUser?.name ?? session.loginId, verifyUrl)
         } catch {
