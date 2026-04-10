@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { ChevronDown, ChevronUp } from 'lucide-react'
 import Header from '@/components/Header'
 import TradeForm from '@/components/TradeForm'
 import type { TradeInput } from '@/components/TradeForm'
@@ -59,7 +60,13 @@ export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) 
   const [editLoading, setEditLoading] = useState(false)
 
   // 이벤트 배너
-  const [events, setEvents] = useState<{ id: string; exchange: string; coin: string; title: string; condition: string | null; start_date: string; end_date: string }[]>([])
+  const [events, setEvents] = useState<{
+    id: string; exchange: string; coin: string;
+    amount: string | null; require_apply: boolean; api_allowed: boolean;
+    link: string | null; notes: string | null;
+    start_date: string; end_date: string
+  }[]>([])
+  const [eventsExpanded, setEventsExpanded] = useState(true)
 
   void userId
 
@@ -222,20 +229,54 @@ export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) 
           </div>
         </div>
 
-        {/* 이벤트 배너 */}
+        {/* 이벤트 배너 (아코디언) */}
         {events.length > 0 && (
-          <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
-            <p className="mb-1.5 text-xs font-bold text-amber-800">🎁 진행 중인 이벤트</p>
-            <div className="space-y-1">
-              {events.map((ev) => (
-                <div key={ev.id} className="flex items-center gap-2 text-xs">
-                  <span>{EXCHANGE_EMOJI[ev.exchange as Exchange]} {EXCHANGE_LABELS[ev.exchange as Exchange]}</span>
-                  <span className="font-bold text-gray-800">{ev.coin}</span>
-                  <span className="text-gray-400">{ev.start_date}~{ev.end_date}</span>
-                  {ev.condition && <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-700">{ev.condition}</span>}
-                </div>
-              ))}
-            </div>
+          <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setEventsExpanded(!eventsExpanded)}
+              className="flex w-full items-center justify-between px-3 py-2.5 hover:bg-amber-100/50"
+            >
+              <span className="text-xs font-bold text-amber-800">
+                🎁 진행 중인 이벤트 <span className="ml-1 text-amber-600">({events.length}건)</span>
+              </span>
+              {eventsExpanded ? <ChevronUp size={14} className="text-amber-700" /> : <ChevronDown size={14} className="text-amber-700" />}
+            </button>
+            {eventsExpanded && (
+              <div className="space-y-2 px-3 pb-3">
+                {events.map((ev) => {
+                  const urgent = ev.require_apply || !ev.api_allowed
+                  return (
+                    <div key={ev.id} className={`rounded-lg border p-3 ${urgent ? 'border-red-200 bg-red-50/50' : 'border-amber-100 bg-white'}`}>
+                      <div className="flex items-center gap-1.5 flex-wrap mb-1.5">
+                        <span className="text-sm font-medium">
+                          {EXCHANGE_EMOJI[ev.exchange as Exchange]} {EXCHANGE_LABELS[ev.exchange as Exchange]}
+                        </span>
+                        <span className="font-bold text-sm text-gray-900">{ev.coin}</span>
+                        {ev.require_apply && (
+                          <span className="rounded-full bg-amber-100 border border-amber-400 px-2 py-0.5 text-[10px] font-semibold text-amber-800 animate-pulse">
+                            🎟️ 신청 필요
+                          </span>
+                        )}
+                        {!ev.api_allowed && (
+                          <span className="rounded-full bg-red-100 border border-red-400 px-2 py-0.5 text-[10px] font-semibold text-red-800">
+                            ⛔ API 불가
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[11px] text-gray-600 space-y-0.5">
+                        <div>📅 {ev.start_date} ~ {ev.end_date}</div>
+                        {ev.amount && <div>💰 <b>{ev.amount}</b></div>}
+                        {ev.link && (
+                          <div>🔗 <a href={ev.link} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline break-all">{ev.link}</a></div>
+                        )}
+                        {ev.notes && <div className="text-gray-700">📝 {ev.notes}</div>}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         )}
 

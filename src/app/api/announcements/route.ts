@@ -30,10 +30,10 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: '관리자만 접근 가능합니다.' }, { status: 403 })
   }
 
-  const { exchange, coin, title, condition, startDate, endDate } = await req.json()
+  const { exchange, coin, amount, requireApply, apiAllowed, link, notes, startDate, endDate } = await req.json()
 
-  if (!exchange || !coin || !title || !startDate || !endDate) {
-    return Response.json({ error: '필수 항목을 모두 입력해주세요.' }, { status: 400 })
+  if (!exchange || !coin || !startDate || !endDate) {
+    return Response.json({ error: '거래소, 코인, 기간은 필수입니다.' }, { status: 400 })
   }
 
   const db = createServerClient()
@@ -42,8 +42,11 @@ export async function POST(req: NextRequest) {
     .insert({
       exchange,
       coin: coin.toUpperCase(),
-      title,
-      condition: condition || null,
+      amount: amount || null,
+      require_apply: !!requireApply,
+      api_allowed: apiAllowed !== false,
+      link: link || null,
+      notes: notes || null,
       start_date: startDate,
       end_date: endDate,
       created_by: session.userId,
