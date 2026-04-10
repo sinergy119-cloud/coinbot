@@ -80,7 +80,10 @@ export default function MemberStatus() {
     tradeLogs: { id: string; exchange: string; coin: string; trade_type: string; amount_krw: number; account_name: string; success: boolean; reason?: string; source: string; executed_at: string }[]
   } | null>(null)
   const [viewLoading, setViewLoading] = useState(false)
-  const [viewTab, setViewTab] = useState<'schedule' | 'logs'>('schedule')
+  const [viewTab, setViewTab] = useState<'schedule' | 'assets' | 'logs'>('schedule')
+  const [assetExchange, setAssetExchange] = useState<Exchange | null>(null)
+  const [assetData, setAssetData] = useState<{ accountName: string; krw: number; coins: { coin: string; qty: number; value: number }[] }[]>([])
+  const [assetLoading, setAssetLoading] = useState(false)
 
   const fetchUserDashboard = useCallback(async (uid: string) => {
     setViewLoading(true)
@@ -252,8 +255,8 @@ export default function MemberStatus() {
                       <>
                         {/* 탭 */}
                         <div className="flex gap-0 mb-3 border-b border-purple-200">
-                          {([['schedule', '스케줄'], ['logs', '거래 내역']] as const).map(([id, label]) => (
-                            <button key={id} onClick={() => setViewTab(id)}
+                          {([['schedule', '스케줄'], ['assets', '나의 자산'], ['logs', '거래 내역']] as const).map(([id, label]) => (
+                            <button key={id} onClick={() => { setViewTab(id); if (id === 'assets') { setAssetExchange(null); setAssetData([]) } }}
                               className={`px-3 py-1.5 text-xs border-b-2 -mb-px ${viewTab === id ? 'border-purple-600 text-purple-600 font-semibold' : 'border-transparent text-gray-400'}`}>
                               {label}
                             </button>
@@ -300,6 +303,54 @@ export default function MemberStatus() {
                                 </div>
                               )
                             })}
+                          </div>
+                        )}
+
+                        {/* 나의 자산 탭 */}
+                        {viewTab === 'assets' && (
+                          <div>
+                            <div className="flex flex-wrap gap-1.5 mb-3">
+                              {(Object.keys(EXCHANGE_LABELS) as Exchange[]).map((ex) => {
+                                const hasAccount = viewData.accounts.some((a) => a.exchange === ex)
+                                if (!hasAccount) return null
+                                return (
+                                  <button key={ex} onClick={async () => {
+                                    setAssetExchange(ex); setAssetLoading(true); setAssetData([])
+                                    try {
+                                      const res = await fetch(`/api/admin/user-assets?userId=${user.id}&exchange=${ex}`)
+                                      if (res.ok) setAssetData(await res.json())
+                                    } catch { /* 무시 */ }
+                                    finally { setAssetLoading(false) }
+                                  }}
+                                    className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs transition ${assetExchange === ex ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
+                                    {EXCHANGE_EMOJI[ex]} {EXCHANGE_LABELS[ex]}
+                                  </button>
+                                )
+                              })}
+                            </div>
+                            {!assetExchange && <p className="text-xs text-gray-400">거래소를 선택해주세요.</p>}
+                            {assetLoading && <p className="text-xs text-gray-400 animate-pulse">자산 조회 중...</p>}
+                            {assetExchange && !assetLoading && assetData.length === 0 && <p className="text-xs text-gray-400">자산 정보 없음</p>}
+                            {assetData.map((acc) => (
+                              <div key={acc.accountName} className="mb-2 rounded-lg border border-gray-200 bg-white p-2.5">
+                                <div className="flex items-center justify-between mb-1.5">
+                                  <span className="text-xs font-semibold text-gray-900">{EXCHANGE_EMOJI[assetExchange!]} {acc.accountName}</span>
+                                  <span className="text-xs text-gray-500">KRW {Math.floor(acc.krw).toLocaleString()}원</span>
+                                </div>
+                                {acc.coins.length === 0 ? (
+                                  <p className="text-[10px] text-gray-400">보유 코인 없음</p>
+                                ) : (
+                                  <div className="space-y-1">
+                                    {acc.coins.map((c) => (
+                                      <div key={c.coin} className="flex items-center justify-between text-xs">
+                                        <span className="font-medium text-gray-700">{c.coin}</span>
+                                        <span className="text-gray-500">{c.qty.toFixed(4)} · <b>{Math.floor(c.value).toLocaleString()}원</b></span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
                           </div>
                         )}
 
