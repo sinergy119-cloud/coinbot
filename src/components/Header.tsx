@@ -135,7 +135,9 @@ export default function Header({ loginId, isAdmin = false, showBackToHome = fals
     <>
       <header className="flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3">
         <div className="flex items-center gap-3">
-          <h1 className="text-lg font-bold text-gray-900">MyCoinBot</h1>
+          <Link href="/" className="text-lg font-bold text-gray-900 hover:text-blue-600 transition">
+            MyCoinBot
+          </Link>
           {showBackToHome && (
             <Link href="/" className="text-sm text-blue-600 hover:underline">
               ← 메인으로
