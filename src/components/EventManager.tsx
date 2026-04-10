@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { Trash2 } from 'lucide-react'
+import { Trash2, Pencil, X } from 'lucide-react'
 import { EXCHANGE_LABELS, EXCHANGE_EMOJI } from '@/types/database'
 import type { Exchange } from '@/types/database'
 
@@ -24,6 +24,7 @@ interface CoinInfo { code: string; name: string }
 
 export default function EventManager() {
   const [events, setEvents] = useState<Announcement[]>([])
+  const [editingId, setEditingId] = useState<string | null>(null)
 
   // 폼 상태
   const [exchange, setExchange] = useState<Exchange | null>(null)
@@ -38,6 +39,34 @@ export default function EventManager() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+
+  function resetForm() {
+    setEditingId(null)
+    setExchange(null); setCoin(''); setAmount(''); setRequireApply(false); setApiAllowed(true)
+    setLink(''); setNotes(''); setStartDate(''); setEndDate(''); setAllCoins([])
+  }
+
+  function startEdit(ev: Announcement) {
+    setEditingId(ev.id)
+    setExchange(ev.exchange as Exchange)
+    setCoin(ev.coin)
+    setStartDate(ev.start_date)
+    setEndDate(ev.end_date)
+    setAmount(ev.amount ?? '')
+    setRequireApply(ev.require_apply)
+    setApiAllowed(ev.api_allowed)
+    setLink(ev.link ?? '')
+    setNotes(ev.notes ?? '')
+    // 거래소의 코인 목록 로드 (자동완성용)
+    setCoinsLoading(true)
+    fetch(`/api/markets?exchange=${ev.exchange}`)
+      .then((r) => r.json())
+      .then((data: CoinInfo[]) => Array.isArray(data) ? setAllCoins(data) : null)
+      .catch(() => null)
+      .finally(() => setCoinsLoading(false))
+    // 폼 위치로 스크롤
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   // 코인 자동완성
   const [allCoins, setAllCoins] = useState<CoinInfo[]>([])
@@ -80,17 +109,18 @@ export default function EventManager() {
     }
     setLoading(true)
     try {
-      const res = await fetch('/api/announcements', {
-        method: 'POST',
+      const url = editingId ? `/api/announcements/${editingId}` : '/api/announcements'
+      const method = editingId ? 'PATCH' : 'POST'
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           exchange, coin, amount, requireApply, apiAllowed, link, notes, startDate, endDate,
         }),
       })
-      if (!res.ok) { const d = await res.json(); setError(d.error || '등록 실패'); return }
-      setSuccess('이벤트 등록 완료')
-      setCoin(''); setAmount(''); setRequireApply(false); setApiAllowed(true)
-      setLink(''); setNotes(''); setStartDate(''); setEndDate('')
+      if (!res.ok) { const d = await res.json(); setError(d.error || (editingId ? '수정 실패' : '등록 실패')); return }
+      setSuccess(editingId ? '이벤트 수정 완료' : '이벤트 등록 완료')
+      resetForm()
       fetchEvents()
       setTimeout(() => setSuccess(''), 2000)
     } catch { setError('네트워크 오류') }
@@ -105,9 +135,19 @@ export default function EventManager() {
 
   return (
     <div className="space-y-4">
-      {/* 등록 폼 */}
-      <section className="rounded-xl border border-gray-200 bg-white p-4">
-        <h2 className="mb-4 text-base font-semibold text-gray-900">📅 이벤트 등록</h2>
+      {/* 등록/수정 폼 */}
+      <section className={`rounded-xl border p-4 ${editingId ? 'border-blue-300 bg-blue-50/30' : 'border-gray-200 bg-white'}`}>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-base font-semibold text-gray-900">
+            {editingId ? '✏️ 이벤트 수정' : '📅 이벤트 등록'}
+          </h2>
+          {editingId && (
+            <button type="button" onClick={resetForm}
+              className="flex items-center gap-1 rounded-lg bg-gray-200 px-3 py-1 text-xs text-gray-700 hover:bg-gray-300">
+              <X size={12} /> 취소
+            </button>
+          )}
+        </div>
         <form onSubmit={handleSubmit} className="space-y-3">
           {/* 거래소 */}
           <div>
@@ -224,7 +264,7 @@ export default function EventManager() {
           {success && <p className="text-xs text-green-600">{success}</p>}
           <button type="submit" disabled={loading}
             className="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
-            {loading ? '등록 중...' : '이벤트 등록'}
+            {loading ? (editingId ? '수정 중...' : '등록 중...') : (editingId ? '이벤트 수정' : '이벤트 등록')}
           </button>
         </form>
       </section>
@@ -257,10 +297,16 @@ export default function EventManager() {
                       </span>
                     )}
                   </div>
-                  <button onClick={() => handleDelete(ev.id)}
-                    className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-600">
-                    <Trash2 size={14} />
-                  </button>
+                  <div className="flex gap-1">
+                    <button onClick={() => startEdit(ev)}
+                      className="rounded p-1 text-gray-400 hover:bg-blue-50 hover:text-blue-600">
+                      <Pencil size={14} />
+                    </button>
+                    <button onClick={() => handleDelete(ev.id)}
+                      className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-600">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 </div>
                 <div className="text-xs text-gray-500 space-y-0.5">
                   <div>📅 {ev.start_date} ~ {ev.end_date}</div>
