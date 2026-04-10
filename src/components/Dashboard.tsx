@@ -68,10 +68,44 @@ export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) 
 
   void userId
 
+  // 사용자가 직접 접고/펼친 상태를 localStorage에 저장
+  function handleToggleEvents() {
+    const next = !eventsExpanded
+    setEventsExpanded(next)
+    try {
+      localStorage.setItem('coinbot_events_expanded', next ? 'true' : 'false')
+    } catch { /* 무시 */ }
+  }
+
   const fetchEvents = useCallback(async () => {
     try {
       const res = await fetch('/api/announcements')
-      if (res.ok) setEvents(await res.json())
+      if (!res.ok) return
+      const data: { id: string }[] = await res.json()
+      setEvents(data as typeof events)
+
+      // 펼침/접힘 로직:
+      // - 저장된 seen IDs와 비교하여 새 이벤트가 있으면 자동 펼침
+      // - 없으면 저장된 펼침 상태 사용 (없으면 기본 펼침)
+      try {
+        const seenRaw = localStorage.getItem('coinbot_events_seen')
+        const seenIds: string[] = seenRaw ? JSON.parse(seenRaw) : []
+        const seenSet = new Set(seenIds)
+        const currentIds = data.map((e) => e.id)
+        const hasNew = currentIds.some((id) => !seenSet.has(id))
+
+        if (hasNew) {
+          setEventsExpanded(true)
+        } else {
+          const storedState = localStorage.getItem('coinbot_events_expanded')
+          if (storedState !== null) {
+            setEventsExpanded(storedState === 'true')
+          }
+        }
+
+        // seen IDs 업데이트 (현재 목록으로 교체)
+        localStorage.setItem('coinbot_events_seen', JSON.stringify(currentIds))
+      } catch { /* localStorage 실패 무시 */ }
     } catch { /* 무시 */ }
   }, [])
 
@@ -208,7 +242,7 @@ export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) 
           <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 overflow-hidden">
             <button
               type="button"
-              onClick={() => setEventsExpanded(!eventsExpanded)}
+              onClick={handleToggleEvents}
               className="flex w-full items-center justify-between px-3 py-2.5 hover:bg-amber-100/50"
             >
               <span className="text-xs font-bold text-amber-800">
