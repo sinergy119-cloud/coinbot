@@ -190,14 +190,14 @@ export default function TradeHistoryPanel({ defaultExchange, onExchangeChange }:
               type="date"
               value={dateFrom}
               onChange={(e) => handleDateChange(e.target.value, dateTo)}
-              className="rounded border border-gray-200 px-2 py-1 text-xs focus:border-blue-500 focus:outline-none"
+              className="rounded border border-gray-200 px-2 py-1 text-xs text-gray-900 focus:border-blue-500 focus:outline-none"
             />
             <span>~</span>
             <input
               type="date"
               value={dateTo}
               onChange={(e) => handleDateChange(dateFrom, e.target.value)}
-              className="rounded border border-gray-200 px-2 py-1 text-xs focus:border-blue-500 focus:outline-none"
+              className="rounded border border-gray-200 px-2 py-1 text-xs text-gray-900 focus:border-blue-500 focus:outline-none"
             />
             {(dateFrom || dateTo) && (
               <button

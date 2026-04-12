@@ -72,14 +72,14 @@ export default function TradeList({ jobs, onUpdate, onDelete }: TradeListProps) 
                   <>
                     <td className="py-2 pr-3">
                       <input type="date" value={editFrom} onChange={(e) => setEditFrom(e.target.value)}
-                        className="w-28 rounded border px-1 py-0.5 text-xs" />
+                        className="w-28 rounded border px-1 py-0.5 text-xs text-gray-900" />
                       ~
                       <input type="date" value={editTo} onChange={(e) => setEditTo(e.target.value)}
-                        className="w-28 rounded border px-1 py-0.5 text-xs" />
+                        className="w-28 rounded border px-1 py-0.5 text-xs text-gray-900" />
                     </td>
                     <td className="py-2 pr-3">
                       <input type="time" value={editTime} onChange={(e) => setEditTime(e.target.value)}
-                        className="w-20 rounded border px-1 py-0.5 text-xs" />
+                        className="w-20 rounded border px-1 py-0.5 text-xs text-gray-900" />
                     </td>
                     <td className="py-2">
                       <button onClick={saveEdit}
