@@ -67,7 +67,7 @@ function ExchangeAccordion({
             <li key={acc.id} className="flex items-center justify-between px-4 py-2.5">
               <div className="flex flex-col gap-0.5">
                 <span className="text-sm font-medium text-gray-900">{acc.account_name}</span>
-                <span className="text-xs text-gray-400">등록: {toKST(acc.created_at)}</span>
+                <span className="text-xs text-gray-500">등록: {toKST(acc.created_at)}</span>
               </div>
               <button
                 onClick={() => onDelete(acc.id, getUserName(acc.user_id), acc.account_name)}
@@ -246,10 +246,10 @@ export default function AdminDashboard({ loginId, embedded }: { loginId: string;
         <section className="rounded-xl border border-gray-200 bg-white p-4">
           <h2 className="mb-3 text-base font-semibold text-gray-900">
             📁 내 계정 ({loginId})
-            <span className="ml-2 text-sm font-normal text-gray-400">{myAccounts.length}건</span>
+            <span className="ml-2 text-sm font-normal text-gray-500">{myAccounts.length}건</span>
           </h2>
           {myAccounts.length === 0 ? (
-            <p className="text-sm text-gray-400">등록된 계정이 없습니다.</p>
+            <p className="text-sm text-gray-500">등록된 계정이 없습니다.</p>
           ) : (
             <div className="space-y-2">
               {groupByExchange(myAccounts).map(({ ex, accounts: exAccs }) => (
@@ -289,7 +289,7 @@ export default function AdminDashboard({ loginId, embedded }: { loginId: string;
           <section className="rounded-xl border border-gray-200 bg-white p-4">
             <h2 className="mb-3 text-base font-semibold text-gray-900">
               📁 기타 사용자 계정
-              <span className="ml-2 text-sm font-normal text-gray-400">{otherAccounts.length}건</span>
+              <span className="ml-2 text-sm font-normal text-gray-500">{otherAccounts.length}건</span>
             </h2>
             <div className="space-y-4">
               {groupByUserThenExchange(otherAccounts).map(({ uid, loginId: uLoginId, exchanges, total }) => (

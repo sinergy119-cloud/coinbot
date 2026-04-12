@@ -119,7 +119,7 @@ export default function InquiryManager() {
       <section className="rounded-xl border border-gray-200 bg-white p-4">
         <h2 className="mb-3 text-base font-semibold text-gray-900">📬 문의 목록</h2>
         {filtered.length === 0 ? (
-          <p className="text-sm text-gray-400">문의가 없습니다.</p>
+          <p className="text-sm text-gray-500">문의가 없습니다.</p>
         ) : (
           <div className="space-y-2">
             {filtered.map((inq) => {
@@ -169,7 +169,7 @@ export default function InquiryManager() {
                           <p className="text-[10px] font-semibold text-green-700 mb-1">관리자 답변</p>
                           <p className="text-xs text-gray-700 whitespace-pre-wrap bg-white rounded p-2 border border-green-100">{inq.admin_reply}</p>
                           {inq.answered_at && (
-                            <p className="text-[10px] text-gray-400 mt-1">{toKST(inq.answered_at)}</p>
+                            <p className="text-[10px] text-gray-500 mt-1">{toKST(inq.answered_at)}</p>
                           )}
                         </div>
                       ) : (

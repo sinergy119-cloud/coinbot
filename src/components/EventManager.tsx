@@ -173,7 +173,7 @@ export default function EventManager() {
           {/* 코인 자동완성 */}
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-600">
-              코인 <span className="text-gray-400 font-normal">(코드 또는 이름 입력)</span>
+              코인 <span className="text-gray-500 font-normal">(코드 또는 이름 입력)</span>
             </label>
             <div className="relative">
               <input type="text" value={coin}
@@ -190,7 +190,7 @@ export default function EventManager() {
                       onMouseDown={() => { setCoin(c.code); setCoinFocused(false) }}
                       className="flex items-center gap-2 cursor-pointer px-3 py-2 text-sm hover:bg-blue-50">
                       <span className="font-semibold text-gray-900 w-16 shrink-0">{c.code}</span>
-                      <span className="text-gray-400 text-xs">{c.name}</span>
+                      <span className="text-gray-500 text-xs">{c.name}</span>
                     </li>
                   ))}
                 </ul>
@@ -278,10 +278,10 @@ export default function EventManager() {
       {/* 이벤트 리스트 */}
       <section className="rounded-xl border border-gray-200 bg-white p-4">
         <h2 className="mb-3 text-base font-semibold text-gray-900">
-          이벤트 리스트 <span className="text-sm font-normal text-gray-400">({events.length}건)</span>
+          이벤트 리스트 <span className="text-sm font-normal text-gray-500">({events.length}건)</span>
         </h2>
         {events.length === 0 ? (
-          <p className="text-sm text-gray-400">등록된 이벤트가 없습니다.</p>
+          <p className="text-sm text-gray-500">등록된 이벤트가 없습니다.</p>
         ) : (
           <div className="space-y-2">
             {events.map((ev) => {

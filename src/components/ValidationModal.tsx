@@ -49,7 +49,7 @@ export default function ValidationModal({ items, onConfirm, onCancel, loading }:
                         <span>
                           {item.coinQty.toFixed(8).replace(/\.?0+$/, '') || '0'}
                           <br />
-                          <span className="text-gray-400">{item.coin} → 전량 매도</span>
+                          <span className="text-gray-500">{item.coin} → 전량 매도</span>
                         </span>
                       )
                       : `${Math.floor(item.balance).toLocaleString()}원`}

@@ -117,7 +117,7 @@ function TelegramSettings() {
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-400 text-xs font-bold text-white">C</div>
                   <div>
                     <p className="text-xs font-bold text-white">Coinbot</p>
-                    <p className="text-[10px] text-gray-400">봇</p>
+                    <p className="text-[10px] text-gray-500">봇</p>
                   </div>
                 </div>
                 <div className="flex justify-center">
@@ -141,14 +141,14 @@ function TelegramSettings() {
               </div>
               <div className="bg-[#0E1621] p-3">
                 <div className="rounded-lg bg-[#182533] p-2.5">
-                  <p className="text-[10px] text-gray-400">👤 User info</p>
+                  <p className="text-[10px] text-gray-500">👤 User info</p>
                   <p className="text-xs text-white mt-1">├ Chat ID: <b className="text-blue-400">123456789</b> ← 이 숫자를 등록</p>
-                  <p className="text-[10px] text-gray-400">├ First name: ...</p>
-                  <p className="text-[10px] text-gray-400">└ Username: ...</p>
+                  <p className="text-[10px] text-gray-500">├ First name: ...</p>
+                  <p className="text-[10px] text-gray-500">└ Username: ...</p>
                 </div>
               </div>
             </div>
-            <p className="mt-1.5 text-[10px] text-gray-400">위 Chat ID 숫자를 아래 입력란에 붙여넣기</p>
+            <p className="mt-1.5 text-[10px] text-gray-500">위 Chat ID 숫자를 아래 입력란에 붙여넣기</p>
           </div>
           <div className="flex gap-2">
             <input
@@ -377,7 +377,7 @@ export default function ScheduleTab({ defaultExchange, onExchangeChange }: Sched
                 <label key={tt} className="flex cursor-pointer items-center gap-1.5">
                   <input type="radio" name="tradeType" checked={tradeType === tt}
                     onChange={() => setTradeType(tt)} className="accent-blue-600" />
-                  <span className="text-sm">{TRADE_TYPE_LABELS[tt]}</span>
+                  <span className="text-sm text-gray-700">{TRADE_TYPE_LABELS[tt]}</span>
                 </label>
               ))}
             </div>
@@ -401,21 +401,21 @@ export default function ScheduleTab({ defaultExchange, onExchangeChange }: Sched
                 }}
                 placeholder="5,100"
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
-              <p className="mt-1 text-xs text-gray-400">최소 거래 금액: 5,100원</p>
+              <p className="mt-1 text-xs text-gray-500">최소 거래 금액: 5,100원</p>
             </div>
           )}
 
           {/* 계정 선택 */}
           <div>
             <label className="mb-2 block text-sm font-medium text-gray-700">계정 선택</label>
-            {!exchange && <p className="text-sm text-gray-400">거래소를 먼저 선택해주세요.</p>}
-            {exchange && accounts.length === 0 && <p className="text-sm text-gray-400">등록된 계정이 없습니다.</p>}
+            {!exchange && <p className="text-sm text-gray-500">거래소를 먼저 선택해주세요.</p>}
+            {exchange && accounts.length === 0 && <p className="text-sm text-gray-500">등록된 계정이 없습니다.</p>}
             <div className="flex flex-wrap gap-2">
               {accounts.filter((a) => !a._delegated).map((acc) => (
                 <label key={acc.id} className="flex cursor-pointer items-center gap-1.5">
                   <input type="checkbox" checked={selectedIds.includes(acc.id)}
                     onChange={() => toggleAccount(acc.id)} className="accent-blue-600" />
-                  <span className="text-sm">{acc.account_name}</span>
+                  <span className="text-sm text-gray-700">{acc.account_name}</span>
                 </label>
               ))}
               {accounts.some((a) => a._delegated) && (() => {
@@ -478,7 +478,7 @@ export default function ScheduleTab({ defaultExchange, onExchangeChange }: Sched
       {/* 등록된 스케줄 목록 */}
       <section className="rounded-xl border border-gray-200 bg-white p-4">
         <h2 className="mb-3 text-base font-semibold text-gray-900">
-          등록된 스케줄 <span className="text-sm font-normal text-gray-400">({jobs.length}개)</span>
+          등록된 스케줄 <span className="text-sm font-normal text-gray-500">({jobs.length}개)</span>
         </h2>
         <ScheduleList jobs={jobs} accountMap={accountMap} onDelete={handleDelete} onEdit={handleEditJob} currentUserId={currentUserId} />
       </section>

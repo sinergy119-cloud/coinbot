@@ -163,7 +163,7 @@ export default function TradeHistoryPanel({ defaultExchange, onExchangeChange }:
         </div>
       )}
       {exchange && accounts.length === 0 && (
-        <p className="mb-3 text-sm text-gray-400">등록된 계정이 없습니다.</p>
+        <p className="mb-3 text-sm text-gray-500">등록된 계정이 없습니다.</p>
       )}
 
       {/* 날짜 필터 — 계정 선택 후 표시 */}
@@ -182,7 +182,7 @@ export default function TradeHistoryPanel({ defaultExchange, onExchangeChange }:
                 {f}
               </button>
             ))}
-            <span className="text-xs text-gray-400">* 조회구간은 30일까지 설정 가능합니다.</span>
+            <span className="text-xs text-gray-500">* 조회구간은 30일까지 설정 가능합니다.</span>
           </div>
           {/* 기간 직접 입력 */}
           <div className="flex items-center gap-2 text-xs text-gray-500">
@@ -212,9 +212,9 @@ export default function TradeHistoryPanel({ defaultExchange, onExchangeChange }:
       )}
 
       {/* 안내 메시지 */}
-      {!exchange && <p className="text-sm text-gray-400">거래소를 선택해주세요.</p>}
+      {!exchange && <p className="text-sm text-gray-500">거래소를 선택해주세요.</p>}
       {exchange && !selectedAccountId && accounts.length > 0 && (
-        <p className="text-sm text-gray-400">계정을 선택해주세요.</p>
+        <p className="text-sm text-gray-500">계정을 선택해주세요.</p>
       )}
 
       {/* 로딩 */}
@@ -231,7 +231,7 @@ export default function TradeHistoryPanel({ defaultExchange, onExchangeChange }:
       {/* 거래 내역 테이블 */}
       {!loading && filteredHistory.length > 0 && (
         <>
-          <div className="mb-1 text-right text-xs text-gray-400">{filteredHistory.length}건</div>
+          <div className="mb-1 text-right text-xs text-gray-500">{filteredHistory.length}건</div>
           {/* PC 테이블 */}
           <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-left text-sm">
@@ -280,7 +280,7 @@ export default function TradeHistoryPanel({ defaultExchange, onExchangeChange }:
                     {item.total > 0 ? `${Math.floor(item.total).toLocaleString()}원` : '-'}
                   </span>
                 </div>
-                <div className="flex items-center justify-between text-[10px] text-gray-400">
+                <div className="flex items-center justify-between text-[10px] text-gray-500">
                   <span>{formatDatetime(item.datetime)}</span>
                   <span>{item.quantity.toFixed(8).replace(/\.?0+$/, '') || '0'}</span>
                 </div>
@@ -291,10 +291,10 @@ export default function TradeHistoryPanel({ defaultExchange, onExchangeChange }:
       )}
 
       {!loading && selectedAccountId && filteredHistory.length === 0 && !error && history.length > 0 && (
-        <p className="text-sm text-gray-400">선택한 기간에 거래 내역이 없습니다.</p>
+        <p className="text-sm text-gray-500">선택한 기간에 거래 내역이 없습니다.</p>
       )}
       {!loading && selectedAccountId && history.length === 0 && !error && (
-        <p className="text-sm text-gray-400">거래 내역이 없습니다.</p>
+        <p className="text-sm text-gray-500">거래 내역이 없습니다.</p>
       )}
     </section>
   )

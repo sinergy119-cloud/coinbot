@@ -144,7 +144,7 @@ export default function TradeForm({ onExecute, loading }: TradeFormProps) {
         <label className="mb-1 block text-sm font-medium text-gray-700">
           코인
           {coinsLoading && <span className="ml-2 text-xs text-blue-500 animate-pulse">목록 로딩 중...</span>}
-          {!coinsLoading && allCoins.length > 0 && <span className="ml-2 text-xs text-gray-400">{allCoins.length}종</span>}
+          {!coinsLoading && allCoins.length > 0 && <span className="ml-2 text-xs text-gray-500">{allCoins.length}종</span>}
         </label>
         <input
           type="text"
@@ -165,7 +165,7 @@ export default function TradeForm({ onExecute, loading }: TradeFormProps) {
                 className="flex items-center gap-2 cursor-pointer px-3 py-2 text-sm hover:bg-blue-50"
               >
                 <span className="font-semibold text-gray-900 w-16 shrink-0">{c.code}</span>
-                <span className="text-gray-400 text-xs">{c.name}</span>
+                <span className="text-gray-500 text-xs">{c.name}</span>
               </li>
             ))}
           </ul>
@@ -187,7 +187,7 @@ export default function TradeForm({ onExecute, loading }: TradeFormProps) {
                 onChange={() => setTradeType(tt)}
                 className="accent-blue-600"
               />
-              <span className="text-sm">{TRADE_TYPE_LABELS[tt]}</span>
+              <span className="text-sm text-gray-700">{TRADE_TYPE_LABELS[tt]}</span>
             </label>
           ))}
         </div>
@@ -223,24 +223,24 @@ export default function TradeForm({ onExecute, loading }: TradeFormProps) {
             placeholder="5,100"
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
-          <p className="mt-1 text-xs text-gray-400">최소 거래 금액: 5,100원</p>
+          <p className="mt-1 text-xs text-gray-500">최소 거래 금액: 5,100원</p>
         </div>
       )}
 
       {/* 계정 선택 */}
       <div className="mb-4">
         <label className="mb-2 block text-sm font-medium text-gray-700">계정 선택</label>
-        {!exchange && <p className="text-sm text-gray-400">거래소를 먼저 선택해주세요.</p>}
-        {accountsLoading && <p className="text-sm text-gray-400">계정 로딩 중...</p>}
+        {!exchange && <p className="text-sm text-gray-500">거래소를 먼저 선택해주세요.</p>}
+        {accountsLoading && <p className="text-sm text-gray-500">계정 로딩 중...</p>}
         {exchange && !accountsLoading && accounts.length === 0 && (
-          <p className="text-sm text-gray-400">등록된 계정이 없습니다.</p>
+          <p className="text-sm text-gray-500">등록된 계정이 없습니다.</p>
         )}
         <div className="space-y-1.5">
           {accounts.filter((a) => !a._delegated).map((acc) => (
             <label key={acc.id} className="flex cursor-pointer items-center gap-2">
               <input type="checkbox" checked={selectedIds.includes(acc.id)}
                 onChange={() => toggleAccount(acc.id)} className="accent-blue-600" />
-              <span className="text-sm">{acc.account_name}</span>
+              <span className="text-sm text-gray-700">{acc.account_name}</span>
             </label>
           ))}
           {accounts.some((a) => a._delegated) && (

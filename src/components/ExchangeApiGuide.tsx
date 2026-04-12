@@ -27,8 +27,8 @@ function StepMockup({ step, guide }: { step: GuideStep; guide: ExchangeGuideData
         <div className="p-6 text-center">
           <div className="mb-4 text-2xl font-bold" style={{ color: brandColor }}>{guide.name}</div>
           <div className="mx-auto max-w-48 space-y-3">
-            <div className="rounded border border-gray-300 px-3 py-2 text-xs text-gray-400 text-left">아이디 / 이메일</div>
-            <div className="rounded border border-gray-300 px-3 py-2 text-xs text-gray-400 text-left">비밀번호</div>
+            <div className="rounded border border-gray-300 px-3 py-2 text-xs text-gray-500 text-left">아이디 / 이메일</div>
+            <div className="rounded border border-gray-300 px-3 py-2 text-xs text-gray-500 text-left">비밀번호</div>
             <div className="rounded py-2 text-xs font-bold text-white" style={{ backgroundColor: brandColor }}>
               로그인
             </div>
@@ -77,7 +77,7 @@ function StepMockup({ step, guide }: { step: GuideStep; guide: ExchangeGuideData
               </div>
               <div className="px-2 py-1.5 text-xs text-gray-500 rounded">알림 설정</div>
             </div>
-            <div className="flex-1 rounded bg-gray-50 p-3 text-xs text-gray-400 text-center">
+            <div className="flex-1 rounded bg-gray-50 p-3 text-xs text-gray-500 text-center">
               API 관리 화면이 여기에 표시됩니다
             </div>
           </div>
@@ -91,7 +91,7 @@ function StepMockup({ step, guide }: { step: GuideStep; guide: ExchangeGuideData
       <div className="rounded-lg border-2 border-gray-200 bg-white overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b" style={{ backgroundColor: brandColor + '10' }}>
           <span className="text-sm font-bold" style={{ color: brandColor }}>API 권한 설정</span>
-          <span className="text-xs text-gray-400">API 2.0</span>
+          <span className="text-xs text-gray-500">API 2.0</span>
         </div>
         <div className="p-4 space-y-2">
           {step.permissions.map((p) => (
@@ -131,7 +131,7 @@ function StepMockup({ step, guide }: { step: GuideStep; guide: ExchangeGuideData
               </div>
               <IpCopyButton />
             </div>
-            <p className="mt-1 text-xs text-gray-400">이 IP에서만 API 호출이 허용됩니다</p>
+            <p className="mt-1 text-xs text-gray-500">이 IP에서만 API 호출이 허용됩니다</p>
           </div>
           <button className="w-full rounded-lg py-2.5 text-sm font-bold text-white" style={{ backgroundColor: brandColor }}>
             API Key 발급

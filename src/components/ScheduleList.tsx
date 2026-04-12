@@ -15,7 +15,7 @@ export interface ScheduleListProps {
 
 export default function ScheduleList({ jobs, accountMap, onDelete, onEdit, currentUserId }: ScheduleListProps) {
   if (jobs.length === 0) {
-    return <p className="text-sm text-gray-400">등록된 스케줄이 없습니다.</p>
+    return <p className="text-sm text-gray-500">등록된 스케줄이 없습니다.</p>
   }
 
   return (
@@ -135,10 +135,10 @@ export default function ScheduleList({ jobs, accountMap, onDelete, onEdit, curre
                   {job.trade_type === 'SELL' ? '전량' : `${Number(job.amount_krw).toLocaleString()}원`}
                 </span>
               </div>
-              <div className="text-[10px] text-gray-400">
+              <div className="text-[10px] text-gray-500">
                 {job.schedule_from} ~ {job.schedule_to} · {job.schedule_time.slice(0, 5)}
               </div>
-              <div className="mt-1 text-[10px] text-gray-400 truncate">
+              <div className="mt-1 text-[10px] text-gray-500 truncate">
                 {(job.account_ids as string[]).map((id) => accountMap[id] ?? id).join(', ')}
               </div>
             </div>

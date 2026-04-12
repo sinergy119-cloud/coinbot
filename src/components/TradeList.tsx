@@ -35,7 +35,7 @@ export default function TradeList({ jobs, onUpdate, onDelete }: TradeListProps) 
     return (
       <section className="rounded-xl border border-gray-200 bg-white p-4">
         <h2 className="mb-3 text-base font-semibold text-gray-900">거래 목록</h2>
-        <p className="text-sm text-gray-400">등록된 스케줄이 없습니다.</p>
+        <p className="text-sm text-gray-500">등록된 스케줄이 없습니다.</p>
       </section>
     )
   }

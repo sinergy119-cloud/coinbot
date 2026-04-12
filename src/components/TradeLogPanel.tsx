@@ -92,7 +92,7 @@ export default function TradeLogPanel() {
         )}
 
       {logs.length === 0 ? (
-        <p className="text-sm text-gray-400">실행 로그가 없습니다.</p>
+        <p className="text-sm text-gray-500">실행 로그가 없습니다.</p>
       ) : (
         <>
           {/* PC 테이블 */}
@@ -154,13 +154,13 @@ export default function TradeLogPanel() {
                     <div className="flex items-center gap-1.5 text-xs">
                       <span>{EXCHANGE_EMOJI[log.exchange as Exchange]}</span>
                       <span className="font-bold">{log.coin}</span>
-                      <span className="text-gray-400">{TRADE_LABEL[log.trade_type]}</span>
+                      <span className="text-gray-500">{TRADE_LABEL[log.trade_type]}</span>
                     </div>
                     <span className={`text-xs font-medium ${log.success ? 'text-green-600' : 'text-red-600'}`}>
                       {log.success ? '성공' : '실패'}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between text-[10px] text-gray-400">
+                  <div className="flex items-center justify-between text-[10px] text-gray-500">
                     <span>{toKST(log.executed_at)} · {log.account_name}</span>
                     <span>{cost > 0 ? `${Math.round(cost)}원` : ''} {log.source === 'schedule' ? '스케줄' : '수동'}</span>
                   </div>

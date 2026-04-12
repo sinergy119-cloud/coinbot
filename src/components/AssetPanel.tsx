@@ -69,7 +69,7 @@ export default function AssetPanel({ defaultExchange, onExchangeChange }: AssetP
       </div>
 
       {/* 상태 메시지 */}
-      {!exchange && <p className="text-sm text-gray-400">거래소를 선택해주세요.</p>}
+      {!exchange && <p className="text-sm text-gray-500">거래소를 선택해주세요.</p>}
       {loading && (
         <div className="space-y-2">
           {[1, 2, 3].map((i) => (
@@ -111,7 +111,7 @@ export default function AssetPanel({ defaultExchange, onExchangeChange }: AssetP
                         {c.qty.toFixed(8).replace(/\.?0+$/, '') || '0'}
                       </span>
                       {c.value > 0 && (
-                        <span className="ml-2 text-gray-400 text-xs">
+                        <span className="ml-2 text-gray-500 text-xs">
                           ≈ {Math.floor(c.value).toLocaleString()}원
                         </span>
                       )}
@@ -119,7 +119,7 @@ export default function AssetPanel({ defaultExchange, onExchangeChange }: AssetP
                   </div>
                 ))}
                 {acc.coins.length === 0 && (
-                  <p className="text-xs text-gray-400">보유 코인 없음</p>
+                  <p className="text-xs text-gray-500">보유 코인 없음</p>
                 )}
               </div>
             </div>
@@ -128,7 +128,7 @@ export default function AssetPanel({ defaultExchange, onExchangeChange }: AssetP
       )}
 
       {!loading && exchange && assets.length === 0 && !error && (
-        <p className="text-sm text-gray-400">등록된 계정이 없습니다.</p>
+        <p className="text-sm text-gray-500">등록된 계정이 없습니다.</p>
       )}
     </section>
   )

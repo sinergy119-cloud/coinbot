@@ -383,7 +383,7 @@ export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) 
             <TradeForm onExecute={handleExecute} loading={loading} />
             <section className="rounded-xl border border-gray-200 bg-white p-4">
               <h2 className="mb-3 text-base font-semibold text-gray-900">
-                등록된 스케줄 <span className="text-sm font-normal text-gray-400">({tradeJobs.length}개)</span>
+                등록된 스케줄 <span className="text-sm font-normal text-gray-500">({tradeJobs.length}개)</span>
               </h2>
               <ScheduleList jobs={tradeJobs} accountMap={accountMap} onDelete={handleDeleteJob} onEdit={handleEditJob} currentUserId={userId} />
             </section>
