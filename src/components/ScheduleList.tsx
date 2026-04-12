@@ -59,11 +59,11 @@ export default function ScheduleList({ jobs, accountMap, onDelete, onEdit, curre
                     {job.trade_type === 'SELL' ? '전량' : `${Number(job.amount_krw).toLocaleString()}원`}
                   </span>
                 </td>
-                <td className="py-2 pr-3 whitespace-nowrap text-gray-500">
+                <td className="py-2 pr-3 whitespace-nowrap text-gray-600">
                   <div>{job.schedule_from}</div>
                   <div>~ {job.schedule_to}</div>
                 </td>
-                <td className="py-2 pr-3 whitespace-nowrap text-gray-500">
+                <td className="py-2 pr-3 whitespace-nowrap text-gray-600">
                   {job.schedule_time.slice(0, 5)}
                 </td>
                 <td className="py-2 flex gap-1">
@@ -103,7 +103,7 @@ export default function ScheduleList({ jobs, accountMap, onDelete, onEdit, curre
                     ? <span className="rounded bg-gray-200 px-1.5 py-0.5 text-[10px] font-medium text-gray-500">완료</span>
                     : <span className="rounded bg-green-100 px-1.5 py-0.5 text-[10px] font-medium text-green-700">진행</span>
                   }
-                  <span className="text-xs font-medium">
+                  <span className="text-xs font-medium text-gray-900">
                     {EXCHANGE_EMOJI[job.exchange as Exchange]} {EXCHANGE_LABELS[job.exchange as Exchange]}
                   </span>
                 </div>
@@ -127,18 +127,18 @@ export default function ScheduleList({ jobs, accountMap, onDelete, onEdit, curre
                 </div>
               </div>
               <div className="flex items-center gap-2 text-xs mb-1">
-                <span className="font-bold">{job.coin}</span>
+                <span className="font-bold text-gray-900">{job.coin}</span>
                 <span className={job.trade_type === 'BUY' ? 'text-red-600' : job.trade_type === 'SELL' ? 'text-blue-600' : 'text-purple-600'}>
                   {TRADE_TYPE_LABELS[job.trade_type as TradeType]}
                 </span>
-                <span className="text-gray-600">
+                <span className="text-gray-700">
                   {job.trade_type === 'SELL' ? '전량' : `${Number(job.amount_krw).toLocaleString()}원`}
                 </span>
               </div>
-              <div className="text-[10px] text-gray-500">
+              <div className="text-[10px] text-gray-600">
                 {job.schedule_from} ~ {job.schedule_to} · {job.schedule_time.slice(0, 5)}
               </div>
-              <div className="mt-1 text-[10px] text-gray-500 truncate">
+              <div className="mt-1 text-[10px] text-gray-600 truncate">
                 {(job.account_ids as string[]).map((id) => accountMap[id] ?? id).join(', ')}
               </div>
             </div>
