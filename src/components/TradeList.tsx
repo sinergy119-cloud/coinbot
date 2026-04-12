@@ -90,10 +90,10 @@ export default function TradeList({ jobs, onUpdate, onDelete }: TradeListProps) 
                   </>
                 ) : (
                   <>
-                    <td className="py-2 pr-3 text-xs text-gray-500">
+                    <td className="py-2 pr-3 text-xs text-gray-600">
                       {job.schedule_from} ~ {job.schedule_to}
                     </td>
-                    <td className="py-2 pr-3 text-xs text-gray-500">{job.schedule_time}</td>
+                    <td className="py-2 pr-3 text-xs text-gray-600">{job.schedule_time}</td>
                     <td className="py-2">
                       <button onClick={() => startEdit(job)}
                         className="mr-1 rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-blue-600">

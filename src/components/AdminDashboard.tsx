@@ -67,7 +67,7 @@ function ExchangeAccordion({
             <li key={acc.id} className="flex items-center justify-between px-4 py-2.5">
               <div className="flex flex-col gap-0.5">
                 <span className="text-sm font-medium text-gray-900">{acc.account_name}</span>
-                <span className="text-xs text-gray-500">등록: {toKST(acc.created_at)}</span>
+                <span className="text-xs text-gray-600">등록: {toKST(acc.created_at)}</span>
               </div>
               <button
                 onClick={() => onDelete(acc.id, getUserName(acc.user_id), acc.account_name)}

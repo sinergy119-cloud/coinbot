@@ -100,18 +100,18 @@ export default function AssetPanel({ defaultExchange, onExchangeChange }: AssetP
               </p>
               <div className="space-y-1 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-gray-500">KRW</span>
+                  <span className="text-gray-600">KRW</span>
                   <span className="font-medium">{Math.floor(acc.krw).toLocaleString()}원</span>
                 </div>
                 {acc.coins.map((c) => (
                   <div key={c.coin} className="flex justify-between">
-                    <span className="text-gray-500">{c.coin}</span>
+                    <span className="text-gray-600">{c.coin}</span>
                     <span className="text-right">
                       <span className="text-gray-700">
                         {c.qty.toFixed(8).replace(/\.?0+$/, '') || '0'}
                       </span>
                       {c.value > 0 && (
-                        <span className="ml-2 text-gray-500 text-xs">
+                        <span className="ml-2 text-gray-600 text-xs">
                           ≈ {Math.floor(c.value).toLocaleString()}원
                         </span>
                       )}
@@ -119,7 +119,7 @@ export default function AssetPanel({ defaultExchange, onExchangeChange }: AssetP
                   </div>
                 ))}
                 {acc.coins.length === 0 && (
-                  <p className="text-xs text-gray-500">보유 코인 없음</p>
+                  <p className="text-xs text-gray-600">보유 코인 없음</p>
                 )}
               </div>
             </div>

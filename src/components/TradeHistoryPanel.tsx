@@ -247,7 +247,7 @@ export default function TradeHistoryPanel({ defaultExchange, onExchangeChange }:
               <tbody>
                 {filteredHistory.map((item) => (
                   <tr key={item.id} className="border-b border-gray-50">
-                    <td className="py-2 pr-3 text-xs text-gray-500">{formatDatetime(item.datetime)}</td>
+                    <td className="py-2 pr-3 text-xs text-gray-600">{formatDatetime(item.datetime)}</td>
                     <td className="py-2 pr-3 font-medium">{item.coin}/KRW</td>
                     <td className="py-2 pr-3">
                       <span className={`font-medium ${item.side === 'buy' ? 'text-red-500' : 'text-blue-500'}`}>
@@ -280,7 +280,7 @@ export default function TradeHistoryPanel({ defaultExchange, onExchangeChange }:
                     {item.total > 0 ? `${Math.floor(item.total).toLocaleString()}원` : '-'}
                   </span>
                 </div>
-                <div className="flex items-center justify-between text-[10px] text-gray-500">
+                <div className="flex items-center justify-between text-[10px] text-gray-600">
                   <span>{formatDatetime(item.datetime)}</span>
                   <span>{item.quantity.toFixed(8).replace(/\.?0+$/, '') || '0'}</span>
                 </div>
