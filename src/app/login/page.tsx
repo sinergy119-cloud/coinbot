@@ -171,7 +171,7 @@ function renderMarkdown(md: string) {
                   <span className="block text-xs font-bold text-gray-900">{name}</span>
                   {referralCode
                     ? <span className="block text-[10px] text-amber-600">추천코드: <b>{referralCode}</b></span>
-                    : <span className="block text-[10px] text-gray-500">{desc}</span>
+                    : <span className="block text-[10px] text-gray-600">{desc}</span>
                   }
                 </span>
                 <span className="text-sm text-gray-300">›</span>

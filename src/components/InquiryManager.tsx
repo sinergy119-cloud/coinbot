@@ -159,7 +159,7 @@ export default function InquiryManager() {
                     <div className="mt-3 space-y-3 border-t border-gray-100 pt-3">
                       {/* 문의 내용 */}
                       <div>
-                        <p className="text-[10px] font-semibold text-gray-500 mb-1">문의 내용</p>
+                        <p className="text-[10px] font-semibold text-gray-600 mb-1">문의 내용</p>
                         <p className="text-xs text-gray-700 whitespace-pre-wrap bg-white rounded p-2 border border-gray-100">{inq.content}</p>
                       </div>
 
@@ -169,12 +169,12 @@ export default function InquiryManager() {
                           <p className="text-[10px] font-semibold text-green-700 mb-1">관리자 답변</p>
                           <p className="text-xs text-gray-700 whitespace-pre-wrap bg-white rounded p-2 border border-green-100">{inq.admin_reply}</p>
                           {inq.answered_at && (
-                            <p className="text-[10px] text-gray-500 mt-1">{toKST(inq.answered_at)}</p>
+                            <p className="text-[10px] text-gray-600 mt-1">{toKST(inq.answered_at)}</p>
                           )}
                         </div>
                       ) : (
                         <div>
-                          <p className="text-[10px] font-semibold text-gray-500 mb-1">답변 작성</p>
+                          <p className="text-[10px] font-semibold text-gray-600 mb-1">답변 작성</p>
                           <textarea
                             value={replyDraft[inq.id] ?? ''}
                             onChange={(e) => setReplyDraft((d) => ({ ...d, [inq.id]: e.target.value }))}

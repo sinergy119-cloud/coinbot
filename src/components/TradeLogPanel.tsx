@@ -160,7 +160,7 @@ export default function TradeLogPanel() {
                       {log.success ? '성공' : '실패'}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between text-[10px] text-gray-500">
+                  <div className="flex items-center justify-between text-[10px] text-gray-600">
                     <span>{toKST(log.executed_at)} · {log.account_name}</span>
                     <span>{cost > 0 ? `${Math.round(cost)}원` : ''} {log.source === 'schedule' ? '스케줄' : '수동'}</span>
                   </div>

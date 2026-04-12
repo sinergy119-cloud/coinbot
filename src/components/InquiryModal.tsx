@@ -157,7 +157,7 @@ export default function InquiryModal({ onClose }: { onClose: () => void }) {
                   placeholder="예: 스케줄 실행 오류"
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
                 />
-                <p className="mt-1 text-[10px] text-gray-500 text-right">{title.length}/100</p>
+                <p className="mt-1 text-[10px] text-gray-600 text-right">{title.length}/100</p>
               </div>
 
               <div>
@@ -170,7 +170,7 @@ export default function InquiryModal({ onClose }: { onClose: () => void }) {
                   placeholder="발생 상황, 재현 방법, 스크린샷 설명 등을 자세히 적어주세요."
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none resize-none"
                 />
-                <p className="mt-1 text-[10px] text-gray-500 text-right">{content.length}/2000</p>
+                <p className="mt-1 text-[10px] text-gray-600 text-right">{content.length}/2000</p>
               </div>
 
               {error && <p className="text-xs text-red-600">{error}</p>}
@@ -210,7 +210,7 @@ export default function InquiryModal({ onClose }: { onClose: () => void }) {
                           ⏳ 답변 대기
                         </span>
                       )}
-                      <span className="ml-auto text-[10px] text-gray-500">{toKST(inq.created_at)}</span>
+                      <span className="ml-auto text-[10px] text-gray-600">{toKST(inq.created_at)}</span>
                     </div>
                     <p className="text-sm font-semibold text-gray-900 mb-1">{inq.title}</p>
                     <p className="text-xs text-gray-600 whitespace-pre-wrap">{inq.content}</p>
@@ -219,7 +219,7 @@ export default function InquiryModal({ onClose }: { onClose: () => void }) {
                         <p className="text-[10px] font-semibold text-green-700 mb-1">👨‍💼 관리자 답변</p>
                         <p className="text-xs text-gray-700 whitespace-pre-wrap">{inq.admin_reply}</p>
                         {inq.answered_at && (
-                          <p className="mt-1 text-[10px] text-gray-500">{toKST(inq.answered_at)}</p>
+                          <p className="mt-1 text-[10px] text-gray-600">{toKST(inq.answered_at)}</p>
                         )}
                       </div>
                     )}

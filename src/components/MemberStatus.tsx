@@ -270,7 +270,7 @@ export default function MemberStatus() {
                               {EXCHANGE_EMOJI[acc.exchange]} {acc.account_name}
                             </span>
                           ))}
-                          {viewData.accounts.length === 0 && <span className="text-[10px] text-gray-500">등록된 계정 없음</span>}
+                          {viewData.accounts.length === 0 && <span className="text-[10px] text-gray-600">등록된 계정 없음</span>}
                         </div>
 
                         {/* 스케줄 탭 */}
@@ -294,10 +294,10 @@ export default function MemberStatus() {
                                   <div className="text-xs text-gray-600">
                                     <b>{job.coin}</b> · {TRADE_TYPE_LABELS[job.trade_type as TradeType] ?? job.trade_type} · {job.trade_type === 'SELL' ? '전량' : `${Number(job.amount_krw).toLocaleString()}원`}
                                   </div>
-                                  <div className="text-[10px] text-gray-500 mt-1">
+                                  <div className="text-[10px] text-gray-600 mt-1">
                                     {job.schedule_from} ~ {job.schedule_to} · {(job.schedule_time as string).slice(0, 5)}
                                   </div>
-                                  <div className="text-[10px] text-gray-500 mt-0.5">
+                                  <div className="text-[10px] text-gray-600 mt-0.5">
                                     계정: {(job.account_ids as string[]).map((id) => viewData.accountMap[id] ?? id).join(', ')}
                                   </div>
                                 </div>
@@ -338,7 +338,7 @@ export default function MemberStatus() {
                                   <span className="text-xs text-gray-500">KRW {Math.floor(acc.krw).toLocaleString()}원</span>
                                 </div>
                                 {acc.coins.length === 0 ? (
-                                  <p className="text-[10px] text-gray-500">보유 코인 없음</p>
+                                  <p className="text-[10px] text-gray-600">보유 코인 없음</p>
                                 ) : (
                                   <div className="space-y-1">
                                     {acc.coins.map((c) => (
@@ -364,7 +364,7 @@ export default function MemberStatus() {
                                 <span className="font-medium">{EXCHANGE_EMOJI[log.exchange as Exchange]} {log.coin}</span>
                                 <span className="text-gray-500">{TRADE_TYPE_LABELS[log.trade_type as TradeType] ?? log.trade_type}</span>
                                 <span className="text-gray-500">{log.account_name}</span>
-                                <span className="ml-auto text-[10px] text-gray-500">{toKST(log.executed_at)}</span>
+                                <span className="ml-auto text-[10px] text-gray-600">{toKST(log.executed_at)}</span>
                               </div>
                             ))}
                           </div>

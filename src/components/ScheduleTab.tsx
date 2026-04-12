@@ -148,7 +148,7 @@ function TelegramSettings() {
                 </div>
               </div>
             </div>
-            <p className="mt-1.5 text-[10px] text-gray-500">위 Chat ID 숫자를 아래 입력란에 붙여넣기</p>
+            <p className="mt-1.5 text-[10px] text-gray-600">위 Chat ID 숫자를 아래 입력란에 붙여넣기</p>
           </div>
           <div className="flex gap-2">
             <input
