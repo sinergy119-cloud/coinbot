@@ -322,7 +322,7 @@ export default function EventManager() {
                       </button>
                     </div>
                   </div>
-                  <div className="text-xs text-gray-500 space-y-0.5">
+                  <div className="text-xs text-gray-600 space-y-0.5">
                     <div>
                       📅 {ev.start_date} ~ {ev.end_date}
                       {ev.amount && <span className="ml-2">💰 <b>{ev.amount}</b></span>}

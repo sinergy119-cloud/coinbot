@@ -333,7 +333,7 @@ export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) 
                           </span>
                         )}
                       </div>
-                      <div className="text-[11px] text-gray-600 space-y-0.5">
+                      <div className="text-[11px] text-gray-700 space-y-0.5">
                         <div>
                           📅 {ev.start_date} ~ {ev.end_date}
                           {ev.amount && <span className="ml-2">💰 <b>{ev.amount}</b></span>}

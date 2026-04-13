@@ -97,7 +97,7 @@ export default function UserGuideModal({ onClose }: { onClose: () => void }) {
                     <p className="text-sm font-semibold text-gray-900">{item.name}</p>
                     <p className="text-xs text-gray-600 mt-0.5 leading-relaxed">{item.desc}</p>
                     {item.sub && (
-                      <p className="text-[11px] text-gray-500 mt-1 leading-relaxed whitespace-pre-line">
+                      <p className="text-[11px] text-gray-600 mt-1 leading-relaxed whitespace-pre-line">
                         {item.sub}
                       </p>
                     )}

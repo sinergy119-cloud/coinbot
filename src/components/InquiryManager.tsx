@@ -149,7 +149,7 @@ export default function InquiryManager() {
                     <span className="text-sm font-semibold text-gray-900 flex-1 truncate">{inq.title}</span>
                     {expanded ? <ChevronUp size={14} className="text-gray-400" /> : <ChevronDown size={14} className="text-gray-400" />}
                   </button>
-                  <div className="mt-1 flex items-center gap-2 text-[11px] text-gray-500">
+                  <div className="mt-1 flex items-center gap-2 text-[11px] text-gray-600">
                     <span>{inq.user_name ?? '-'} ({inq.user_login_id ?? '-'})</span>
                     <span>·</span>
                     <span>{toKST(inq.created_at)}</span>
