@@ -296,10 +296,10 @@ export default function EventManager() {
                       }`}>
                         {isCompleted ? '완료' : '진행중'}
                       </span>
-                      <span className="text-sm font-medium">
+                      <span className="text-sm font-medium text-gray-900">
                         {EXCHANGE_EMOJI[ev.exchange as Exchange]} {EXCHANGE_LABELS[ev.exchange as Exchange]}
                       </span>
-                      <span className="font-bold text-sm">{ev.coin}</span>
+                      <span className="font-bold text-sm text-gray-900">{ev.coin}</span>
                       {ev.require_apply && (
                         <span className="rounded-full bg-amber-100 border border-amber-400 px-2 py-0.5 text-[10px] font-semibold text-amber-800">
                           🎟️ 이벤트 신청 필요

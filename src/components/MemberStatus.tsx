@@ -287,7 +287,7 @@ export default function MemberStatus() {
                                       <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${isCompleted ? 'bg-gray-200 text-gray-500' : 'bg-green-100 text-green-700'}`}>
                                         {isCompleted ? '완료' : '진행'}
                                       </span>
-                                      <span className="text-xs">{EXCHANGE_EMOJI[job.exchange as Exchange]} {EXCHANGE_LABELS[job.exchange as Exchange]}</span>
+                                      <span className="text-xs text-gray-900">{EXCHANGE_EMOJI[job.exchange as Exchange]} {EXCHANGE_LABELS[job.exchange as Exchange]}</span>
                                     </div>
                                     {!isOwner && <span className="text-[10px] text-purple-500">관리자 등록</span>}
                                   </div>

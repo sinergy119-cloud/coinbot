@@ -318,7 +318,7 @@ export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) 
                   return (
                     <div key={ev.id} className={`rounded-lg border p-3 ${urgent ? 'border-red-200 bg-red-50/50' : 'border-amber-100 bg-white'}`}>
                       <div className="flex items-center gap-1.5 flex-wrap mb-1.5">
-                        <span className="text-sm font-medium">
+                        <span className="text-sm font-medium text-gray-900">
                           {EXCHANGE_EMOJI[ev.exchange as Exchange]} {EXCHANGE_LABELS[ev.exchange as Exchange]}
                         </span>
                         <span className="font-bold text-sm text-gray-900">{ev.coin}</span>

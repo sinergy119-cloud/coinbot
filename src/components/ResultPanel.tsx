@@ -43,7 +43,7 @@ export default function ResultPanel({ results, onClose }: ResultPanelProps) {
               <tr key={r.accountId} className="border-b border-gray-100">
                 <td className="py-2 pr-3">{r.exchange}</td>
                 <td className="py-2 pr-3">{r.accountName}</td>
-                <td className="py-2 pr-3 text-xs">{r.orderSummary}</td>
+                <td className="py-2 pr-3 text-xs text-gray-700">{r.orderSummary}</td>
                 <td className="py-2 pr-3">{Math.floor(r.balance).toLocaleString()}원</td>
                 <td className="py-2">
                   {r.success ? (

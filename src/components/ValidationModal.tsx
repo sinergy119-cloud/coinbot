@@ -42,8 +42,8 @@ export default function ValidationModal({ items, onConfirm, onCancel, loading }:
                 <tr key={item.accountId} className={`border-b border-gray-100 ${!item.feasible ? 'opacity-40' : ''}`}>
                   <td className="py-2 pr-3">{item.exchange}</td>
                   <td className="py-2 pr-3">{item.accountName}</td>
-                  <td className="py-2 pr-3 text-xs">{item.orderSummary}</td>
-                  <td className="py-2 pr-3 text-xs">
+                  <td className="py-2 pr-3 text-xs text-gray-700">{item.orderSummary}</td>
+                  <td className="py-2 pr-3 text-xs text-gray-700">
                     {item.coinQty !== undefined
                       ? (
                         <span>
