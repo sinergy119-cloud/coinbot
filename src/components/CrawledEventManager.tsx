@@ -97,6 +97,8 @@ export default function CrawledEventManager() {
     }
   }, [])
 
+  // 마운트 시 키워드 카운트를 위해 즉시 로드, 패널 열릴 때도 새로고침
+  useEffect(() => { loadKeywords() }, [loadKeywords])
   useEffect(() => {
     if (kwOpen) loadKeywords()
   }, [kwOpen, loadKeywords])
