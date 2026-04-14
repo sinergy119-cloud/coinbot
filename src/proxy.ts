@@ -20,7 +20,12 @@ export default async function proxy(request: NextRequest) {
   }
 
   // 정적 파일 및 OG 이미지는 통과
-  if (pathname.startsWith('/_next') || pathname.startsWith('/favicon') || pathname.includes('opengraph-image')) {
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/favicon') ||
+    pathname.includes('opengraph-image') ||
+    /\.(png|jpe?g|gif|svg|webp|ico|woff2?|ttf|otf)$/i.test(pathname)
+  ) {
     return NextResponse.next()
   }
 
