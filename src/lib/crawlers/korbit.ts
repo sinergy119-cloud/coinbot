@@ -7,6 +7,7 @@
  */
 
 import { matchesKeyword, Keywords } from './keywords'
+import { withRetry } from './retry'
 
 const NOTICE_URL = 'https://www.korbit.co.kr/support/notices'
 const BASE_URL = 'https://www.korbit.co.kr'
@@ -19,17 +20,20 @@ export interface CrawledItem {
 }
 
 export async function crawlKorbit(keywords: Keywords, since: Date): Promise<CrawledItem[]> {
-  const res = await fetch(NOTICE_URL, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (compatible; MyCoinBot-Crawler/1.0)',
-      'Accept': 'text/html',
-    },
-    signal: AbortSignal.timeout(15_000),
-  })
-
-  if (!res.ok) {
-    throw new Error(`코빗 공지 페이지 오류: ${res.status}`)
-  }
+  const res = await withRetry(
+    () =>
+      fetch(NOTICE_URL, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; MyCoinBot-Crawler/1.0)',
+          'Accept': 'text/html',
+        },
+        signal: AbortSignal.timeout(15_000),
+      }).then((r) => {
+        if (!r.ok) throw new Error(`코빗 공지 페이지 오류: ${r.status}`)
+        return r
+      }),
+    { label: 'KORBIT' },
+  )
 
   const html = await res.text()
   const results: CrawledItem[] = []

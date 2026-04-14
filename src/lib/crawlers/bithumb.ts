@@ -6,6 +6,7 @@
  */
 
 import { matchesKeyword, Keywords } from './keywords'
+import { withRetry } from './retry'
 
 const NOTICE_API_URL = 'https://api.bithumb.com/v1/notices?noticeType=EVENT&pageSize=30&pageNo=1'
 const BASE_URL = 'https://www.bithumb.com'
@@ -18,14 +19,17 @@ export interface CrawledItem {
 }
 
 export async function crawlBithumb(keywords: Keywords, since: Date): Promise<CrawledItem[]> {
-  const res = await fetch(NOTICE_API_URL, {
-    headers: { 'User-Agent': 'MyCoinBot-Crawler/1.0' },
-    signal: AbortSignal.timeout(10_000),
-  })
-
-  if (!res.ok) {
-    throw new Error(`빗썸 공지 API 오류: ${res.status}`)
-  }
+  const res = await withRetry(
+    () =>
+      fetch(NOTICE_API_URL, {
+        headers: { 'User-Agent': 'MyCoinBot-Crawler/1.0' },
+        signal: AbortSignal.timeout(10_000),
+      }).then((r) => {
+        if (!r.ok) throw new Error(`빗썸 공지 API 오류: ${r.status}`)
+        return r
+      }),
+    { label: 'BITHUMB' },
+  )
 
   const json = await res.json()
 
