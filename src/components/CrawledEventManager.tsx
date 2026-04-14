@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
   RefreshCw, CheckCircle, XCircle, ExternalLink, Loader2,
-  ChevronDown, ChevronUp, Plus, Trash2, Tag,
+  ChevronDown, ChevronUp, Plus, Trash2, Tag, History,
+  AlertCircle, Send,
 } from 'lucide-react'
 import type { Exchange } from '@/types/database'
 
@@ -22,6 +23,17 @@ interface Keyword {
   id: string
   keyword: string
   type: 'include' | 'exclude'
+}
+
+interface CrawlLog {
+  id: string
+  triggered_by: 'cron' | 'manual'
+  started_at: string
+  found_count: number
+  inserted_count: number
+  errors: Array<{ exchange: string; message: string }>
+  telegram_sent: boolean | null
+  telegram_error: string | null
 }
 
 interface ApproveForm {
@@ -52,7 +64,7 @@ export default function CrawledEventManager() {
   const [items, setItems] = useState<CrawledEvent[]>([])
   const [loading, setLoading] = useState(false)
   const [crawling, setCrawling] = useState(false)
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [message, setMessage] = useState<{ type: 'success' | 'error' | 'warn'; text: string } | null>(null)
 
   // 승인 모달
   const [approveTarget, setApproveTarget] = useState<CrawledEvent | null>(null)
@@ -66,6 +78,11 @@ export default function CrawledEventManager() {
   const [newKw, setNewKw] = useState('')
   const [newKwType, setNewKwType] = useState<'include' | 'exclude'>('include')
   const [kwSubmitting, setKwSubmitting] = useState(false)
+
+  // 수집 이력 패널
+  const [logOpen, setLogOpen] = useState(false)
+  const [logs, setLogs] = useState<CrawlLog[]>([])
+  const [logLoading, setLogLoading] = useState(false)
 
   // ── 이벤트 목록 로드
   const load = useCallback(async () => {
@@ -97,26 +114,54 @@ export default function CrawledEventManager() {
     }
   }, [])
 
-  // 마운트 시 키워드 카운트를 위해 즉시 로드, 패널 열릴 때도 새로고침
+  // 마운트 시 즉시 로드 (헤더 카운트 표시용)
   useEffect(() => { loadKeywords() }, [loadKeywords])
   useEffect(() => {
     if (kwOpen) loadKeywords()
   }, [kwOpen, loadKeywords])
 
-  // ── 즉시 수집
+  // ── 수집 이력 로드
+  const loadLogs = useCallback(async () => {
+    setLogLoading(true)
+    try {
+      const res = await fetch('/api/admin/crawl-logs')
+      const data = await res.json()
+      setLogs(Array.isArray(data) ? data : [])
+    } catch {
+      setLogs([])
+    } finally {
+      setLogLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { loadLogs() }, [loadLogs])
+  useEffect(() => {
+    if (logOpen) loadLogs()
+  }, [logOpen, loadLogs])
+
+  // ── 즉시 수집 (R-3: 429 쿨다운 처리)
   async function runCrawl() {
     setCrawling(true)
     setMessage(null)
     try {
-      const res = await fetch('/api/admin/run-crawl', {
-        method: 'POST',
-      })
+      const res = await fetch('/api/admin/run-crawl', { method: 'POST' })
       const data = await res.json()
+
+      // R-3: 쿨다운 중 (429)
+      if (res.status === 429) {
+        setMessage({ type: 'warn', text: data.message ?? '잠시 후 다시 시도해주세요.' })
+        return
+      }
+
       if (!res.ok) throw new Error(data.error ?? '오류')
+
       setMessage({
         type: 'success',
-        text: `크롤링 완료 — 수집 ${data.found ?? 0}건, 신규 등록 ${data.inserted ?? 0}건`,
+        text: `크롤링 완료 — 수집 ${data.found ?? 0}건, 신규 등록 ${data.inserted ?? 0}건${
+          data.errors?.length ? ` (오류 ${data.errors.length}개 거래소)` : ''
+        }`,
       })
+      loadLogs()
       if (tab === 'pending') load()
     } catch (e) {
       setMessage({ type: 'error', text: e instanceof Error ? e.message : '크롤링 실패' })
@@ -227,6 +272,13 @@ export default function CrawledEventManager() {
   const includeKws = keywords.filter((k) => k.type === 'include')
   const excludeKws = keywords.filter((k) => k.type === 'exclude')
 
+  // ── 이력 메시지 색상 헬퍼
+  function logRowColor(log: CrawlLog) {
+    if (log.errors?.length > 0 && log.inserted_count === 0) return 'bg-red-50'
+    if (log.inserted_count > 0) return 'bg-green-50'
+    return ''
+  }
+
   // ═══ 렌더링 ═══
   return (
     <div className="space-y-4">
@@ -258,9 +310,14 @@ export default function CrawledEventManager() {
 
       {/* ── 메시지 ── */}
       {message && (
-        <p className={`rounded-lg px-3 py-2 text-sm break-keep ${
-          message.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'
+        <p className={`rounded-lg px-3 py-2 text-sm break-keep flex items-start gap-2 ${
+          message.type === 'success'
+            ? 'bg-green-50 text-green-700'
+            : message.type === 'warn'
+            ? 'bg-yellow-50 text-yellow-700'
+            : 'bg-red-50 text-red-600'
         }`}>
+          {message.type === 'warn' && <AlertCircle size={15} className="mt-0.5 shrink-0" />}
           {message.text}
         </p>
       )}
@@ -367,6 +424,107 @@ export default function CrawledEventManager() {
             <p className="text-[11px] text-gray-600 break-keep leading-relaxed">
               💡 DB에 키워드가 없으면 코드 기본값이 사용됩니다. 추가하면 즉시 반영됩니다.
             </p>
+          </div>
+        )}
+      </div>
+
+      {/* ══════════════════════════════
+          수집 이력 서브패널
+      ══════════════════════════════ */}
+      <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+        <button
+          onClick={() => setLogOpen((v) => !v)}
+          className="flex w-full items-center justify-between px-4 py-3"
+        >
+          <div className="flex items-center gap-2">
+            <History size={15} className="text-blue-500" />
+            <span className="text-sm font-medium text-gray-900">수집 이력</span>
+            {logs.length > 0 && (
+              <span className="text-xs text-gray-600">최근 {logs.length}건</span>
+            )}
+          </div>
+          {logOpen ? <ChevronUp size={15} className="text-gray-400" /> : <ChevronDown size={15} className="text-gray-400" />}
+        </button>
+
+        {logOpen && (
+          <div className="border-t border-gray-100">
+            {logLoading ? (
+              <p className="py-4 text-center text-xs text-gray-500">불러오는 중...</p>
+            ) : logs.length === 0 ? (
+              <p className="py-4 text-center text-xs text-gray-500">수집 이력이 없습니다.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-gray-100 bg-gray-50 text-gray-500">
+                      <th className="px-4 py-2 text-left font-medium">실행 시각</th>
+                      <th className="px-3 py-2 text-center font-medium">구분</th>
+                      <th className="px-3 py-2 text-center font-medium">수집</th>
+                      <th className="px-3 py-2 text-center font-medium">신규</th>
+                      <th className="px-3 py-2 text-center font-medium">오류</th>
+                      <th className="px-3 py-2 text-center font-medium">알림</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {logs.map((log) => (
+                      <tr
+                        key={log.id}
+                        className={`border-b border-gray-50 last:border-0 ${logRowColor(log)}`}
+                      >
+                        <td className="px-4 py-2 text-gray-700 whitespace-nowrap">
+                          {new Date(log.started_at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}
+                        </td>
+                        <td className="px-3 py-2 text-center">
+                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                            log.triggered_by === 'manual'
+                              ? 'bg-blue-100 text-blue-700'
+                              : 'bg-gray-100 text-gray-600'
+                          }`}>
+                            {log.triggered_by === 'manual' ? '수동' : '자동'}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 text-center text-gray-700">{log.found_count}</td>
+                        <td className="px-3 py-2 text-center">
+                          <span className={log.inserted_count > 0 ? 'font-semibold text-green-700' : 'text-gray-500'}>
+                            {log.inserted_count}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 text-center">
+                          {log.errors?.length > 0 ? (
+                            <span
+                              className="cursor-help text-red-600 font-medium"
+                              title={log.errors.map((e) => `${e.exchange}: ${e.message}`).join('\n')}
+                            >
+                              {log.errors.length}건 ⚠
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">—</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 text-center">
+                          {log.inserted_count === 0 ? (
+                            <span className="text-gray-400">—</span>
+                          ) : log.telegram_sent === true ? (
+                            <span title="발송 완료">
+                              <Send size={12} className="mx-auto text-green-600" />
+                            </span>
+                          ) : log.telegram_error ? (
+                            <span
+                              className="cursor-help text-red-500"
+                              title={`발송 실패: ${log.telegram_error}`}
+                            >
+                              ✗
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
       </div>
