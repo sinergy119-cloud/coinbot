@@ -1,21 +1,97 @@
 /**
  * 업비트 공지사항 크롤러
  *
- * ⚠️ 업비트는 공지사항 공개 API를 제공하지 않으며,
- *    SPA(React) 방식으로 클라이언트 렌더링을 사용합니다.
- *    서버사이드 HTML 파싱이 불가능한 구조입니다.
+ * API: https://api-manager.upbit.com/api/v1/announcements
+ * - os=web, page, per_page, category 파라미터 사용
+ * - 인증 불필요 (공개 엔드포인트)
  *
- * 현재 상태: 빈 배열 반환 (수집 불가)
- *
- * 향후 개선 방법:
- *   1. 업비트 공식 API 공개 시 엔드포인트 추가
- *   2. Puppeteer/Playwright 등 헤드리스 브라우저로 전환
+ * 발견 경위: 업비트 웹 소스 번들(sri-v2-client-redux-state-bundle) 역분석
  */
 
 import { CrawledItem } from './bithumb'
 import { Keywords } from './keywords'
 
-export async function crawlUpbit(_keywords: Keywords, _since: Date): Promise<CrawledItem[]> {
-  // 현재 수집 불가 — 공개 API 미제공 거래소
-  return []
+const BASE_URL = 'https://api-manager.upbit.com/api/v1/announcements'
+
+interface UpbitNotice {
+  id: number
+  title: string
+  category: string
+  listed_at: string
+  first_listed_at: string
+  need_new_badge: boolean
+  need_update_badge: boolean
+}
+
+interface UpbitResponse {
+  success: boolean
+  data: {
+    total_pages: number
+    total_count: number
+    notices: UpbitNotice[]
+    fixed_notices: UpbitNotice[]
+  }
+}
+
+export async function crawlUpbit(keywords: Keywords, since: Date): Promise<CrawledItem[]> {
+  const results: CrawledItem[] = []
+  const seen = new Set<number>()
+
+  try {
+    // 첫 페이지만 수집 (최신 50건이면 충분)
+    const url = new URL(BASE_URL)
+    url.searchParams.set('os', 'web')
+    url.searchParams.set('page', '1')
+    url.searchParams.set('per_page', '50')
+    url.searchParams.set('category', 'all')
+
+    const res = await fetch(url.toString(), {
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        Referer: 'https://upbit.com/service_center/notice',
+        Accept: 'application/json',
+      },
+    })
+
+    if (!res.ok) {
+      throw new Error(`업비트 API 응답 오류: ${res.status}`)
+    }
+
+    const json: UpbitResponse = await res.json()
+
+    if (!json.success || !json.data) {
+      throw new Error('업비트 API 응답 형식 오류')
+    }
+
+    const allNotices = [...json.data.notices, ...json.data.fixed_notices]
+
+    for (const notice of allNotices) {
+      if (seen.has(notice.id)) continue
+      seen.add(notice.id)
+
+      const listedAt = new Date(notice.listed_at)
+      if (listedAt < since) continue
+
+      const title = notice.title
+      const titleLower = title.toLowerCase()
+
+      const hasInclude = keywords.include.some((kw) => titleLower.includes(kw.toLowerCase()))
+      const hasExclude = keywords.exclude.some((kw) => titleLower.includes(kw.toLowerCase()))
+
+      if (!hasInclude || hasExclude) continue
+
+      results.push({
+        exchange: 'UPBIT',
+        sourceId: String(notice.id),
+        title,
+        url: `https://upbit.com/service_center/notice?id=${notice.id}`,
+      })
+    }
+  } catch (err) {
+    console.error('[crawlUpbit] 오류:', err)
+    // 오류 시 빈 배열 반환 (다른 거래소 수집에 영향 없음)
+  }
+
+  return results
 }
