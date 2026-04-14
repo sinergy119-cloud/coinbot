@@ -106,9 +106,8 @@ export default function CrawledEventManager() {
     setCrawling(true)
     setMessage(null)
     try {
-      const res = await fetch('/api/cron/crawl-events', {
+      const res = await fetch('/api/admin/run-crawl', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${process.env.NEXT_PUBLIC_CRON_SECRET ?? ''}` },
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? '오류')
