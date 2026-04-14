@@ -6,7 +6,7 @@
  *    사이트 구조 변경 시 정규식/선택자를 수정하세요.
  */
 
-import { matchesKeyword } from './keywords'
+import { matchesKeyword, Keywords } from './keywords'
 
 const NOTICE_URL = 'https://www.korbit.co.kr/support/notices'
 const BASE_URL = 'https://www.korbit.co.kr'
@@ -18,7 +18,7 @@ export interface CrawledItem {
   url: string | null
 }
 
-export async function crawlKorbit(): Promise<CrawledItem[]> {
+export async function crawlKorbit(keywords: Keywords, since: Date): Promise<CrawledItem[]> {
   const res = await fetch(NOTICE_URL, {
     headers: {
       'User-Agent': 'Mozilla/5.0 (compatible; MyCoinBot-Crawler/1.0)',
@@ -34,7 +34,7 @@ export async function crawlKorbit(): Promise<CrawledItem[]> {
   const html = await res.text()
   const results: CrawledItem[] = []
 
-  // 방법 1: Next.js __NEXT_DATA__ 탐색
+  // 방법 1: __NEXT_DATA__ 파싱
   const nextDataMatch = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/)
   if (nextDataMatch) {
     try {
@@ -46,9 +46,14 @@ export async function crawlKorbit(): Promise<CrawledItem[]> {
         []
       if (Array.isArray(notices) && notices.length > 0) {
         return notices
-          .filter((n: { title?: string; subject?: string }) =>
-            matchesKeyword(n.title ?? n.subject ?? ''),
-          )
+          .filter((n: { title?: string; subject?: string; created_at?: string; createdAt?: string; regDate?: string }) => {
+            const dateStr = n.created_at ?? n.createdAt ?? n.regDate
+            if (dateStr) {
+              const posted = new Date(dateStr)
+              if (!isNaN(posted.getTime()) && posted < since) return false
+            }
+            return matchesKeyword(n.title ?? n.subject ?? '', keywords)
+          })
           .map((n: { id?: string | number; title?: string; subject?: string; slug?: string }) => {
             const title = String(n.title ?? n.subject ?? '')
             const id = String(n.id ?? n.slug ?? '')
@@ -66,14 +71,13 @@ export async function crawlKorbit(): Promise<CrawledItem[]> {
   }
 
   // 방법 2: HTML 정규식
-  // /support/notices/ID 패턴
   const linkPattern = /href="(\/support\/notices\/(\d+)[^"]*)">([^<]+)</g
   let match
   while ((match = linkPattern.exec(html)) !== null) {
     const path = match[1]
     const id = match[2]
     const title = match[3].trim()
-    if (!title || !matchesKeyword(title)) continue
+    if (!title || !matchesKeyword(title, keywords)) continue
     if (results.some((r) => r.sourceId === id)) continue
     results.push({
       exchange: 'KORBIT',

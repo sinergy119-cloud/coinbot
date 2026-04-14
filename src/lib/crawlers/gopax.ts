@@ -9,13 +9,10 @@
  *   page  : 0부터 시작
  *
  * 응답: [ { id, type, title, content, createdAt, updatedAt }, ... ]
- *
- * ⚠️ 엔드포인트가 변경된 경우 NOTICE_API_URL만 수정하세요.
  */
 
-import { matchesKeyword } from './keywords'
+import { matchesKeyword, Keywords } from './keywords'
 
-// type=3 (이벤트) + type=0 (전체 — 키워드로 필터) 동시 수집
 const NOTICE_API_URL = 'https://api.gopax.co.kr/notices?type=3&limit=30&page=0'
 const BASE_URL = 'https://www.gopax.co.kr'
 
@@ -26,7 +23,7 @@ export interface CrawledItem {
   url: string | null
 }
 
-export async function crawlGopax(): Promise<CrawledItem[]> {
+export async function crawlGopax(keywords: Keywords, since: Date): Promise<CrawledItem[]> {
   const res = await fetch(NOTICE_API_URL, {
     headers: {
       'User-Agent': 'MyCoinBot-Crawler/1.0',
@@ -40,14 +37,18 @@ export async function crawlGopax(): Promise<CrawledItem[]> {
   }
 
   const json = await res.json()
-
-  // 응답: 배열 형태 [ { id, type, title, content, createdAt } ]
-  const list: Array<{ id?: string | number; title?: string }> = Array.isArray(json) ? json : []
-
-  if (!Array.isArray(list)) return []
+  const list: Array<{ id?: string | number; title?: string; createdAt?: string }> =
+    Array.isArray(json) ? json : []
 
   return list
-    .filter((item) => matchesKeyword(item.title ?? ''))
+    .filter((item) => {
+      // 최근 12시간 이내 게시글만 수집
+      if (item.createdAt) {
+        const posted = new Date(item.createdAt)
+        if (!isNaN(posted.getTime()) && posted < since) return false
+      }
+      return matchesKeyword(item.title ?? '', keywords)
+    })
     .map((item) => {
       const id = String(item.id ?? '')
       return {

@@ -4,9 +4,12 @@
  *
  * ⚠️ 코인원은 공식 API가 없어 HTML을 파싱합니다.
  *    사이트 구조 변경 시 정규식/선택자를 수정하세요.
+ *
+ * 날짜 필터: __NEXT_DATA__에서 날짜를 추출할 수 있으면 12시간 필터 적용
+ *            날짜 파싱 불가 시 source_id 중복 제거(DB upsert)에 의존
  */
 
-import { matchesKeyword } from './keywords'
+import { matchesKeyword, Keywords } from './keywords'
 
 const NOTICE_URL = 'https://coinone.co.kr/info/notice/'
 const BASE_URL = 'https://coinone.co.kr'
@@ -18,7 +21,7 @@ export interface CrawledItem {
   url: string | null
 }
 
-export async function crawlCoinone(): Promise<CrawledItem[]> {
+export async function crawlCoinone(keywords: Keywords, since: Date): Promise<CrawledItem[]> {
   const res = await fetch(NOTICE_URL, {
     headers: {
       'User-Agent': 'Mozilla/5.0 (compatible; MyCoinBot-Crawler/1.0)',
@@ -34,17 +37,11 @@ export async function crawlCoinone(): Promise<CrawledItem[]> {
   const html = await res.text()
   const results: CrawledItem[] = []
 
-  // ⚠️ 아래 정규식은 코인원 HTML 구조에 맞게 작성되었습니다.
-  //    구조 변경 시 다음 패턴을 조정하세요:
-  //    - <a href="/info/notice/ID"> 또는 <a href="/info/notice/ID/">
-  //    - 제목은 태그 내 텍스트
-
-  // 방법 1: JSON-LD 또는 Next.js __NEXT_DATA__ 에서 추출 시도
+  // 방법 1: __NEXT_DATA__ 파싱 (날짜 포함 가능)
   const nextDataMatch = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/)
   if (nextDataMatch) {
     try {
       const nextData = JSON.parse(nextDataMatch[1])
-      // 공지 목록이 있는 경우 props.pageProps 탐색
       const notices =
         nextData?.props?.pageProps?.notices ??
         nextData?.props?.pageProps?.data?.notices ??
@@ -52,7 +49,15 @@ export async function crawlCoinone(): Promise<CrawledItem[]> {
         []
       if (Array.isArray(notices) && notices.length > 0) {
         return notices
-          .filter((n: { title?: string }) => matchesKeyword(n.title ?? ''))
+          .filter((n: { title?: string; created_at?: string; createdAt?: string; regDate?: string }) => {
+            // 날짜 필터
+            const dateStr = n.created_at ?? n.createdAt ?? n.regDate
+            if (dateStr) {
+              const posted = new Date(dateStr)
+              if (!isNaN(posted.getTime()) && posted < since) return false
+            }
+            return matchesKeyword(n.title ?? '', keywords)
+          })
           .map((n: { id?: string | number; title?: string; slug?: string }) => ({
             exchange: 'COINONE',
             sourceId: String(n.id ?? n.slug ?? ''),
@@ -61,19 +66,18 @@ export async function crawlCoinone(): Promise<CrawledItem[]> {
           }))
       }
     } catch {
-      // JSON 파싱 실패 → HTML 정규식 방법으로 폴백
+      // JSON 파싱 실패 → HTML 정규식 폴백
     }
   }
 
   // 방법 2: HTML 정규식 파싱
-  // <a href="/info/notice/12345">제목</a> 패턴
   const linkPattern = /href="(\/info\/notice\/(\d+)[^"]*)">([^<]+)</g
   let match
   while ((match = linkPattern.exec(html)) !== null) {
     const path = match[1]
     const id = match[2]
     const title = match[3].trim()
-    if (!title || !matchesKeyword(title)) continue
+    if (!title || !matchesKeyword(title, keywords)) continue
     if (results.some((r) => r.sourceId === id)) continue
     results.push({
       exchange: 'COINONE',

@@ -1,14 +1,19 @@
 /**
  * 거래소 이벤트 크롤러 — 키워드 설정
  *
- * 유지보수 방법:
- *  - INCLUDE_KEYWORDS: 이 키워드 중 하나라도 제목에 포함되면 수집 대상
- *  - EXCLUDE_KEYWORDS: 이 키워드가 있으면 제외 (노이즈 제거)
+ * DB(crawler_keywords 테이블)에 저장된 키워드를 우선 사용합니다.
+ * 테이블이 비어 있으면 아래 DEFAULT_* 배열을 폴백으로 사용합니다.
  *
- * 키워드는 소문자로 작성하면 대소문자 무관하게 매칭됩니다.
+ * 유지보수: 관리자 페이지 → 수집 이벤트 탭 → 키워드 설정에서 관리
  */
 
-export const INCLUDE_KEYWORDS: string[] = [
+export interface Keywords {
+  include: string[]
+  exclude: string[]
+}
+
+/** DB가 비어 있을 때 사용하는 기본값 */
+export const DEFAULT_INCLUDE_KEYWORDS: string[] = [
   'N빵',
   'n빵',
   '에어드랍',
@@ -28,7 +33,7 @@ export const INCLUDE_KEYWORDS: string[] = [
   '이벤트 지급',
 ]
 
-export const EXCLUDE_KEYWORDS: string[] = [
+export const DEFAULT_EXCLUDE_KEYWORDS: string[] = [
   '점검',
   '안내',
   '종료',
@@ -44,12 +49,12 @@ export const EXCLUDE_KEYWORDS: string[] = [
 
 /**
  * 제목이 수집 대상인지 확인
+ * @param title 게시글 제목
+ * @param keywords include/exclude 키워드 목록
  */
-export function matchesKeyword(title: string): boolean {
+export function matchesKeyword(title: string, keywords: Keywords): boolean {
   const lower = title.toLowerCase()
-
-  const excluded = EXCLUDE_KEYWORDS.some((kw) => lower.includes(kw.toLowerCase()))
+  const excluded = keywords.exclude.some((kw) => lower.includes(kw.toLowerCase()))
   if (excluded) return false
-
-  return INCLUDE_KEYWORDS.some((kw) => title.includes(kw) || lower.includes(kw.toLowerCase()))
+  return keywords.include.some((kw) => title.includes(kw) || lower.includes(kw.toLowerCase()))
 }
