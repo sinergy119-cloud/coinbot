@@ -84,6 +84,9 @@ export default function CrawledEventManager() {
   const [logs, setLogs] = useState<CrawlLog[]>([])
   const [logLoading, setLogLoading] = useState(false)
 
+  // 텔레그램 테스트
+  const [tgTesting, setTgTesting] = useState(false)
+
   // ── 이벤트 목록 로드
   const load = useCallback(async () => {
     setLoading(true)
@@ -272,11 +275,58 @@ export default function CrawledEventManager() {
   const includeKws = keywords.filter((k) => k.type === 'include')
   const excludeKws = keywords.filter((k) => k.type === 'exclude')
 
+  // ── 텔레그램 테스트 발송
+  async function testTelegram() {
+    setTgTesting(true)
+    setMessage(null)
+    try {
+      const res = await fetch('/api/admin/test-telegram', { method: 'POST' })
+      const data = await res.json()
+      if (data.ok) {
+        setMessage({ type: 'success', text: '텔레그램 테스트 메시지를 발송했습니다. 봇 채팅에서 확인해주세요.' })
+      } else {
+        setMessage({ type: 'error', text: `텔레그램 발송 실패: ${data.reason ?? '알 수 없는 오류'}` })
+      }
+    } catch (e) {
+      setMessage({ type: 'error', text: e instanceof Error ? e.message : '텔레그램 테스트 실패' })
+    } finally {
+      setTgTesting(false)
+    }
+  }
+
   // ── 이력 메시지 색상 헬퍼
   function logRowColor(log: CrawlLog) {
-    if (log.errors?.length > 0 && log.inserted_count === 0) return 'bg-red-50'
+    // 업비트 오류만 있으면 회색 (알려진 이슈)
+    const nonUpbitErrors = log.errors?.filter((e) => e.exchange !== 'UPBIT') ?? []
+    if (nonUpbitErrors.length > 0 && log.inserted_count === 0) return 'bg-red-50'
     if (log.inserted_count > 0) return 'bg-green-50'
     return ''
+  }
+
+  // ── 오류 표시 헬퍼: UPBIT는 알려진 이슈로 분리
+  function renderErrors(errors: CrawlLog['errors']) {
+    if (!errors?.length) return <span className="text-gray-400">—</span>
+    const upbitErrors = errors.filter((e) => e.exchange === 'UPBIT')
+    const otherErrors = errors.filter((e) => e.exchange !== 'UPBIT')
+    const tooltip = [
+      ...otherErrors.map((e) => `${e.exchange}: ${e.message}`),
+      ...upbitErrors.map((e) => `${e.exchange}: [알려진 이슈] ${e.message}`),
+    ].join('\n')
+    return (
+      <span className="cursor-help" title={tooltip}>
+        {otherErrors.length > 0 && (
+          <span className="text-red-600 font-medium">{otherErrors.length}건 ⚠</span>
+        )}
+        {upbitErrors.length > 0 && (
+          <span className={`${otherErrors.length > 0 ? ' ml-1' : ''}text-gray-400`} title={tooltip}>
+            업비트↗
+          </span>
+        )}
+        {otherErrors.length === 0 && upbitErrors.length === 0 && (
+          <span className="text-gray-400">—</span>
+        )}
+      </span>
+    )
   }
 
   // ═══ 렌더링 ═══
@@ -298,14 +348,25 @@ export default function CrawledEventManager() {
             </button>
           ))}
         </div>
-        <button
-          onClick={runCrawl}
-          disabled={crawling}
-          className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-        >
-          {crawling ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-          지금 수집
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={testTelegram}
+            disabled={tgTesting}
+            className="flex items-center gap-1.5 rounded-lg bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-200 disabled:opacity-50"
+            title="텔레그램 봇 연동 테스트"
+          >
+            {tgTesting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+            텔레그램 테스트
+          </button>
+          <button
+            onClick={runCrawl}
+            disabled={crawling}
+            className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+          >
+            {crawling ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+            지금 수집
+          </button>
+        </div>
       </div>
 
       {/* ── 메시지 ── */}
@@ -489,17 +550,8 @@ export default function CrawledEventManager() {
                             {log.inserted_count}
                           </span>
                         </td>
-                        <td className="px-3 py-2 text-center">
-                          {log.errors?.length > 0 ? (
-                            <span
-                              className="cursor-help text-red-600 font-medium"
-                              title={log.errors.map((e) => `${e.exchange}: ${e.message}`).join('\n')}
-                            >
-                              {log.errors.length}건 ⚠
-                            </span>
-                          ) : (
-                            <span className="text-gray-400">—</span>
-                          )}
+                        <td className="px-3 py-2 text-center text-xs">
+                          {renderErrors(log.errors)}
                         </td>
                         <td className="px-3 py-2 text-center">
                           {log.inserted_count === 0 ? (

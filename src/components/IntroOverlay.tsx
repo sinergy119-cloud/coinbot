@@ -55,8 +55,8 @@ export default function IntroOverlay() {
         {/* 소개 이미지 */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/intro.png"
-          alt="MyComBot 서비스 소개 — 불편함의 시작부터 봇 가동까지"
+          src="/intro.webp"
+          alt="MyCoinBot 서비스 소개 — 불편함의 시작부터 봇 가동까지"
           className="w-full h-auto block"
         />
 

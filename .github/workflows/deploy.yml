@@ -1,0 +1,66 @@
+name: EC2 자동 배포
+
+# main 브랜치에 push될 때 자동 배포
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: EC2 배포
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@v4
+
+      - name: Node.js 설정
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: 의존성 설치 및 빌드 검증
+        run: |
+          npm ci
+          npm run build
+        env:
+          # 빌드 시 필요한 환경변수 (Secrets에 등록 필요)
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+          ADMIN_USER_ID: ${{ secrets.ADMIN_USER_ID }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
+
+      - name: EC2 배포 (SSH)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          script_stop: true
+          script: |
+            set -e
+            cd /home/ec2-user/coinbot
+
+            echo "=== git pull ==="
+            git fetch origin main
+            git reset --hard origin/main
+
+            echo "=== npm install ==="
+            npm ci --prefer-offline
+
+            echo "=== npm run build ==="
+            npm run build
+
+            echo "=== pm2 restart ==="
+            pm2 restart coinbot
+
+            echo "=== 배포 완료 ==="

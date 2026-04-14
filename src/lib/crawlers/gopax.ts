@@ -12,6 +12,7 @@
  */
 
 import { matchesKeyword, Keywords } from './keywords'
+import { withRetry } from './retry'
 
 const NOTICE_API_URL = 'https://api.gopax.co.kr/notices?type=3&limit=30&page=0'
 const BASE_URL = 'https://www.gopax.co.kr'
@@ -24,17 +25,20 @@ export interface CrawledItem {
 }
 
 export async function crawlGopax(keywords: Keywords, since: Date): Promise<CrawledItem[]> {
-  const res = await fetch(NOTICE_API_URL, {
-    headers: {
-      'User-Agent': 'MyCoinBot-Crawler/1.0',
-      'Accept': 'application/json',
-    },
-    signal: AbortSignal.timeout(10_000),
-  })
-
-  if (!res.ok) {
-    throw new Error(`고팍스 공지 API 오류: ${res.status}`)
-  }
+  const res = await withRetry(
+    () =>
+      fetch(NOTICE_API_URL, {
+        headers: {
+          'User-Agent': 'MyCoinBot-Crawler/1.0',
+          'Accept': 'application/json',
+        },
+        signal: AbortSignal.timeout(10_000),
+      }).then((r) => {
+        if (!r.ok) throw new Error(`고팍스 공지 API 오류: ${r.status}`)
+        return r
+      }),
+    { label: 'GOPAX' },
+  )
 
   const json = await res.json()
   const list: Array<{ id?: string | number; title?: string; createdAt?: string }> =
