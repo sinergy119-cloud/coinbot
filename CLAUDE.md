@@ -1,5 +1,85 @@
 @AGENTS.md
 
+---
+
+## 프로젝트 개요 — 코인봇(CoinBot)
+
+### 한 줄 설명
+한국 5개 거래소(빗썸·업비트·코인원·코빗·고팍스)의 에어드랍·N빵 이벤트를 자동 수집하고,
+사용자 거래소 계정을 통해 이벤트 참여(자동 매수)를 돕는 서비스.
+
+### 핵심 기능
+| 기능 | 설명 |
+|------|------|
+| 이벤트 크롤링 | 5개 거래소 공지를 12시간마다 자동 수집 → 관리자 검토 후 이벤트 게시판 등록 |
+| 자동 매수 실행 | 사용자가 등록한 거래소 API로 이벤트 코인을 자동 매수 (Promise.all 동시 실행) |
+| 텔레그램 알림 | 신규 이벤트 수집·거래 결과를 텔레그램 봇으로 발송 |
+| 관리자 페이지 | 이벤트 검토·승인·거절, 키워드 관리, 수집 이력 조회, 회원·계정 전체 관리 |
+| 사용자 페이지 | 거래소 API 등록·삭제, 이벤트 목록 조회, 매수 실행 |
+
+### 인프라 및 배포
+- **서버**: AWS EC2 (`43.203.100.239`), Amazon Linux 2, Node.js 20
+- **프로세스**: pm2 (`coinbot` — 포트 3000)
+- **배포 흐름**: 로컬 `git push` → EC2 `git pull` + `npm run build` + `pm2 restart coinbot`
+- **cron**: pm2 cron `0 0,12 * * *` → `POST /api/cron/crawl-events` (12시간마다 크롤링)
+- **SSH 접속**: `ssh -i C:\Users\ADMIN\.ssh\coinbot-key.pem ec2-user@43.203.100.239`
+
+### DB 테이블 목록 (Supabase)
+| 테이블 | 역할 |
+|--------|------|
+| `users` | 회원 (login_id, telegram_chat_id 등) |
+| `exchange_accounts` | 사용자별 거래소 API 키 (암호화 저장) |
+| `announcements` | 관리자가 승인한 이벤트 게시글 |
+| `crawled_events` | 크롤러가 수집한 원시 이벤트 (pending/approved/rejected) |
+| `crawler_keywords` | 수집 포함/제외 키워드 (관리자 UI에서 관리) |
+| `crawl_logs` | 크롤링 실행 이력 (실행시각·수집건수·텔레그램발송여부) |
+
+### 거래소별 크롤링 방식
+| 거래소 | 방식 | 상태 |
+|--------|------|------|
+| 빗썸 | 공식 REST API (`api.bithumb.com/v1/notices`) | ✅ 정상 |
+| 업비트 | 비공식 API (`api-manager.upbit.com`) | ❌ EC2 IP → Cloudflare 403 차단 |
+| 코인원 | HTML 파싱 (`__NEXT_DATA__` 우선) | ✅ 정상 |
+| 코빗 | HTML 파싱 (`__NEXT_DATA__` 우선) | ✅ 정상 |
+| 고팍스 | 공식 REST API (`api.gopax.co.kr/notices`) | ✅ 정상 |
+
+### 핵심 파일 위치
+```
+src/
+├── app/
+│   ├── page.tsx                          # 메인(이벤트 목록)
+│   ├── login/page.tsx                    # 로그인
+│   ├── admin/page.tsx                    # 관리자 페이지
+│   └── api/
+│       ├── cron/crawl-events/route.ts    # 크롤링 cron 엔드포인트
+│       ├── admin/
+│       │   ├── run-crawl/route.ts        # 수동 즉시 수집
+│       │   ├── crawled-events/route.ts   # 수집 이벤트 검토 API
+│       │   ├── crawler-keywords/route.ts # 키워드 관리 API
+│       │   └── crawl-logs/route.ts      # 수집 이력 조회 API
+│       └── execute/route.ts             # 자동 매수 실행
+├── lib/
+│   ├── crawlers/
+│   │   ├── execute.ts    # 크롤링 공통 실행 로직
+│   │   ├── keywords.ts   # 키워드 설정 및 매칭 함수
+│   │   ├── bithumb.ts / upbit.ts / coinone.ts / korbit.ts / gopax.ts
+│   │   └── index.ts      # Promise.allSettled 통합 실행
+│   ├── bithumb-v2.ts     # 빗썸 V2 JWT 인증 직접 구현
+│   ├── exchange.ts       # 거래소별 매수 실행 분기
+│   ├── session.ts        # 세션 관리
+│   ├── admin.ts          # isAdmin() 판정
+│   ├── telegram.ts       # 텔레그램 메시지 발송
+│   └── supabase.ts       # Supabase 서버 클라이언트
+└── components/
+    ├── AdminTabs.tsx           # 관리자 탭 컨테이너
+    └── CrawledEventManager.tsx # 수집 이벤트 관리 UI
+```
+
+### 알려진 미해결 이슈
+- **업비트 수집 불가**: EC2 IP가 Cloudflare WAF에 차단됨. 국내 ISP 경유 프록시 필요.
+
+---
+
 ## 절대 규칙 (이 규칙을 어기면 멈추고 알려주세요)
 
 ### 0. 시간 표시 규칙
@@ -22,7 +102,7 @@
 | UI | Tailwind CSS | 디자인은 Simple/Mobile-first |
 | DB/인증 | Supabase | Auth 및 Table 관리 |
 | 언어 | TypeScript | 타입 안정성 확보 |
-| 배포 | Vercel | API Routes 활용 |
+| 배포 | AWS EC2 + pm2 | Vercel 미사용. 포트 3000. |
 
 ---
 
