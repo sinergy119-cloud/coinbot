@@ -53,6 +53,15 @@ export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) 
     router.replace('/', { scroll: false })
   }, [searchParams, router])
 
+  // ?tab=schedule 등 URL param으로 특정 탭 직접 열기
+  useEffect(() => {
+    const tab = searchParams.get('tab') as TabType | null
+    if (tab && TABS.some((t) => t.id === tab)) {
+      setActiveTab(tab)
+      router.replace('/', { scroll: false })
+    }
+  }, [searchParams, router])
+
   // 토스트 2초 후 자동 사라짐 (URL 변경과 분리)
   useEffect(() => {
     if (!welcomeToast) return
