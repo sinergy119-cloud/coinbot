@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import {
   RefreshCw, CheckCircle, XCircle, ExternalLink, Loader2,
   ChevronDown, ChevronUp, Plus, Trash2, Tag, History,
-  AlertCircle, Send, Settings, Calendar,
+  AlertCircle, Settings, Calendar,
 } from 'lucide-react'
 
 // ───────── 타입 ─────────
@@ -95,9 +95,6 @@ export default function CrawledEventManager({ onApproveNavigation }: Props) {
   const [logOpen, setLogOpen] = useState(false)
   const [logs, setLogs] = useState<CrawlLog[]>([])
   const [logLoading, setLogLoading] = useState(false)
-
-  // 텔레그램 테스트
-  const [tgTesting, setTgTesting] = useState(false)
 
   // 승인 처리 중인 항목 ID
   const [approvingId, setApprovingId] = useState<string | null>(null)
@@ -214,11 +211,14 @@ export default function CrawledEventManager({ onApproveNavigation }: Props) {
       if (!res.ok) throw new Error(data.error ?? '오류')
 
       const dateLabel = sinceDate ? ` (${sinceDate} 이후)` : ''
+      const found = data.found ?? 0
+      const inserted = data.inserted ?? 0
+      const alreadyExists = found - inserted
+      const alreadyLabel = alreadyExists > 0 ? ` (기존 처리 항목 ${alreadyExists}건 제외)` : ''
+      const errorLabel = data.errors?.length ? ` · 오류 ${data.errors.length}개 거래소` : ''
       setMessage({
         type: 'success',
-        text: `크롤링 완료${dateLabel} — 수집 ${data.found ?? 0}건, 신규 등록 ${data.inserted ?? 0}건${
-          data.errors?.length ? ` (오류 ${data.errors.length}개 거래소)` : ''
-        }`,
+        text: `크롤링 완료${dateLabel} — 신규 등록 ${inserted}건${alreadyLabel}${errorLabel}`,
       })
       setCrawlPanelOpen(false)
       setSinceDate(getTodayKST())
@@ -316,25 +316,6 @@ export default function CrawledEventManager({ onApproveNavigation }: Props) {
   const includeKws = keywords.filter((k) => k.type === 'include')
   const excludeKws = keywords.filter((k) => k.type === 'exclude')
 
-  // ── 텔레그램 테스트 발송
-  async function testTelegram() {
-    setTgTesting(true)
-    setMessage(null)
-    try {
-      const res = await fetch('/api/admin/test-telegram', { method: 'POST' })
-      const data = await res.json()
-      if (data.ok) {
-        setMessage({ type: 'success', text: '텔레그램 테스트 메시지를 발송했습니다. 봇 채팅에서 확인해주세요.' })
-      } else {
-        setMessage({ type: 'error', text: `텔레그램 발송 실패: ${data.reason ?? '알 수 없는 오류'}` })
-      }
-    } catch (e) {
-      setMessage({ type: 'error', text: e instanceof Error ? e.message : '텔레그램 테스트 실패' })
-    } finally {
-      setTgTesting(false)
-    }
-  }
-
   // ── 이력 메시지 색상 헬퍼
   function logRowColor(log: CrawlLog) {
     const nonUpbitErrors = log.errors?.filter((e) => e.exchange !== 'UPBIT') ?? []
@@ -396,15 +377,6 @@ export default function CrawledEventManager({ onApproveNavigation }: Props) {
           ))}
         </div>
         <div className="flex gap-2">
-          <button
-            onClick={testTelegram}
-            disabled={tgTesting}
-            className="flex items-center gap-1.5 rounded-lg bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-200 disabled:opacity-50"
-            title="텔레그램 봇 연동 테스트"
-          >
-            {tgTesting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-            텔레그램 테스트
-          </button>
           <button
             onClick={() => { setCrawlPanelOpen((v) => !v); setMessage(null) }}
             disabled={crawling}
