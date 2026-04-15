@@ -39,6 +39,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
   if (body.notes !== undefined) updates.notes = body.notes && typeof body.notes === 'string' ? body.notes.slice(0, 2000) : null
   if (body.startDate !== undefined) updates.start_date = body.startDate
   if (body.endDate !== undefined) updates.end_date = body.endDate
+  if (body.rewardDate !== undefined) updates.reward_date = body.rewardDate || null
 
   const db = createServerClient()
   const { data, error } = await db

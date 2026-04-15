@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: '관리자만 접근 가능합니다.' }, { status: 403 })
   }
 
-  const { exchange, coin, amount, requireApply, apiAllowed, link, notes, startDate, endDate } = await req.json()
+  const { exchange, coin, amount, requireApply, apiAllowed, link, notes, startDate, endDate, rewardDate } = await req.json()
 
   if (!exchange || !coin || !startDate || !endDate) {
     return Response.json({ error: '거래소, 코인, 기간은 필수입니다.' }, { status: 400 })
@@ -82,6 +82,7 @@ export async function POST(req: NextRequest) {
       notes: safeNotes,
       start_date: startDate,
       end_date: endDate,
+      reward_date: rewardDate || null,
       created_by: session.userId,
     })
     .select()

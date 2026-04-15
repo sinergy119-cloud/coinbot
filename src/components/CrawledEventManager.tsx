@@ -49,6 +49,7 @@ interface ApproveItem {
   amount?: string
   startDate?: string
   endDate?: string
+  rewardDate?: string
 }
 
 interface Props {
@@ -246,6 +247,7 @@ export default function CrawledEventManager({ onApproveNavigation }: Props) {
             amount: data.amount ?? undefined,
             startDate: data.startDate ?? undefined,
             endDate: data.endDate ?? undefined,
+            rewardDate: data.rewardDate ?? undefined,
           }
         }
       }

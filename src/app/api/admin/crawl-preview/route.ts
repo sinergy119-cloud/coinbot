@@ -44,8 +44,9 @@ export async function GET(req: NextRequest) {
 
   const amount = extractAmount(bodyText)
   const { startDate, endDate } = extractDateRange(bodyText)
+  const rewardDate = extractRewardDate(bodyText)
 
-  return Response.json({ coin, amount, startDate, endDate })
+  return Response.json({ coin, amount, startDate, endDate, rewardDate })
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -218,6 +219,27 @@ function extractAmount(text: string): string | null {
 
   if (maxAmount >= 100000) return '10만원(일일)'
   if (maxAmount >= 10000) return '1만원(일일)'
+  return null
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 리워드 지급일 추출
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * 리워드 지급일 추출
+ * 패턴 예: "리워드 지급일: 2026.05.15(금)", "지급일: 2026.05.15", "지급 예정일 2026.05.15"
+ */
+function extractRewardDate(text: string): string | null {
+  const keywordPat = /(?:리워드\s*지급일|지급\s*예정일|지급일|보상\s*지급일)\s*[:：]?\s*(\d{4}[.년/-]\d{1,2}[.월/-]\d{1,2})/
+  const m = text.match(keywordPat)
+  if (m) {
+    const raw = m[1]
+    const parts = raw.match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/)
+    if (parts) {
+      return `${parts[1]}-${parts[2].padStart(2, '0')}-${parts[3].padStart(2, '0')}`
+    }
+  }
   return null
 }
 

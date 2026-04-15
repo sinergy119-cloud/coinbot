@@ -19,6 +19,7 @@ interface Announcement {
   notes: string | null
   start_date: string
   end_date: string
+  reward_date: string | null
 }
 
 interface CoinInfo { code: string; name: string }
@@ -37,6 +38,7 @@ export default function EventManager({ prefill, onClearPrefill }: Props) {
   const [coin, setCoin] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [rewardDate, setRewardDate] = useState('')
   const [amount, setAmount] = useState('1만원(일일)')
   const [requireApply, setRequireApply] = useState(false)
   const [apiAllowed, setApiAllowed] = useState(true)
@@ -54,7 +56,7 @@ export default function EventManager({ prefill, onClearPrefill }: Props) {
   function resetForm(keepPrefill = false) {
     setEditingId(null)
     setExchange(null); setCoin(''); setAmount('1만원(일일)'); setRequireApply(false); setApiAllowed(true)
-    setLink(''); setNotes(''); setStartDate(''); setEndDate(''); setAllCoins([])
+    setLink(''); setNotes(''); setStartDate(''); setEndDate(''); setRewardDate(''); setAllCoins([])
     if (!keepPrefill) onClearPrefill?.()
   }
 
@@ -77,6 +79,7 @@ export default function EventManager({ prefill, onClearPrefill }: Props) {
     // 기간 — 추출 값 우선
     setStartDate(prefill.startDate ?? '')
     setEndDate(prefill.endDate ?? '')
+    setRewardDate(prefill.rewardDate ?? '')
     setEditingId(null)
     // 코인 자동완성용 목록 로드
     setCoinsLoading(true)
@@ -96,6 +99,7 @@ export default function EventManager({ prefill, onClearPrefill }: Props) {
     setStartDate(ev.start_date)
     setEndDate(ev.end_date)
     setAmount(ev.amount ?? '')
+    setRewardDate(ev.reward_date ?? '')
     setRequireApply(ev.require_apply)
     setApiAllowed(ev.api_allowed)
     setLink(ev.link ?? '')
@@ -157,7 +161,7 @@ export default function EventManager({ prefill, onClearPrefill }: Props) {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          exchange, coin, amount, requireApply, apiAllowed, link, notes, startDate, endDate,
+          exchange, coin, amount, requireApply, apiAllowed, link, notes, startDate, endDate, rewardDate,
         }),
       })
       if (!res.ok) {
@@ -293,6 +297,15 @@ export default function EventManager({ prefill, onClearPrefill }: Props) {
             </div>
           </div>
 
+          {/* 리워드 지급일 */}
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">
+              리워드 지급일 <span className="font-normal text-gray-500">(선택)</span>
+            </label>
+            <input type="date" value={rewardDate} onChange={(e) => setRewardDate(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900" />
+          </div>
+
           {/* 금액 */}
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-600">금액</label>
@@ -410,6 +423,9 @@ export default function EventManager({ prefill, onClearPrefill }: Props) {
                       📅 {ev.start_date} ~ {ev.end_date}
                       {ev.amount && <span className="ml-2">💰 <b>{ev.amount}</b></span>}
                     </div>
+                    {ev.reward_date && (
+                      <div>🎁 리워드 지급일: <b>{ev.reward_date}</b></div>
+                    )}
                     {ev.link && (
                       <div>🔗 <a href={ev.link} target="_blank" rel="noopener noreferrer"
                         className="text-blue-600 underline">{ev.link.length > 40 ? ev.link.slice(0, 40) + '...' : ev.link}</a></div>
