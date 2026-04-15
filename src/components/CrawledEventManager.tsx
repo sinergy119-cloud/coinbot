@@ -75,7 +75,8 @@ export default function CrawledEventManager() {
 
   // 지금 수집 패널
   const [crawlPanelOpen, setCrawlPanelOpen] = useState(false)
-  const [sinceDate, setSinceDate] = useState('')
+  const getTodayKST = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' })
+  const [sinceDate, setSinceDate] = useState(getTodayKST)
 
   // 승인 모달
   const [approveTarget, setApproveTarget] = useState<CrawledEvent | null>(null)
@@ -223,7 +224,7 @@ export default function CrawledEventManager() {
         }`,
       })
       setCrawlPanelOpen(false)
-      setSinceDate('')
+      setSinceDate(getTodayKST())
       loadLogs()
       if (tab === 'pending') load()
     } catch (e) {
@@ -460,7 +461,7 @@ export default function CrawledEventManager() {
           </div>
           <div className="flex justify-end gap-2">
             <button
-              onClick={() => { setCrawlPanelOpen(false); setSinceDate('') }}
+              onClick={() => { setCrawlPanelOpen(false); setSinceDate(getTodayKST()) }}
               disabled={crawling}
               className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
             >
