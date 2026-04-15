@@ -693,9 +693,7 @@ export default function CrawledEventManager({ onApproveNavigation }: Props) {
                           {log.inserted_count === 0 ? (
                             <span className="text-gray-400">—</span>
                           ) : log.telegram_sent === true ? (
-                            <span title="발송 완료">
-                              <Send size={12} className="mx-auto text-green-600" />
-                            </span>
+                            <span title="발송 완료" className="text-green-600">✓</span>
                           ) : log.telegram_error ? (
                             <span
                               className="cursor-help text-red-500"
