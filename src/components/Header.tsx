@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { LogOut, Shield, Building2, X, User, MessageCircle, HelpCircle } from 'lucide-react'
 import InquiryModal from '@/components/InquiryModal'
 import UserGuideModal from '@/components/UserGuideModal'
+import WithdrawModal from '@/components/WithdrawModal'
 
 
 interface HeaderProps {
@@ -19,6 +20,7 @@ export default function Header({ loginId, isAdmin = false, showBackToHome = fals
   const [showAccountModal, setShowAccountModal] = useState(false)
   const [showInquiryModal, setShowInquiryModal] = useState(false)
   const [showGuideModal, setShowGuideModal] = useState(false)
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false)
   const [displayName, setDisplayName] = useState('')
   const [profileName, setProfileName] = useState('')
   const [profileEmail, setProfileEmail] = useState('')
@@ -197,6 +199,16 @@ export default function Header({ loginId, isAdmin = false, showBackToHome = fals
                 {profileLoading ? '저장 중...' : '저장'}
               </button>
             </form>
+
+            {/* 회원 탈퇴 */}
+            <div className="mt-4 border-t border-gray-100 pt-3 text-center">
+              <button
+                onClick={() => { setShowAccountModal(false); setShowWithdrawModal(true) }}
+                className="text-xs text-gray-400 hover:text-red-500 underline transition-colors"
+              >
+                회원 탈퇴
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -206,6 +218,9 @@ export default function Header({ loginId, isAdmin = false, showBackToHome = fals
 
       {/* 사용 가이드 모달 */}
       {showGuideModal && <UserGuideModal onClose={() => setShowGuideModal(false)} />}
+
+      {/* 회원 탈퇴 모달 */}
+      {showWithdrawModal && <WithdrawModal onClose={() => setShowWithdrawModal(false)} />}
     </>
   )
 }

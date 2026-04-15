@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { X } from 'lucide-react'
 import ExchangeApiGuide from '@/components/ExchangeApiGuide'
 
@@ -475,6 +475,8 @@ function PrivacyModal({ onClose }: { onClose: () => void }) {
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const [withdrawnMsg] = useState(() => searchParams.get('withdrawn') === '1')
   const [socialLoginMsg, setSocialLoginMsg] = useState('')
   const [checking, setChecking] = useState(true)
   const [activeModal, setActiveModal] = useState<'service' | 'exchange' | 'signup' | 'apikey' | 'apikey-detail' | 'privacy' | null>(null)
@@ -509,6 +511,14 @@ export default function LoginPage() {
       <div className="rounded-xl bg-white p-8 shadow-lg">
         <h1 className="mb-1 text-center text-2xl font-bold text-gray-900">MyCoinBot</h1>
         <p className="mb-3 text-center text-sm text-gray-500">로그인</p>
+
+        {/* 탈퇴 완료 알림 */}
+        {withdrawnMsg && (
+          <div className="mb-4 rounded-lg bg-gray-100 border border-gray-200 px-4 py-3 text-center">
+            <p className="text-sm font-medium text-gray-700 break-keep">탈퇴 처리가 완료되었습니다.</p>
+            <p className="text-xs text-gray-500 mt-0.5 break-keep">이용해 주셔서 감사합니다.</p>
+          </div>
+        )}
 
         {/* 처음이신가요? 접이식 배너 */}
         <div className="mb-5 rounded-lg border border-gray-200 bg-gray-50 overflow-hidden">
