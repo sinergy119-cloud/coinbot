@@ -39,7 +39,7 @@ export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) 
   const router = useRouter()
   const [welcomeToast, setWelcomeToast] = useState<string | null>(null)
 
-  // 소셜 로그인 후 환영 토스트
+  // 소셜 로그인 후 환영 토스트 감지
   useEffect(() => {
     const provider = searchParams.get('welcome')
     if (!provider) return
@@ -50,12 +50,15 @@ export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) 
     }
     const label = labels[provider] ?? provider
     setWelcomeToast(`${label} 로그인 완료! 환영합니다 🎉`)
-    // URL에서 파라미터 제거
     router.replace('/', { scroll: false })
-    // 4초 후 토스트 사라짐
-    const t = setTimeout(() => setWelcomeToast(null), 4000)
-    return () => clearTimeout(t)
   }, [searchParams, router])
+
+  // 토스트 2초 후 자동 사라짐 (URL 변경과 분리)
+  useEffect(() => {
+    if (!welcomeToast) return
+    const t = setTimeout(() => setWelcomeToast(null), 2000)
+    return () => clearTimeout(t)
+  }, [welcomeToast])
 
   // 스케줄 목록
   const [tradeJobs, setTradeJobs] = useState<TradeJobRow[]>([])
