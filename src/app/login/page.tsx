@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { X } from 'lucide-react'
 import ExchangeApiGuide from '@/components/ExchangeApiGuide'
 
@@ -475,9 +475,16 @@ function PrivacyModal({ onClose }: { onClose: () => void }) {
 
 export default function LoginPage() {
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const [withdrawnMsg] = useState(() => searchParams.get('withdrawn') === '1')
+  const [withdrawnMsg, setWithdrawnMsg] = useState(false)
   const [socialLoginMsg, setSocialLoginMsg] = useState('')
+
+  // 탈퇴 완료 파라미터 감지 (클라이언트 사이드)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      if (params.get('withdrawn') === '1') setWithdrawnMsg(true)
+    }
+  }, [])
   const [checking, setChecking] = useState(true)
   const [activeModal, setActiveModal] = useState<'service' | 'exchange' | 'signup' | 'apikey' | 'apikey-detail' | 'privacy' | null>(null)
   const [guideExchange, setGuideExchange] = useState('BITHUMB')
