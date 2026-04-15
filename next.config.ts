@@ -11,10 +11,6 @@ const buildTime = (() => {
 
 const nextConfig: NextConfig = {
   serverExternalPackages: ['ccxt', 'nodemailer'],
-  // Turbopack 비활성화 — 빌드 시 next 패키지 파일 손상 문제 방지
-  experimental: {
-    turbopack: false,
-  },
   env: {
     NEXT_PUBLIC_BUILD_TIME: buildTime,
   },
