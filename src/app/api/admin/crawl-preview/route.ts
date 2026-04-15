@@ -74,10 +74,37 @@ function extractCoinFromTitle(title: string): string | null {
   return matches[0][1]
 }
 
-/** HTML → 순수 텍스트 (태그 제거, 공백 정리) */
+/**
+ * HTML → 순수 텍스트
+ * 전략:
+ *   1) __NEXT_DATA__ (script JSON) 에서 먼저 텍스트 추출 → GOPAX·코인원·코빗 등 Next.js 사이트
+ *   2) 나머지 script/style 제거 후 HTML 태그 제거
+ *   두 결과를 이어붙여 반환
+ */
 function extractTextFromHtml(html: string): string {
-  // script/style 블록 먼저 제거
-  let text = html
+  let extra = ''
+
+  // ① __NEXT_DATA__ JSON 추출 — script 태그 제거 전에 실행
+  const nextDataMatch = html.match(
+    /<script[^>]*id=["']__NEXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/i,
+  )
+  if (nextDataMatch) {
+    try {
+      // JSON 파싱 후 전체를 평탄화된 문자열로 변환 (모든 값이 검색 대상이 됨)
+      const parsed = JSON.parse(nextDataMatch[1])
+      extra = flattenJsonToText(parsed)
+    } catch {
+      // 파싱 실패 시 raw 문자열 그대로 사용 (이스케이프 해제)
+      extra = nextDataMatch[1]
+        .replace(/\\n/g, ' ')
+        .replace(/\\t/g, ' ')
+        .replace(/\\r/g, ' ')
+        .replace(/\\u[\da-f]{4}/gi, '')
+    }
+  }
+
+  // ② 일반 HTML → 텍스트
+  const bodyText = html
     .replace(/<script[\s\S]*?<\/script>/gi, ' ')
     .replace(/<style[\s\S]*?<\/style>/gi, ' ')
     .replace(/<[^>]+>/g, ' ')
@@ -89,19 +116,30 @@ function extractTextFromHtml(html: string): string {
     .replace(/&#39;/g, "'")
     .replace(/\s+/g, ' ')
     .trim()
-  return text
+
+  return `${bodyText} ${extra}`
+}
+
+/** JSON 객체/배열을 재귀적으로 순회하며 문자열 값만 이어붙임 */
+function flattenJsonToText(value: unknown): string {
+  if (typeof value === 'string') return value + ' '
+  if (Array.isArray(value)) return value.map(flattenJsonToText).join(' ')
+  if (value && typeof value === 'object') {
+    return Object.values(value as Record<string, unknown>).map(flattenJsonToText).join(' ')
+  }
+  return ''
 }
 
 /**
  * 일일 에어드랍 금액 추출
- * - 최대 금액 기준으로 임계치 적용:
+ * 최대 금액 기준으로 임계치 적용:
  *   ≥ 100,000원 → "10만원(일일)"
- *   ≥  10,000원 → "1만원(일일)"
+ *   ≥  10,000원 →  "1만원(일일)"
  */
 function extractAmount(text: string): string | null {
   let maxAmount = 0
 
-  // Pattern 1: N만원 → N * 10000 (예: 10만원 = 100000)
+  // Pattern 1: N만 원 / N만원 (예: 10만원 = 100,000 / 100만 원 = 1,000,000)
   for (const m of text.matchAll(/(\d+)\s*만\s*원/g)) {
     maxAmount = Math.max(maxAmount, parseInt(m[1]) * 10000)
   }
@@ -125,13 +163,12 @@ function extractAmount(text: string): string | null {
 /**
  * 텍스트에서 이벤트 기간(시작일/종료일) 추출
  * 우선순위:
- *   1. "YYYY.MM.DD ~ YYYY.MM.DD" 형태의 범위
+ *   1. "YYYY.MM.DD(요일) HH:MM ~ YYYY.MM.DD(요일) HH:MM" 형태 범위
  *   2. 개별 날짜 목록에서 최소/최대
  */
 function extractDateRange(text: string): { startDate: string | null; endDate: string | null } {
-  // 날짜 파싱 헬퍼
+  /** "2026.04.14(화) 16:00" 같은 날짜 원시 문자열 → "2026-04-14" */
   function parseDate(raw: string): string | null {
-    // YYYY.MM.DD / YYYY년 MM월 DD일 / YYYY. MM. DD 등
     const m = raw.match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/)
     if (!m) return null
     const y = m[1]
@@ -139,16 +176,18 @@ function extractDateRange(text: string): { startDate: string | null; endDate: st
     const d = m[3].padStart(2, '0')
     const dt = new Date(`${y}-${mo}-${d}`)
     if (isNaN(dt.getTime())) return null
-    // 범위 검증: 2020 ~ 2030
     if (dt.getFullYear() < 2020 || dt.getFullYear() > 2030) return null
     return `${y}-${mo}-${d}`
   }
 
-  // 날짜 패턴 (YYYY로 시작하는 날짜)
-  const datePat = /\d{4}\s*[.년]\s*\d{1,2}\s*[.월]\s*\d{1,2}/g
+  /**
+   * 날짜 토큰: YYYY.MM.DD 에 선택적으로 (요일), HH:MM 까지 허용
+   * 예: 2026.04.14(화) 16:00
+   */
+  const D = String.raw`\d{4}\s*[.년]\s*\d{1,2}\s*[.월]\s*\d{1,2}(?:\s*\([월화수목금토일]\))?(?:\s+\d{1,2}:\d{2})?`
 
   // ① 범위 패턴 우선: date1 ~ date2
-  const rangePat = /(\d{4}\s*[.년]\s*\d{1,2}\s*[.월]\s*\d{1,2}(?:\s*\([월화수목금토일]\))?)\s*[~～\-]\s*(\d{4}\s*[.년]\s*\d{1,2}\s*[.월]\s*\d{1,2}(?:\s*\([월화수목금토일]\))?)/g
+  const rangePat = new RegExp(`(${D})\\s*[~～]\\s*(${D})`, 'g')
 
   for (const m of text.matchAll(rangePat)) {
     const s = parseDate(m[1])
@@ -157,6 +196,7 @@ function extractDateRange(text: string): { startDate: string | null; endDate: st
   }
 
   // ② 개별 날짜 수집 후 min/max
+  const datePat = /\d{4}\s*[.년]\s*\d{1,2}\s*[.월]\s*\d{1,2}/g
   const dates: string[] = []
   for (const m of text.matchAll(datePat)) {
     const d = parseDate(m[0])
