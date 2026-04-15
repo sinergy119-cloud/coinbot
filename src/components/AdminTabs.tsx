@@ -17,10 +17,18 @@ const TABS: { id: TabType; label: string }[] = [
   { id: 'inquiries', label: '문의 관리' },
 ]
 
+export interface CrawledPrefill {
+  crawledEventId: string
+  exchange: string
+  link: string | null
+  notes: string
+}
+
 export default function AdminTabs({ loginId }: { loginId: string }) {
   const [activeTab, setActiveTab] = useState<TabType>('accounts')
   const [pendingCount, setPendingCount] = useState(0)
   const [crawledPendingCount, setCrawledPendingCount] = useState(0)
+  const [prefillFromCrawled, setPrefillFromCrawled] = useState<CrawledPrefill | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -34,6 +42,21 @@ export default function AdminTabs({ loginId }: { loginId: string }) {
       .catch(() => {})
     return () => { cancelled = true }
   }, [activeTab])
+
+  // 수집 이벤트 승인 → 이벤트 관리 탭으로 이동 + 기본정보 주입
+  function handleApproveNavigation(item: { id: string; exchange: string; url: string | null; title: string }) {
+    setPrefillFromCrawled({
+      crawledEventId: item.id,
+      exchange: item.exchange,
+      link: item.url,
+      notes: item.title,
+    })
+    setActiveTab('events')
+  }
+
+  function handleClearPrefill() {
+    setPrefillFromCrawled(null)
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -69,8 +92,15 @@ export default function AdminTabs({ loginId }: { loginId: string }) {
 
         {activeTab === 'accounts' && <AdminDashboard loginId={loginId} embedded />}
         {activeTab === 'members' && <MemberStatus />}
-        {activeTab === 'events' && <EventManager />}
-        {activeTab === 'crawled' && <CrawledEventManager />}
+        {activeTab === 'events' && (
+          <EventManager
+            prefill={prefillFromCrawled}
+            onClearPrefill={handleClearPrefill}
+          />
+        )}
+        {activeTab === 'crawled' && (
+          <CrawledEventManager onApproveNavigation={handleApproveNavigation} />
+        )}
         {activeTab === 'inquiries' && <InquiryManager />}
       </main>
     </div>

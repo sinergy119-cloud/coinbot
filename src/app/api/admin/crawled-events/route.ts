@@ -124,5 +124,22 @@ export async function POST(req: NextRequest) {
     return Response.json({ ok: true, announcementId: announcement.id })
   }
 
+  // 이벤트 관리 탭에서 직접 등록 후 수집 이벤트를 approved로 연결
+  if (action === 'mark-approved') {
+    const { announcementId } = body
+    const { error } = await db
+      .from('crawled_events')
+      .update({
+        status: 'approved',
+        reviewed_by: session.loginId,
+        reviewed_at: now,
+        published_event_id: announcementId ?? null,
+      })
+      .eq('id', id)
+
+    if (error) return Response.json({ error: error.message }, { status: 500 })
+    return Response.json({ ok: true })
+  }
+
   return Response.json({ error: '알 수 없는 action입니다.' }, { status: 400 })
 }

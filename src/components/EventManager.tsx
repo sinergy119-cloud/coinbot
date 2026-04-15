@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { Trash2, Pencil, X } from 'lucide-react'
 import { EXCHANGE_LABELS, EXCHANGE_EMOJI } from '@/types/database'
 import type { Exchange } from '@/types/database'
+import type { CrawledPrefill } from '@/components/AdminTabs'
 
 const EXCHANGES = Object.keys(EXCHANGE_LABELS) as Exchange[]
 
@@ -22,7 +23,12 @@ interface Announcement {
 
 interface CoinInfo { code: string; name: string }
 
-export default function EventManager() {
+interface Props {
+  prefill?: CrawledPrefill | null
+  onClearPrefill?: () => void
+}
+
+export default function EventManager({ prefill, onClearPrefill }: Props) {
   const [events, setEvents] = useState<Announcement[]>([])
   const [editingId, setEditingId] = useState<string | null>(null)
 
@@ -40,11 +46,43 @@ export default function EventManager() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
-  function resetForm() {
+  // 코인 자동완성
+  const [allCoins, setAllCoins] = useState<CoinInfo[]>([])
+  const [coinsLoading, setCoinsLoading] = useState(false)
+  const [coinFocused, setCoinFocused] = useState(false)
+
+  function resetForm(keepPrefill = false) {
     setEditingId(null)
     setExchange(null); setCoin(''); setAmount('1만원(일일)'); setRequireApply(false); setApiAllowed(true)
     setLink(''); setNotes(''); setStartDate(''); setEndDate(''); setAllCoins([])
+    if (!keepPrefill) onClearPrefill?.()
   }
+
+  // ── prefill 주입: 수집 이벤트 승인 시 기본값 채움
+  useEffect(() => {
+    if (!prefill) return
+    // 거래소 세팅 + 코인 목록 로드
+    const ex = prefill.exchange as Exchange
+    setExchange(ex)
+    setCoin('')
+    setLink(prefill.link ?? '')
+    setNotes(prefill.notes)
+    setAmount('1만원(일일)')
+    setRequireApply(false)
+    setApiAllowed(true)
+    setStartDate('')
+    setEndDate('')
+    setEditingId(null)
+    // 코인 자동완성용 목록 로드
+    setCoinsLoading(true)
+    fetch(`/api/markets?exchange=${ex}`)
+      .then((r) => r.json())
+      .then((data: CoinInfo[]) => Array.isArray(data) ? setAllCoins(data) : null)
+      .catch(() => null)
+      .finally(() => setCoinsLoading(false))
+    // 폼 최상단으로 스크롤
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [prefill])
 
   function startEdit(ev: Announcement) {
     setEditingId(ev.id)
@@ -57,21 +95,15 @@ export default function EventManager() {
     setApiAllowed(ev.api_allowed)
     setLink(ev.link ?? '')
     setNotes(ev.notes ?? '')
-    // 거래소의 코인 목록 로드 (자동완성용)
+    onClearPrefill?.()
     setCoinsLoading(true)
     fetch(`/api/markets?exchange=${ev.exchange}`)
       .then((r) => r.json())
       .then((data: CoinInfo[]) => Array.isArray(data) ? setAllCoins(data) : null)
       .catch(() => null)
       .finally(() => setCoinsLoading(false))
-    // 폼 위치로 스크롤
     if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
   }
-
-  // 코인 자동완성
-  const [allCoins, setAllCoins] = useState<CoinInfo[]>([])
-  const [coinsLoading, setCoinsLoading] = useState(false)
-  const [coinFocused, setCoinFocused] = useState(false)
 
   useEffect(() => {
     fetchEvents()
@@ -89,7 +121,6 @@ export default function EventManager() {
 
   function handleSetExchange(ex: Exchange) {
     setExchange(ex)
-    // 수정 모드가 아닐 때만 코인 초기화
     if (!editingId) setCoin('')
     setAllCoins([])
     setCoinsLoading(true)
@@ -124,13 +155,37 @@ export default function EventManager() {
           exchange, coin, amount, requireApply, apiAllowed, link, notes, startDate, endDate,
         }),
       })
-      if (!res.ok) { const d = await res.json(); setError(d.error || (editingId ? '수정 실패' : '등록 실패')); return }
+      if (!res.ok) {
+        const d = await res.json()
+        setError(d.error || (editingId ? '수정 실패' : '등록 실패'))
+        return
+      }
+
+      const responseData = await res.json()
+
+      // prefill 모드: 수집 이벤트를 approved로 연결
+      if (!editingId && prefill?.crawledEventId) {
+        await fetch('/api/admin/crawled-events', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'mark-approved',
+            id: prefill.crawledEventId,
+            announcementId: responseData?.id ?? null,
+          }),
+        })
+        onClearPrefill?.()
+      }
+
       setSuccess(editingId ? '이벤트 수정 완료' : '이벤트 등록 완료')
-      resetForm()
+      resetForm(false)
       fetchEvents()
       setTimeout(() => setSuccess(''), 2000)
-    } catch { setError('네트워크 오류') }
-    finally { setLoading(false) }
+    } catch {
+      setError('네트워크 오류')
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function handleDelete(id: string) {
@@ -139,21 +194,42 @@ export default function EventManager() {
     fetchEvents()
   }
 
+  const isPrefillMode = !!prefill && !editingId
+
   return (
     <div className="space-y-4">
       {/* 등록/수정 폼 */}
-      <section className={`rounded-xl border p-4 ${editingId ? 'border-blue-300 bg-blue-50/30' : 'border-gray-200 bg-white'}`}>
+      <section className={`rounded-xl border p-4 ${
+        isPrefillMode
+          ? 'border-green-300 bg-green-50/30'
+          : editingId
+          ? 'border-blue-300 bg-blue-50/30'
+          : 'border-gray-200 bg-white'
+      }`}>
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-base font-semibold text-gray-900">
             {editingId ? '✏️ 이벤트 수정' : '📅 이벤트 등록'}
           </h2>
-          {editingId && (
-            <button type="button" onClick={resetForm}
+          {(editingId || isPrefillMode) && (
+            <button type="button" onClick={() => resetForm(false)}
               className="flex items-center gap-1 rounded-lg bg-gray-200 px-3 py-1 text-xs text-gray-700 hover:bg-gray-300">
               <X size={12} /> 취소
             </button>
           )}
         </div>
+
+        {/* 수집 이벤트 기반 배너 */}
+        {isPrefillMode && (
+          <div className="mb-3 rounded-lg bg-green-100 border border-green-200 px-3 py-2">
+            <p className="text-xs font-medium text-green-800 break-keep">
+              📌 수집 이벤트 기반 — 거래소·링크·특이사항이 자동 입력되었습니다.
+            </p>
+            <p className="mt-0.5 text-[11px] text-green-700 break-keep leading-relaxed line-clamp-2">
+              {prefill.notes}
+            </p>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-3">
           {/* 거래소 */}
           <div>
@@ -270,7 +346,9 @@ export default function EventManager() {
           {success && <p className="text-xs text-green-600">{success}</p>}
           <button type="submit" disabled={loading}
             className="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
-            {loading ? (editingId ? '수정 중...' : '등록 중...') : (editingId ? '이벤트 수정' : '이벤트 등록')}
+            {loading
+              ? (editingId ? '수정 중...' : '등록 중...')
+              : (editingId ? '이벤트 수정' : '이벤트 등록')}
           </button>
         </form>
       </section>

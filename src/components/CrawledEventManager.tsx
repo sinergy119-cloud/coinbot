@@ -6,7 +6,6 @@ import {
   ChevronDown, ChevronUp, Plus, Trash2, Tag, History,
   AlertCircle, Send, Settings, Calendar,
 } from 'lucide-react'
-import type { Exchange } from '@/types/database'
 
 // ───────── 타입 ─────────
 interface CrawledEvent {
@@ -36,25 +35,13 @@ interface CrawlLog {
   telegram_error: string | null
 }
 
-interface ApproveForm {
-  exchange: Exchange
-  coin: string
-  amount: string
-  requireApply: boolean
-  apiAllowed: boolean
-  link: string
-  notes: string
-  startDate: string
-  endDate: string
-}
-
 // ───────── 상수 ─────────
 const EXCHANGE_LABELS: Record<string, string> = {
-  BITHUMB: '빗썸',
-  UPBIT: '업비트',
-  COINONE: '코인원',
-  KORBIT: '코빗',
-  GOPAX: '고팍스',
+  BITHUMB: '빗썸', UPBIT: '업비트', COINONE: '코인원', KORBIT: '코빗', GOPAX: '고팍스',
+}
+
+interface Props {
+  onApproveNavigation: (item: { id: string; exchange: string; url: string | null; title: string }) => void
 }
 
 const INTERVAL_OPTIONS = [
@@ -65,7 +52,7 @@ const INTERVAL_OPTIONS = [
 ]
 
 // ═══════════════════════════════════════════════════════
-export default function CrawledEventManager() {
+export default function CrawledEventManager({ onApproveNavigation }: Props) {
   // 탭·상태
   const [tab, setTab] = useState<'pending' | 'approved' | 'rejected'>('pending')
   const [items, setItems] = useState<CrawledEvent[]>([])
@@ -77,11 +64,6 @@ export default function CrawledEventManager() {
   const [crawlPanelOpen, setCrawlPanelOpen] = useState(false)
   const getTodayKST = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' })
   const [sinceDate, setSinceDate] = useState(getTodayKST)
-
-  // 승인 모달
-  const [approveTarget, setApproveTarget] = useState<CrawledEvent | null>(null)
-  const [form, setForm] = useState<ApproveForm | null>(null)
-  const [submitting, setSubmitting] = useState(false)
 
   // 키워드 패널
   const [kwOpen, setKwOpen] = useState(false)
@@ -231,52 +213,6 @@ export default function CrawledEventManager() {
       setMessage({ type: 'error', text: e instanceof Error ? e.message : '크롤링 실패' })
     } finally {
       setCrawling(false)
-    }
-  }
-
-  // ── 승인 모달 열기
-  function openApprove(item: CrawledEvent) {
-    const today = new Date().toISOString().slice(0, 10)
-    const nextMonth = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
-    setApproveTarget(item)
-    setForm({
-      exchange: item.exchange as Exchange,
-      coin: '',
-      amount: '',
-      requireApply: false,
-      apiAllowed: true,
-      link: item.url ?? '',
-      notes: item.title,
-      startDate: today,
-      endDate: nextMonth,
-    })
-  }
-
-  // ── 승인 제출
-  async function submitApprove() {
-    if (!approveTarget || !form) return
-    setSubmitting(true)
-    setMessage(null)
-    try {
-      const res = await fetch('/api/admin/crawled-events', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'approve',
-          id: approveTarget.id,
-          eventData: { ...form, amount: form.amount ? Number(form.amount) : null },
-        }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? '오류')
-      setMessage({ type: 'success', text: '이벤트가 등록되었습니다.' })
-      setApproveTarget(null)
-      setForm(null)
-      load()
-    } catch (e) {
-      setMessage({ type: 'error', text: e instanceof Error ? e.message : '등록 실패' })
-    } finally {
-      setSubmitting(false)
     }
   }
 
@@ -804,7 +740,7 @@ export default function CrawledEventManager() {
                 {tab === 'pending' && (
                   <div className="flex shrink-0 flex-col gap-1.5">
                     <button
-                      onClick={() => openApprove(item)}
+                      onClick={() => onApproveNavigation({ id: item.id, exchange: item.exchange, url: item.url, title: item.title })}
                       className="flex items-center gap-1 rounded-lg bg-green-50 px-2.5 py-1.5 text-xs font-medium text-green-700 hover:bg-green-100"
                     >
                       <CheckCircle size={13} /> 승인
@@ -823,140 +759,6 @@ export default function CrawledEventManager() {
         </div>
       )}
 
-      {/* ══════════════════════════════
-          승인 모달
-      ══════════════════════════════ */}
-      {approveTarget && form && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl max-h-[90vh] overflow-y-auto">
-            <h3 className="mb-4 text-base font-semibold text-gray-900">이벤트 등록</h3>
-            <p className="mb-4 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-700 break-keep leading-relaxed">
-              {approveTarget.title}
-            </p>
-
-            <div className="space-y-3">
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-700">거래소</label>
-                <select
-                  value={form.exchange}
-                  onChange={(e) => setForm({ ...form, exchange: e.target.value as Exchange })}
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900"
-                >
-                  {Object.entries(EXCHANGE_LABELS).map(([k, v]) => (
-                    <option key={k} value={k}>{v}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-700">
-                  코인 <span className="text-red-500">*</span>
-                </label>
-                <input
-                  value={form.coin}
-                  onChange={(e) => setForm({ ...form, coin: e.target.value.toUpperCase() })}
-                  placeholder="예: BTC"
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400"
-                />
-              </div>
-
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-700">에어드랍 금액 (원, 선택)</label>
-                <input
-                  type="number"
-                  value={form.amount}
-                  onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                  placeholder="예: 5000"
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400"
-                />
-              </div>
-
-              <div className="flex gap-4">
-                <div className="flex-1">
-                  <label className="mb-1 block text-xs font-medium text-gray-700">
-                    시작일 <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={form.startDate}
-                    onChange={(e) => setForm({ ...form, startDate: e.target.value })}
-                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900"
-                  />
-                </div>
-                <div className="flex-1">
-                  <label className="mb-1 block text-xs font-medium text-gray-700">
-                    종료일 <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={form.endDate}
-                    onChange={(e) => setForm({ ...form, endDate: e.target.value })}
-                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-700">원문 링크</label>
-                <input
-                  value={form.link}
-                  onChange={(e) => setForm({ ...form, link: e.target.value })}
-                  placeholder="https://..."
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400"
-                />
-              </div>
-
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-700">비고</label>
-                <textarea
-                  value={form.notes}
-                  onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                  rows={3}
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 resize-none"
-                />
-              </div>
-
-              <div className="flex gap-4">
-                <label className="flex items-center gap-2 text-sm text-gray-700">
-                  <input
-                    type="checkbox"
-                    checked={form.requireApply}
-                    onChange={(e) => setForm({ ...form, requireApply: e.target.checked })}
-                    className="rounded"
-                  />
-                  신청 필요
-                </label>
-                <label className="flex items-center gap-2 text-sm text-gray-700">
-                  <input
-                    type="checkbox"
-                    checked={form.apiAllowed}
-                    onChange={(e) => setForm({ ...form, apiAllowed: e.target.checked })}
-                    className="rounded"
-                  />
-                  API 거래 허용
-                </label>
-              </div>
-            </div>
-
-            <div className="mt-5 flex gap-3">
-              <button
-                onClick={submitApprove}
-                disabled={submitting || !form.coin}
-                className="flex-1 rounded-lg bg-green-600 py-2.5 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
-              >
-                {submitting ? '등록 중...' : '이벤트 등록'}
-              </button>
-              <button
-                onClick={() => { setApproveTarget(null); setForm(null) }}
-                disabled={submitting}
-                className="flex-1 rounded-lg border border-gray-300 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-              >
-                취소
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
