@@ -87,7 +87,29 @@ export async function GET(req: NextRequest) {
     return Response.redirect(`${origin}/?welcome=kakao`)
   }
 
-  // 4) 신규 사용자 → 자동 가입 (이메일 인증 불필요)
+  // 4) 이메일로 기존 계정 검색 (소셜 계정 자동 연동)
+  if (email) {
+    const { data: emailUser } = await db
+      .from('users')
+      .select('id, user_id, status')
+      .eq('email', email)
+      .single()
+
+    if (emailUser) {
+      if (emailUser.status === 'suspended') {
+        return Response.redirect(`${origin}/login?error=suspended`)
+      }
+      await db.from('users').update({ last_login_at: new Date().toISOString() }).eq('id', emailUser.id)
+      try {
+        const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown'
+        await db.from('login_history').insert({ user_id: emailUser.id, ip_address: ip, user_agent: req.headers.get('user-agent')?.slice(0, 200) ?? '' })
+      } catch { /* 무시 */ }
+      await createSession(emailUser.id, emailUser.user_id, true)
+      return Response.redirect(`${origin}/?welcome=kakao`)
+    }
+  }
+
+  // 5) 신규 사용자 → 자동 가입 (이메일 인증 불필요)
   const { data: newUser, error } = await db
     .from('users')
     .insert({
