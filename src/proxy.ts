@@ -9,7 +9,7 @@ function getSecret() {
   return new TextEncoder().encode(raw)
 }
 
-const PUBLIC_PATHS = ['/login', '/api/auth/', '/api/cron', '/api/markets', '/api/guide']
+const PUBLIC_PATHS = ['/login', '/agree', '/api/auth/', '/api/cron', '/api/markets', '/api/guide']
 
 export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
