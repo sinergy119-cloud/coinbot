@@ -165,9 +165,9 @@ export default function Header({ loginId, isAdmin = false, showBackToHome = fals
 
             <form onSubmit={handleProfileSave} className="space-y-3">
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">이름</label>
+                <label className="mb-1 block text-xs font-medium text-gray-600">닉네임</label>
                 <input type="text" value={profileName} onChange={e => setProfileName(e.target.value)}
-                  placeholder="실명을 입력하세요"
+                  placeholder="김코인"
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none" />
               </div>
               <div>
