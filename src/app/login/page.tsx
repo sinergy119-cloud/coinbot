@@ -370,7 +370,7 @@ function renderMarkdown(md: string) {
 
     // 일반 텍스트
     flushList()
-    elements.push(<p key={i} className="text-sm text-gray-600 leading-relaxed">{formatInline(line)}</p>)
+    elements.push(<p key={i} className="text-sm text-gray-600 leading-relaxed break-keep">{formatInline(line)}</p>)
   }
   flushList()
   if (inTable) flushTable()
