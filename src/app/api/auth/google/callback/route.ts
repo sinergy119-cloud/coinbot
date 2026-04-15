@@ -1,7 +1,7 @@
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase'
 import { createSession } from '@/lib/session'
-import { createPendingSignup } from '@/lib/pendingSignup'
+import { setPendingSignupOnResponse } from '@/lib/pendingSignup'
 
 function getOrigin(req: NextRequest) {
   const host = req.headers.get('x-forwarded-host') ?? req.headers.get('host') ?? req.nextUrl.host
@@ -107,6 +107,12 @@ export async function GET(req: NextRequest) {
   }
 
   // 5) 신규 사용자 → 약관 동의 페이지로 이동
-  await createPendingSignup({ provider: 'google', userId: googleUserId, name: nickname, email })
-  return Response.redirect(`${origin}/agree`)
+  // NextResponse.redirect() 를 사용해야 Set-Cookie 헤더가 리다이렉트 응답에 포함됨
+  try {
+    const res = NextResponse.redirect(`${origin}/agree`)
+    return await setPendingSignupOnResponse(res, { provider: 'google', userId: googleUserId, name: nickname, email })
+  } catch (err) {
+    console.error('[google callback] setPendingSignup error:', err)
+    return Response.redirect(`${origin}/login?error=google_signup`)
+  }
 }
