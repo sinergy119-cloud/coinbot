@@ -7,50 +7,6 @@ import ExchangeApiGuide from '@/components/ExchangeApiGuide'
 
 const SAVED_ID_KEY = 'coinbot_saved_id'
 
-// ─── 비밀번호 강도 체크 ─────────────────────────────
-const PW_RULES = [
-  { label: '8자 이상', test: (pw: string) => pw.length >= 8 },
-  { label: '영문 포함', test: (pw: string) => /[a-zA-Z]/.test(pw) },
-  { label: '숫자 포함', test: (pw: string) => /\d/.test(pw) },
-  { label: '특수문자 포함', test: (pw: string) => /[!@#$%^&*()_+\-=[\]{};':"|,.<>/?~`]/.test(pw) },
-]
-
-function PasswordStrength({ password }: { password: string }) {
-  if (!password) return null
-  const passed = PW_RULES.filter((r) => r.test(password)).length
-  const ratio = passed / PW_RULES.length
-  const barColor = ratio <= 0.25 ? 'bg-red-500' : ratio <= 0.5 ? 'bg-orange-500' : ratio <= 0.75 ? 'bg-yellow-500' : 'bg-green-500'
-
-  return (
-    <div className="mt-2 space-y-1.5">
-      {/* 강도 바 */}
-      <div className="flex items-center gap-2">
-        <div className="h-1.5 flex-1 rounded-full bg-gray-200">
-          <div className={`h-1.5 rounded-full transition-all duration-300 ${barColor}`} style={{ width: `${ratio * 100}%` }} />
-        </div>
-        <span className={`text-xs font-medium ${ratio === 1 ? 'text-green-600' : 'text-gray-400'}`}>
-          {ratio === 1 ? '안전' : ratio >= 0.75 ? '보통' : '약함'}
-        </span>
-      </div>
-      {/* 요건 목록 */}
-      <div className="flex flex-wrap gap-x-3 gap-y-0.5">
-        {PW_RULES.map((rule) => {
-          const ok = rule.test(password)
-          return (
-            <span key={rule.label} className={`text-xs ${ok ? 'text-green-600' : 'text-gray-400'}`}>
-              {ok ? '✅' : '⬜'} {rule.label}
-            </span>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
-function isPasswordValid(pw: string) {
-  return PW_RULES.every((r) => r.test(pw))
-}
-
 // ─── 섹션 아이콘/색상 매핑 ──────────────────────────
 const SECTION_STYLES: Record<string, { icon: string; color: string }> = {
   '에어드랍':   { icon: '🎁', color: 'text-pink-600' },
@@ -476,124 +432,6 @@ function GuideModal({ apiUrl, onClose, footer }: { apiUrl: string; onClose: () =
   )
 }
 
-// ─── 아이디 찾기 모달 ───────────────────────────────
-function FindIdModal({ onClose }: { onClose: () => void }) {
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
-  const [result, setResult] = useState('')
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setError(''); setResult('')
-    if (!name.trim() || !email.trim()) { setError('이름과 이메일을 입력해주세요.'); return }
-    setLoading(true)
-    try {
-      const res = await fetch('/api/auth/find-id', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), email: email.trim() }),
-      })
-      const data = await res.json()
-      if (!res.ok) { setError(data.error); return }
-      setResult(data.userId)
-    } catch { setError('네트워크 오류') }
-    finally { setLoading(false) }
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
-        <h2 className="mb-4 text-lg font-bold text-gray-900">아이디 찾기</h2>
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="이름"
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="이메일"
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          {result && (
-            <div className="rounded-lg bg-blue-50 border border-blue-200 px-3 py-3 text-center">
-              <p className="text-xs text-gray-500 mb-1">회원님의 아이디</p>
-              <p className="text-lg font-bold text-blue-700">{result}</p>
-            </div>
-          )}
-          <div className="flex gap-2">
-            {!result && (
-              <button type="submit" disabled={loading}
-                className="flex-1 rounded-lg bg-blue-600 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
-                {loading ? '조회 중...' : '아이디 찾기'}
-              </button>
-            )}
-            <button type="button" onClick={onClose}
-              className="flex-1 rounded-lg bg-gray-200 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-300">
-              닫기
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
-}
-
-// ─── 비밀번호 찾기 모달 ─────────────────────────────
-function FindPwModal({ onClose }: { onClose: () => void }) {
-  const [userId, setUserId] = useState('')
-  const [email, setEmail] = useState('')
-  const [sent, setSent] = useState(false)
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setError(''); setSent(false)
-    if (!userId.trim() || !email.trim()) { setError('아이디와 이메일을 입력해주세요.'); return }
-    setLoading(true)
-    try {
-      const res = await fetch('/api/auth/find-pw', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: userId.trim(), email: email.trim() }),
-      })
-      const data = await res.json()
-      if (!res.ok) { setError(data.error); return }
-      setSent(true)
-    } catch { setError('네트워크 오류') }
-    finally { setLoading(false) }
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
-        <h2 className="mb-4 text-lg font-bold text-gray-900">비밀번호 찾기</h2>
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <input type="text" value={userId} onChange={(e) => setUserId(e.target.value)} placeholder="아이디"
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="가입 시 등록한 이메일"
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          {sent && (
-            <div className="rounded-lg bg-green-50 border border-green-200 px-3 py-3 text-center">
-              <p className="text-sm font-medium text-green-700">✅ 임시 비밀번호를 이메일로 보냈습니다.</p>
-              <p className="text-xs text-green-600 mt-1">로그인 후 반드시 비밀번호를 변경해주세요.</p>
-            </div>
-          )}
-          <div className="flex gap-2">
-            {!sent && (
-              <button type="submit" disabled={loading}
-                className="flex-1 rounded-lg bg-blue-600 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
-                {loading ? '발송 중...' : '임시 비밀번호 발급'}
-              </button>
-            )}
-            <button type="button" onClick={onClose}
-              className="flex-1 rounded-lg bg-gray-200 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-300">
-              닫기
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
-}
-
 // ─── 개인정보처리방침 모달 ───────────────────────────
 function PrivacyModal({ onClose }: { onClose: () => void }) {
   return (
@@ -606,7 +444,7 @@ function PrivacyModal({ onClose }: { onClose: () => void }) {
         <div className="space-y-4 text-sm text-gray-600 leading-relaxed">
           <section>
             <h3 className="font-semibold text-gray-800 mb-1">1. 수집하는 개인정보</h3>
-            <p>회원가입 시 아이디, 비밀번호(해시), 이름, 전화번호, 이메일을 수집합니다.</p>
+            <p>소셜 로그인(카카오·네이버·구글) 시 해당 플랫폼이 제공하는 닉네임, 이메일을 수집합니다. 별도의 아이디·비밀번호·전화번호는 수집하지 않습니다.</p>
           </section>
           <section>
             <h3 className="font-semibold text-gray-800 mb-1">2. 수집 목적</h3>
@@ -622,7 +460,7 @@ function PrivacyModal({ onClose }: { onClose: () => void }) {
           </section>
           <section>
             <h3 className="font-semibold text-gray-800 mb-1">5. 보안 조치</h3>
-            <p>비밀번호는 bcrypt 해싱, API Key는 AES-256-GCM 암호화하여 저장합니다. 접속 이력(IP)은 보안 목적으로 기록됩니다.</p>
+            <p>거래소 API Key는 AES-256-GCM 암호화하여 저장합니다. 접속 이력(IP)은 보안 목적으로 기록됩니다.</p>
           </section>
           <section>
             <h3 className="font-semibold text-gray-800 mb-1">6. 문의</h3>
@@ -639,22 +477,16 @@ function PrivacyModal({ onClose }: { onClose: () => void }) {
 
 export default function LoginPage() {
   const router = useRouter()
-  const [mode, setMode] = useState<'login' | 'signup'>('login')
   const [userId, setUserId] = useState('')
   const [password, setPassword] = useState('')
-  const [passwordConfirm, setPasswordConfirm] = useState('')
-  const [name, setName] = useState('')
-  const [phone, setPhone] = useState('')
-  const [email, setEmail] = useState('')
   const [showPw, setShowPw] = useState(false)
   const [autoLogin, setAutoLogin] = useState(false)
   const [showAutoLoginConfirm, setShowAutoLoginConfirm] = useState(false)
   const [socialLoginMsg, setSocialLoginMsg] = useState('')
   const [error, setError] = useState('')
-  const [successMsg, setSuccessMsg] = useState('')
   const [loading, setLoading] = useState(false)
   const [checking, setChecking] = useState(true)
-  const [activeModal, setActiveModal] = useState<'service' | 'exchange' | 'signup' | 'apikey' | 'apikey-detail' | 'find-id' | 'find-pw' | 'privacy' | null>(null)
+  const [activeModal, setActiveModal] = useState<'service' | 'exchange' | 'signup' | 'apikey' | 'apikey-detail' | 'privacy' | null>(null)
   const [guideExchange, setGuideExchange] = useState('BITHUMB')
   const [guideFolded, setGuideFolded] = useState(() => {
     if (typeof window !== 'undefined') return localStorage.getItem('coinbot_guide_folded') === 'true'
@@ -685,46 +517,19 @@ export default function LoginPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
-    setSuccessMsg('')
-
     if (!userId.trim() || !password) {
       setError('사용자 ID와 비밀번호를 입력해주세요.')
       return
     }
-
-    if (mode === 'signup') {
-      if (!isPasswordValid(password)) { setError('비밀번호 요건을 모두 충족해주세요. (8자 이상, 영문, 숫자, 특수문자)'); return }
-      if (password !== passwordConfirm) { setError('비밀번호가 일치하지 않습니다.'); return }
-      if (!name.trim()) { setError('이름을 입력해주세요.'); return }
-      if (!phone.trim()) { setError('전화번호를 입력해주세요.'); return }
-      if (!email.trim()) { setError('이메일을 입력해주세요.'); return }
-    }
-
     setLoading(true)
     try {
-      const endpoint = mode === 'login' ? '/api/auth/login' : '/api/auth/signup'
-      const body = mode === 'login'
-        ? { userId: userId.trim(), password, autoLogin }
-        : { userId: userId.trim(), password, name: name.trim(), phone: phone.trim(), email: email.trim() }
-      const res = await fetch(endpoint, {
+      const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ userId: userId.trim(), password, autoLogin }),
       })
       const data = await res.json()
-
-      if (!res.ok) {
-        setError(data.error || '오류가 발생했습니다.')
-        return
-      }
-
-      // 회원가입 → 이메일 인증 안내
-      if (data.needVerification) {
-        setSuccessMsg(data.message)
-        return
-      }
-
-      // 자동 로그인: 아이디 저장
+      if (!res.ok) { setError(data.error || '오류가 발생했습니다.'); return }
       if (autoLogin) {
         localStorage.setItem(SAVED_ID_KEY, userId.trim())
         localStorage.setItem('coinbot_auto_login', 'true')
@@ -732,7 +537,6 @@ export default function LoginPage() {
         localStorage.removeItem(SAVED_ID_KEY)
         localStorage.removeItem('coinbot_auto_login')
       }
-
       router.push('/')
       router.refresh()
     } catch {
@@ -755,9 +559,7 @@ export default function LoginPage() {
       <div className="flex w-full max-w-sm flex-col">
       <div className="rounded-xl bg-white p-8 shadow-lg">
         <h1 className="mb-1 text-center text-2xl font-bold text-gray-900">MyCoinBot</h1>
-        <p className="mb-3 text-center text-sm text-gray-500">
-          {mode === 'login' ? '로그인' : '회원 가입'}
-        </p>
+        <p className="mb-3 text-center text-sm text-gray-500">로그인</p>
 
         {/* 처음이신가요? 접이식 배너 */}
         <div className="mb-5 rounded-lg border border-gray-200 bg-gray-50 overflow-hidden">
@@ -834,7 +636,7 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 pr-10 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 placeholder="비밀번호를 입력하세요"
-                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                autoComplete="current-password"
               />
               <button
                 type="button"
@@ -845,112 +647,49 @@ export default function LoginPage() {
                 {showPw ? '🙈' : '👁'}
               </button>
             </div>
-            {mode === 'signup' && <PasswordStrength password={password} />}
           </div>
 
-          {mode === 'signup' && (
-            <>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">비밀번호 확인</label>
-                <input
-                  type="password"
-                  value={passwordConfirm}
-                  onChange={(e) => setPasswordConfirm(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  placeholder="비밀번호를 다시 입력하세요"
-                  autoComplete="new-password"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">이름</label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  placeholder="실명을 입력하세요"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">전화번호</label>
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  placeholder="010-1234-5678"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">이메일</label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  placeholder="example@gmail.com"
-                />
-                <p className="mt-1.5 rounded bg-amber-50 border border-amber-200 px-2.5 py-1.5 text-xs font-medium text-amber-700">📩 회원 가입 시 인증 메일이 발송됩니다.</p>
-              </div>
-            </>
-          )}
-
-          {/* 자동 로그인 + 아이디/비밀번호 찾기 (로그인 모드만) */}
-          {mode === 'login' && (
-            <div className="flex items-center justify-between">
-              <label className="flex cursor-pointer items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={autoLogin}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      setShowAutoLoginConfirm(true)
-                    } else {
-                      setAutoLogin(false)
-                      localStorage.removeItem('coinbot_auto_login')
-                      localStorage.removeItem(SAVED_ID_KEY)
-                    }
-                  }}
-                  className="accent-blue-600"
-                />
-                <span className="text-sm text-gray-600">자동 로그인</span>
-              </label>
-              <div className="flex gap-2 text-xs text-gray-400">
-                <button type="button" onClick={() => setActiveModal('find-id')} className="hover:text-gray-600 hover:underline">아이디 찾기</button>
-                <span>|</span>
-                <button type="button" onClick={() => setActiveModal('find-pw')} className="hover:text-gray-600 hover:underline">비밀번호 찾기</button>
-              </div>
-            </div>
-          )}
+          {/* 자동 로그인 */}
+          <div className="flex items-center">
+            <label className="flex cursor-pointer items-center gap-2">
+              <input
+                type="checkbox"
+                checked={autoLogin}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setShowAutoLoginConfirm(true)
+                  } else {
+                    setAutoLogin(false)
+                    localStorage.removeItem('coinbot_auto_login')
+                    localStorage.removeItem(SAVED_ID_KEY)
+                  }
+                }}
+                className="accent-blue-600"
+              />
+              <span className="text-sm text-gray-600">자동 로그인</span>
+            </label>
+          </div>
 
           {error && (
             <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
           )}
-          {successMsg && (
-            <div className="rounded-lg bg-green-50 border border-green-200 px-3 py-3 text-center">
-              <p className="text-sm font-medium text-green-700">✅ {successMsg}</p>
-            </div>
-          )}
 
-          {!successMsg && (
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-            >
-              {loading ? '처리 중...' : mode === 'login' ? '로그인' : '회원 가입'}
-            </button>
-          )}
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+          >
+            {loading ? '처리 중...' : '로그인'}
+          </button>
         </form>
 
-        {/* 소셜 로그인 (로그인 모드만) */}
-        {mode === 'login' && (
-          <div className="mt-4">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="h-px flex-1 bg-gray-200" />
-              <span className="text-xs text-gray-400">간편 로그인</span>
-              <div className="h-px flex-1 bg-gray-200" />
-            </div>
+        {/* 소셜 로그인 */}
+        <div className="mt-4">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="h-px flex-1 bg-gray-200" />
+            <span className="text-xs text-gray-400">간편 로그인</span>
+            <div className="h-px flex-1 bg-gray-200" />
+          </div>
             <div className="flex gap-2 mb-2">
               {/* 카카오 로그인 */}
               <button
@@ -998,19 +737,7 @@ export default function LoginPage() {
               <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.08 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-3.59-13.46-8.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
               구글
             </button>
-          </div>
-        )}
-
-        <button
-          onClick={() => {
-            setMode(mode === 'login' ? 'signup' : 'login')
-            setError('')
-            setSuccessMsg('')
-          }}
-          className="mt-4 w-full text-center text-sm text-blue-600 hover:underline"
-        >
-          {mode === 'login' ? '계정이 없으신가요? 회원 가입' : '이미 계정이 있으신가요? 로그인'}
-        </button>
+        </div>
 
         {/* 카카오톡 1:1 문의 (비회원용) */}
         <div className="mt-3 border-t border-gray-100 pt-3">
@@ -1066,8 +793,6 @@ export default function LoginPage() {
       {activeModal === 'apikey-detail' && (
         <ExchangeApiGuide exchange={guideExchange} onClose={() => setActiveModal('apikey')} />
       )}
-      {activeModal === 'find-id' && <FindIdModal onClose={() => setActiveModal(null)} />}
-      {activeModal === 'find-pw' && <FindPwModal onClose={() => setActiveModal(null)} />}
       {activeModal === 'privacy' && <PrivacyModal onClose={() => setActiveModal(null)} />}
 
       {/* 자동 로그인 확인 모달 */}
