@@ -24,8 +24,6 @@ export default function Header({ loginId, isAdmin = false, showBackToHome = fals
   const [displayName, setDisplayName] = useState('')
   const [profileName, setProfileName] = useState('')
   const [profileEmail, setProfileEmail] = useState('')
-  const [originalEmail, setOriginalEmail] = useState('')
-  const [pendingEmail, setPendingEmail] = useState('')
   const [profileLoading, setProfileLoading] = useState(false)
   const [profileError, setProfileError] = useState('')
   const [profileSuccess, setProfileSuccess] = useState('')
@@ -53,8 +51,6 @@ export default function Header({ loginId, isAdmin = false, showBackToHome = fals
         const d = await res.json()
         setProfileName(d.name ?? '')
         setProfileEmail(d.email ?? '')
-        setOriginalEmail(d.email ?? '')
-        setPendingEmail(d.pendingEmail ?? '')
         if (d.name) setDisplayName(d.name)
       }
     } catch { /* 무시 */ }
@@ -72,15 +68,9 @@ export default function Header({ loginId, isAdmin = false, showBackToHome = fals
       })
       const data = await res.json()
       if (!res.ok) { setProfileError(data.error || '저장 실패'); return }
-      if (data.emailVerification) {
-        setProfileSuccess(data.message)
-        setPendingEmail(profileEmail)
-        setProfileEmail(originalEmail) // 원래 이메일로 복원 (인증 전까지)
-      } else {
-        setProfileSuccess('저장되었습니다.')
-        if (profileName) setDisplayName(profileName)
-        setTimeout(() => setProfileSuccess(''), 2000)
-      }
+      setProfileSuccess('저장되었습니다.')
+      if (profileName) setDisplayName(profileName)
+      setTimeout(() => setProfileSuccess(''), 2000)
     } catch { setProfileError('네트워크 오류') }
     finally { setProfileLoading(false) }
   }
@@ -185,12 +175,6 @@ export default function Header({ loginId, isAdmin = false, showBackToHome = fals
                 <input type="email" value={profileEmail} onChange={e => setProfileEmail(e.target.value)}
                   placeholder="example@gmail.com"
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none" />
-                {profileEmail !== originalEmail && originalEmail && (
-                  <p className="mt-1 text-[10px] text-amber-600">📩 이메일 변경 시 인증 메일이 발송됩니다.</p>
-                )}
-                {pendingEmail && (
-                  <p className="mt-1 text-[10px] text-blue-600">⏳ {pendingEmail} 인증 대기 중</p>
-                )}
               </div>
               {profileError && <p className="text-xs text-red-500">{profileError}</p>}
               {profileSuccess && <p className="text-xs text-green-600">{profileSuccess}</p>}
