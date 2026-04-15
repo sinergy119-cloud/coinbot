@@ -13,10 +13,31 @@ export default function WithdrawModal({ onClose }: Props) {
   const [step, setStep] = useState<'warning' | 'confirm'>('warning')
   const [inputText, setInputText] = useState('')
   const [loading, setLoading] = useState(false)
+  const [checking, setChecking] = useState(false)
   const [error, setError] = useState('')
 
   const CONFIRM_KEYWORD = '회원탈퇴'
   const canSubmit = inputText === CONFIRM_KEYWORD && !loading
+
+  async function handleContinue() {
+    setChecking(true)
+    setError('')
+    try {
+      const res = await fetch('/api/trade-jobs')
+      if (res.ok) {
+        const jobs = await res.json()
+        if (Array.isArray(jobs) && jobs.length > 0) {
+          setError('활성 스케줄이 있어 탈퇴할 수 없습니다. 스케줄 탭에서 모든 스케줄을 삭제한 후 다시 시도해주세요.')
+          return
+        }
+      }
+      setStep('confirm')
+    } catch {
+      setError('네트워크 오류가 발생했습니다.')
+    } finally {
+      setChecking(false)
+    }
+  }
 
   async function handleWithdraw() {
     if (!canSubmit) return
@@ -74,6 +95,9 @@ export default function WithdrawModal({ onClose }: Props) {
             <p className="text-xs text-gray-600 text-center break-keep">
               스케줄이 등록되어 있다면 먼저 삭제 후 탈퇴해주세요.
             </p>
+            {error && (
+              <p className="text-xs text-red-600 break-keep">{error}</p>
+            )}
             <div className="flex gap-2 pt-1">
               <button
                 onClick={onClose}
@@ -82,10 +106,13 @@ export default function WithdrawModal({ onClose }: Props) {
                 취소
               </button>
               <button
-                onClick={() => setStep('confirm')}
-                className="flex-1 rounded-lg bg-red-600 py-2 text-sm font-medium text-white hover:bg-red-700"
+                onClick={handleContinue}
+                disabled={checking}
+                className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-red-600 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
               >
-                계속하기
+                {checking
+                  ? <><Loader2 size={14} className="animate-spin" /> 확인 중...</>
+                  : '계속하기'}
               </button>
             </div>
           </div>
