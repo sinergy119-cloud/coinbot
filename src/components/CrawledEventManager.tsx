@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import {
   RefreshCw, CheckCircle, XCircle, ExternalLink, Loader2,
   ChevronDown, ChevronUp, Plus, Trash2, Tag, History,
-  AlertCircle, Send,
+  AlertCircle, Send, Settings, Calendar,
 } from 'lucide-react'
 import type { Exchange } from '@/types/database'
 
@@ -57,6 +57,13 @@ const EXCHANGE_LABELS: Record<string, string> = {
   GOPAX: '고팍스',
 }
 
+const INTERVAL_OPTIONS = [
+  { value: 4,  label: '4시간' },
+  { value: 6,  label: '6시간' },
+  { value: 12, label: '12시간' },
+  { value: 24, label: '24시간' },
+]
+
 // ═══════════════════════════════════════════════════════
 export default function CrawledEventManager() {
   // 탭·상태
@@ -65,6 +72,10 @@ export default function CrawledEventManager() {
   const [loading, setLoading] = useState(false)
   const [crawling, setCrawling] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error' | 'warn'; text: string } | null>(null)
+
+  // 지금 수집 패널
+  const [crawlPanelOpen, setCrawlPanelOpen] = useState(false)
+  const [sinceDate, setSinceDate] = useState('')
 
   // 승인 모달
   const [approveTarget, setApproveTarget] = useState<CrawledEvent | null>(null)
@@ -78,6 +89,12 @@ export default function CrawledEventManager() {
   const [newKw, setNewKw] = useState('')
   const [newKwType, setNewKwType] = useState<'include' | 'exclude'>('include')
   const [kwSubmitting, setKwSubmitting] = useState(false)
+
+  // 수집 설정 패널
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [intervalHours, setIntervalHours] = useState(12)
+  const [nextCrawlAt, setNextCrawlAt] = useState<string | null>(null)
+  const [settingsSaving, setSettingsSaving] = useState(false)
 
   // 수집 이력 패널
   const [logOpen, setLogOpen] = useState(false)
@@ -117,11 +134,44 @@ export default function CrawledEventManager() {
     }
   }, [])
 
-  // 마운트 시 즉시 로드 (헤더 카운트 표시용)
   useEffect(() => { loadKeywords() }, [loadKeywords])
   useEffect(() => {
     if (kwOpen) loadKeywords()
   }, [kwOpen, loadKeywords])
+
+  // ── 수집 설정 로드
+  const loadSettings = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/crawler-settings')
+      const data = await res.json()
+      if (data.crawl_interval_hours) setIntervalHours(data.crawl_interval_hours)
+      setNextCrawlAt(data.next_crawl_at ?? null)
+    } catch {
+      // 조회 실패 시 기본값 유지
+    }
+  }, [])
+
+  useEffect(() => { loadSettings() }, [loadSettings])
+
+  // ── 수집 설정 저장
+  async function saveSettings() {
+    setSettingsSaving(true)
+    try {
+      const res = await fetch('/api/admin/crawler-settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ crawl_interval_hours: intervalHours }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? '저장 실패')
+      setNextCrawlAt(data.next_crawl_at)
+      setMessage({ type: 'success', text: `수집 주기가 ${intervalHours}시간으로 저장되었습니다.` })
+    } catch (e) {
+      setMessage({ type: 'error', text: e instanceof Error ? e.message : '설정 저장 실패' })
+    } finally {
+      setSettingsSaving(false)
+    }
+  }
 
   // ── 수집 이력 로드
   const loadLogs = useCallback(async () => {
@@ -142,12 +192,19 @@ export default function CrawledEventManager() {
     if (logOpen) loadLogs()
   }, [logOpen, loadLogs])
 
-  // ── 즉시 수집 (R-3: 429 쿨다운 처리)
+  // ── 즉시 수집
   async function runCrawl() {
     setCrawling(true)
     setMessage(null)
     try {
-      const res = await fetch('/api/admin/run-crawl', { method: 'POST' })
+      const body: Record<string, string> = {}
+      if (sinceDate) body.sinceDate = sinceDate
+
+      const res = await fetch('/api/admin/run-crawl', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
       const data = await res.json()
 
       // R-3: 쿨다운 중 (429)
@@ -158,12 +215,15 @@ export default function CrawledEventManager() {
 
       if (!res.ok) throw new Error(data.error ?? '오류')
 
+      const dateLabel = sinceDate ? ` (${sinceDate} 이후)` : ''
       setMessage({
         type: 'success',
-        text: `크롤링 완료 — 수집 ${data.found ?? 0}건, 신규 등록 ${data.inserted ?? 0}건${
+        text: `크롤링 완료${dateLabel} — 수집 ${data.found ?? 0}건, 신규 등록 ${data.inserted ?? 0}건${
           data.errors?.length ? ` (오류 ${data.errors.length}개 거래소)` : ''
         }`,
       })
+      setCrawlPanelOpen(false)
+      setSinceDate('')
       loadLogs()
       if (tab === 'pending') load()
     } catch (e) {
@@ -296,7 +356,6 @@ export default function CrawledEventManager() {
 
   // ── 이력 메시지 색상 헬퍼
   function logRowColor(log: CrawlLog) {
-    // 업비트 오류만 있으면 회색 (알려진 이슈)
     const nonUpbitErrors = log.errors?.filter((e) => e.exchange !== 'UPBIT') ?? []
     if (nonUpbitErrors.length > 0 && log.inserted_count === 0) return 'bg-red-50'
     if (log.inserted_count > 0) return 'bg-green-50'
@@ -329,6 +388,13 @@ export default function CrawledEventManager() {
     )
   }
 
+  // ─────────────────────────────────────────────
+  // 다음 수집 예정 시각 포맷
+  function formatNextCrawl(iso: string | null) {
+    if (!iso) return '—'
+    return new Date(iso).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })
+  }
+
   // ═══ 렌더링 ═══
   return (
     <div className="space-y-4">
@@ -359,15 +425,58 @@ export default function CrawledEventManager() {
             텔레그램 테스트
           </button>
           <button
-            onClick={runCrawl}
+            onClick={() => { setCrawlPanelOpen((v) => !v); setMessage(null) }}
             disabled={crawling}
-            className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50 ${
+              crawlPanelOpen ? 'bg-blue-700' : 'bg-blue-600 hover:bg-blue-700'
+            }`}
           >
-            {crawling ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+            <RefreshCw size={14} />
             지금 수집
           </button>
         </div>
       </div>
+
+      {/* ── 지금 수집 인라인 패널 ── */}
+      {crawlPanelOpen && (
+        <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 space-y-3">
+          <div className="flex items-center gap-2">
+            <Calendar size={14} className="text-blue-600 shrink-0" />
+            <span className="text-sm font-medium text-gray-900">수집 시작일 지정</span>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <input
+              type="date"
+              value={sinceDate}
+              onChange={(e) => setSinceDate(e.target.value)}
+              max={new Date().toISOString().slice(0, 10)}
+              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900"
+            />
+            <p className="text-xs text-gray-600 break-keep">
+              {sinceDate
+                ? `${sinceDate} 00:00 KST 이후 게시된 공지를 수집합니다. 5분 쿨다운이 면제됩니다.`
+                : '비워두면 최근 13시간 기준으로 수집합니다. (기본값)'}
+            </p>
+          </div>
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => { setCrawlPanelOpen(false); setSinceDate('') }}
+              disabled={crawling}
+              className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            >
+              취소
+            </button>
+            <button
+              onClick={runCrawl}
+              disabled={crawling}
+              className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            >
+              {crawling ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+              {crawling ? '수집 중...' : '수집 시작'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── 메시지 ── */}
       {message && (
@@ -485,6 +594,80 @@ export default function CrawledEventManager() {
             <p className="text-[11px] text-gray-600 break-keep leading-relaxed">
               💡 DB에 키워드가 없으면 코드 기본값이 사용됩니다. 추가하면 즉시 반영됩니다.
             </p>
+          </div>
+        )}
+      </div>
+
+      {/* ══════════════════════════════
+          자동 수집 설정 서브패널
+      ══════════════════════════════ */}
+      <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+        <button
+          onClick={() => setSettingsOpen((v) => !v)}
+          className="flex w-full items-center justify-between px-4 py-3"
+        >
+          <div className="flex items-center gap-2">
+            <Settings size={15} className="text-blue-500" />
+            <span className="text-sm font-medium text-gray-900">자동 수집 설정</span>
+            <span className="text-xs text-gray-600">
+              {intervalHours}시간마다
+            </span>
+          </div>
+          {settingsOpen ? <ChevronUp size={15} className="text-gray-400" /> : <ChevronDown size={15} className="text-gray-400" />}
+        </button>
+
+        {settingsOpen && (
+          <div className="border-t border-gray-100 px-4 pb-4 pt-3 space-y-4">
+
+            {/* 주기 선택 */}
+            <div>
+              <p className="mb-2 text-xs font-medium text-gray-700">수집 주기</p>
+              <div className="flex gap-2 flex-wrap">
+                {INTERVAL_OPTIONS.map((opt) => (
+                  <label
+                    key={opt.value}
+                    className={`flex cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-2 text-sm transition-colors ${
+                      intervalHours === opt.value
+                        ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium'
+                        : 'border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="interval"
+                      value={opt.value}
+                      checked={intervalHours === opt.value}
+                      onChange={() => setIntervalHours(opt.value)}
+                      className="sr-only"
+                    />
+                    {opt.label}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* 다음 수집 예정 */}
+            <div className="rounded-lg bg-gray-50 px-3 py-2.5">
+              <p className="text-xs text-gray-600 break-keep">
+                <span className="font-medium text-gray-700">다음 수집 예정</span>
+                {' '}
+                {formatNextCrawl(nextCrawlAt)}
+              </p>
+              <p className="mt-1 text-[11px] text-gray-600 break-keep">
+                저장 시 지금으로부터 {intervalHours}시간 후로 재설정됩니다.
+              </p>
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                onClick={saveSettings}
+                disabled={settingsSaving}
+                className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {settingsSaving ? <Loader2 size={14} className="animate-spin" /> : null}
+                {settingsSaving ? '저장 중...' : '저장'}
+              </button>
+            </div>
           </div>
         )}
       </div>

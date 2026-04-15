@@ -5,8 +5,9 @@
  *
  * 포함된 기능:
  *  - R-2: 텔레그램 발송 성공/실패 로그 기록
- *  - R-3: 중복 실행 방지 (manual 전용 5분 쿨다운)
+ *  - R-3: 중복 실행 방지 (manual + sinceOverride 없을 때 5분 쿨다운)
  *  - 로드맵 3: crawl_logs 테이블에 실행 이력 저장
+ *  - cron: crawler_settings.crawl_interval_hours 기준 interval 체크
  */
 
 import { SupabaseClient } from '@supabase/supabase-js'
@@ -28,6 +29,7 @@ export interface ExecuteResult {
   inserted: number
   errors: Array<{ exchange: string; message: string }>
   cooldown?: boolean
+  skipped?: boolean
 }
 
 // ─────────────────────────────────────────────
@@ -35,10 +37,35 @@ export async function executeCrawl(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   db: SupabaseClient<any, any, any>,
   triggeredBy: 'cron' | 'manual',
+  sinceOverride?: Date,
 ): Promise<{ httpStatus: number; result: ExecuteResult }> {
 
-  // ── R-3: 중복 실행 방지 (manual 전용, 5분 쿨다운) ──
-  if (triggeredBy === 'manual') {
+  // ── Cron: interval 체크 ──
+  if (triggeredBy === 'cron') {
+    const { data: settings } = await db
+      .from('crawler_settings')
+      .select('key, value')
+      .eq('key', 'next_crawl_at')
+      .maybeSingle()
+
+    const nextCrawlAt = settings?.value ? new Date(settings.value) : null
+
+    if (nextCrawlAt && new Date() < nextCrawlAt) {
+      return {
+        httpStatus: 200,
+        result: {
+          message: `스킵 — 다음 수집 예정: ${nextCrawlAt.toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}`,
+          found: 0,
+          inserted: 0,
+          errors: [],
+          skipped: true,
+        },
+      }
+    }
+  }
+
+  // ── Manual: 5분 쿨다운 (sinceOverride 없을 때만) ──
+  if (triggeredBy === 'manual' && !sinceOverride) {
     const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
     const { data: recentLog } = await db
       .from('crawl_logs')
@@ -64,6 +91,9 @@ export async function executeCrawl(
     }
   }
 
+  // ── since 결정 ──
+  const since = sinceOverride ?? new Date(Date.now() - 13 * 60 * 60 * 1000)
+
   // ── 1) 키워드 로드 ──
   const { data: kwData } = await db.from('crawler_keywords').select('keyword, type')
   const keywords: Keywords =
@@ -78,7 +108,6 @@ export async function executeCrawl(
         }
 
   // ── 2) 크롤링 실행 ──
-  const since = new Date(Date.now() - 13 * 60 * 60 * 1000)
   const { items, errors } = await crawlAllExchanges(keywords, since)
 
   // ── 3) crawl_logs 초기 삽입 ──
@@ -93,6 +122,11 @@ export async function executeCrawl(
     .select('id')
     .single()
   const logId: string | undefined = logRow?.id
+
+  // ── Cron: next_crawl_at 업데이트 (이벤트 유무와 무관) ──
+  if (triggeredBy === 'cron') {
+    await updateNextCrawlAt(db)
+  }
 
   // 이벤트 없으면 조기 반환
   if (items.length === 0) {
@@ -201,4 +235,21 @@ export async function executeCrawl(
       errors,
     },
   }
+}
+
+// ── next_crawl_at 업데이트 헬퍼 ──
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function updateNextCrawlAt(db: SupabaseClient<any, any, any>) {
+  const { data: intervalSetting } = await db
+    .from('crawler_settings')
+    .select('value')
+    .eq('key', 'crawl_interval_hours')
+    .maybeSingle()
+
+  const intervalHours = parseInt(intervalSetting?.value ?? '12')
+  const nextCrawlAt = new Date(Date.now() + intervalHours * 60 * 60 * 1000).toISOString()
+
+  await db
+    .from('crawler_settings')
+    .upsert({ key: 'next_crawl_at', value: nextCrawlAt })
 }
