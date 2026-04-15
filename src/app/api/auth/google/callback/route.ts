@@ -1,8 +1,7 @@
 import { NextRequest } from 'next/server'
 import { createServerClient } from '@/lib/supabase'
 import { createSession } from '@/lib/session'
-import { sendTelegramMessage } from '@/lib/telegram'
-import { escapeHtml } from '@/lib/html'
+import { createPendingSignup } from '@/lib/pendingSignup'
 
 function getOrigin(req: NextRequest) {
   const host = req.headers.get('x-forwarded-host') ?? req.headers.get('host') ?? req.nextUrl.host
@@ -107,44 +106,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // 5) 신규 사용자 자동 가입
-  const { data: newUser, error: insertError } = await db
-    .from('users')
-    .insert({
-      user_id: googleUserId,
-      password_hash: 'google_oauth',
-      name: nickname,
-      email,
-      status: 'approved',
-    })
-    .select('id, user_id')
-    .single()
-
-  if (insertError || !newUser) {
-    return Response.redirect(`${origin}/login?error=google_signup`)
-  }
-
-  // 5) 관리자 텔레그램 알림
-  try {
-    const adminId = process.env.ADMIN_USER_ID
-    if (adminId) {
-      const { data: admin } = await db.from('users').select('telegram_chat_id').eq('user_id', adminId).single()
-      if (admin?.telegram_chat_id) {
-        const { count } = await db.from('users').select('id', { count: 'exact', head: true }).eq('status', 'approved')
-        const now = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false })
-        await sendTelegramMessage(admin.telegram_chat_id, [
-          `🎉 <b>MyCoinBot 신규 가입 (구글)</b>`,
-          ``,
-          `이름: ${escapeHtml(nickname)}`,
-          email ? `이메일: ${escapeHtml(email)}` : '',
-          `가입: ${now} (KST)`,
-          ``,
-          `현재 승인 회원: ${count ?? '?'}명`,
-        ].filter(Boolean).join('\n'))
-      }
-    }
-  } catch { /* 무시 */ }
-
-  await createSession(newUser.id, newUser.user_id, true)
-  return Response.redirect(`${origin}/?welcome=google`)
+  // 5) 신규 사용자 → 약관 동의 페이지로 이동
+  await createPendingSignup({ provider: 'google', userId: googleUserId, name: nickname, email })
+  return Response.redirect(`${origin}/agree`)
 }
