@@ -43,7 +43,8 @@ export interface UserRow {
   phone: string | null
   email: string | null
   status: string       // pending | approved | suspended
-  delegated: boolean   // true면 관리자에게 거래 실행 위임
+  delegated: boolean        // true면 관리자에게 거래 실행 위임 (관리자 승인 완료)
+  delegate_pending?: boolean // true면 위임 신청 접수 중 (관리자 미승인)
   verify_token: string | null
   verify_expires_at: string | null
   last_login_at: string | null

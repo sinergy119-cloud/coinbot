@@ -13,6 +13,7 @@ interface User {
   email?: string
   status?: string
   delegated?: boolean
+  delegate_pending?: boolean
   created_at: string
   last_login_at: string | null
 }
@@ -94,9 +95,33 @@ export default function MemberStatus() {
     finally { setViewLoading(false) }
   }, [])
 
+  const [delegateActing, setDelegateActing] = useState<string | null>(null)
+
+  async function handleDelegateAction(userId: string, action: 'approve' | 'reject') {
+    setDelegateActing(userId)
+    try {
+      const res = await fetch('/api/admin/delegate', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, userId }),
+      })
+      if (res.ok) {
+        setUsers((prev) =>
+          prev.map((u) =>
+            u.id === userId
+              ? { ...u, delegated: action === 'approve', delegate_pending: false }
+              : u,
+          ),
+        )
+      }
+    } catch { /* 무시 */ }
+    finally { setDelegateActing(null) }
+  }
+
   const adminId = process.env.NEXT_PUBLIC_ADMIN_USER_ID
   const approvedCount = users.filter((u) => u.status === 'approved').length
   const delegatedCount = users.filter((u) => u.delegated).length
+  const pendingDelegateCount = users.filter((u) => u.delegate_pending).length
 
   function getExchangeGroups(userId: string) {
     const userAccounts = accounts.filter((a) => a.user_id === userId)
@@ -125,9 +150,12 @@ export default function MemberStatus() {
           <p className="text-2xl font-bold text-blue-600">{accounts.length}</p>
           <p className="text-xs text-gray-500">총 계정</p>
         </div>
-        <div className="rounded-xl border border-gray-200 bg-white p-4 text-center">
+        <div className={`rounded-xl border p-4 text-center ${pendingDelegateCount > 0 ? 'border-amber-300 bg-amber-50/40' : 'border-gray-200 bg-white'}`}>
           <p className="text-2xl font-bold text-purple-600">{delegatedCount}</p>
           <p className="text-xs text-gray-500">위임 회원</p>
+          {pendingDelegateCount > 0 && (
+            <p className="mt-0.5 text-[11px] font-medium text-amber-600">신청 중 {pendingDelegateCount}</p>
+          )}
         </div>
       </div>
 
@@ -152,7 +180,11 @@ export default function MemberStatus() {
 
             return (
               <div key={user.id} className={`rounded-lg border p-3 ${
-                user.delegated ? 'border-purple-200 bg-purple-50/30' : 'border-gray-200'
+                user.delegated
+                  ? 'border-purple-200 bg-purple-50/30'
+                  : user.delegate_pending
+                  ? 'border-amber-300 bg-amber-50/30'
+                  : 'border-gray-200'
               }`}>
                 {/* 헤더 */}
                 <div className="flex items-center justify-between mb-1.5">
@@ -165,9 +197,35 @@ export default function MemberStatus() {
                     {user.delegated && (
                       <span className="rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700">위임</span>
                     )}
+                    {user.delegate_pending && (
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">위임 신청 중</span>
+                    )}
                   </div>
                   <span className="text-xs text-gray-500 shrink-0">가입 {toDateKST(user.created_at)}</span>
                 </div>
+
+                {/* 위임 승인/거절 버튼 (신청 중인 경우만) */}
+                {user.delegate_pending && (
+                  <div className="mb-2 flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
+                    <span className="flex-1 text-xs text-amber-800 break-keep">
+                      📨 위임 신청이 접수되었습니다.
+                    </span>
+                    <button
+                      onClick={() => handleDelegateAction(user.id, 'approve')}
+                      disabled={delegateActing === user.id}
+                      className="rounded-lg bg-purple-600 px-3 py-1 text-xs font-semibold text-white hover:bg-purple-700 disabled:opacity-50"
+                    >
+                      승인
+                    </button>
+                    <button
+                      onClick={() => handleDelegateAction(user.id, 'reject')}
+                      disabled={delegateActing === user.id}
+                      className="rounded-lg bg-gray-200 px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-300 disabled:opacity-50"
+                    >
+                      거절
+                    </button>
+                  </div>
+                )}
 
                 {/* 개인정보 */}
                 {user.name && (

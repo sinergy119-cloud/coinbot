@@ -13,7 +13,7 @@ export async function GET() {
   const db = createServerClient()
   const { data } = await db
     .from('users')
-    .select('name, phone, email, pending_email, telegram_chat_id, delegated')
+    .select('name, phone, email, pending_email, telegram_chat_id, delegated, delegate_pending')
     .eq('id', session.userId)
     .single()
 
@@ -24,6 +24,7 @@ export async function GET() {
     pendingEmail: data?.pending_email ?? '',
     telegramChatId: data?.telegram_chat_id ?? '',
     delegated: data?.delegated ?? false,
+    delegatePending: data?.delegate_pending ?? false,
   })
 }
 
@@ -39,6 +40,8 @@ export async function PATCH(req: NextRequest) {
   // 이름/전화번호: 바로 저장
   if ('name' in body) updates.name = body.name?.trim() || null
   if ('phone' in body) updates.phone = body.phone?.replace(/[^0-9]/g, '') || null
+  // delegate_pending: 사용자가 위임 신청/취소 시 변경 가능 (delegated는 관리자 전용)
+  if ('delegate_pending' in body) updates.delegate_pending = !!body.delegate_pending
   // 주의: delegated는 관리자 전용 필드이므로 일반 사용자가 직접 수정 불가
 
   // 이메일 변경: 인증 필요
