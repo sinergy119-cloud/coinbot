@@ -477,12 +477,32 @@ export default function LoginPage() {
   const router = useRouter()
   const [withdrawnMsg, setWithdrawnMsg] = useState(false)
   const [socialLoginMsg, setSocialLoginMsg] = useState('')
+  const [oauthError, setOauthError] = useState('')
 
-  // 탈퇴 완료 파라미터 감지 (클라이언트 사이드)
+  // URL 파라미터 감지 (탈퇴 완료 / OAuth 에러)
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search)
       if (params.get('withdrawn') === '1') setWithdrawnMsg(true)
+      const err = params.get('error')
+      if (err) {
+        const errorMessages: Record<string, string> = {
+          naver_failed: '네이버 로그인에 실패했습니다. 다시 시도해주세요.',
+          naver_token: '네이버 인증 토큰 발급에 실패했습니다.',
+          naver_user: '네이버 사용자 정보를 가져오지 못했습니다.',
+          naver_signup: '네이버 가입 처리 중 오류가 발생했습니다.',
+          naver_config: '네이버 로그인 설정 오류입니다.',
+          google_failed: '구글 로그인에 실패했습니다. 다시 시도해주세요.',
+          google_token: '구글 인증 토큰 발급에 실패했습니다.',
+          google_user: '구글 사용자 정보를 가져오지 못했습니다.',
+          google_signup: '구글 가입 처리 중 오류가 발생했습니다.',
+          suspended: '이용이 정지된 계정입니다. 관리자에게 문의하세요.',
+          kakao_disabled: '카카오 로그인은 현재 준비 중입니다.',
+        }
+        setOauthError(errorMessages[err] ?? `로그인 오류: ${err}`)
+        // URL에서 에러 파라미터 제거
+        window.history.replaceState({}, '', '/login')
+      }
     }
   }, [])
   const [checking, setChecking] = useState(true)
@@ -524,6 +544,13 @@ export default function LoginPage() {
           <div className="mb-4 rounded-lg bg-gray-100 border border-gray-200 px-4 py-3 text-center">
             <p className="text-sm font-medium text-gray-700 break-keep">탈퇴 처리가 완료되었습니다.</p>
             <p className="text-xs text-gray-500 mt-0.5 break-keep">이용해 주셔서 감사합니다.</p>
+          </div>
+        )}
+
+        {/* 소셜 로그인 오류 */}
+        {oauthError && (
+          <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3">
+            <p className="text-sm text-red-600 break-keep text-center">{oauthError}</p>
           </div>
         )}
 
