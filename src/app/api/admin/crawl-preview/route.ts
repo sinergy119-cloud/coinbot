@@ -66,24 +66,41 @@ async function fetchBodyText(url: URL): Promise<string> {
   return fetchHtmlText(url.toString())
 }
 
-/** GOPAX 공식 REST API로 개별 공지 본문 가져오기 */
+/**
+ * GOPAX 공지 본문 가져오기
+ * - /notices/{id} 엔드포인트는 존재하지 않음
+ * - /notices?type=0&limit=N&page=P 목록에서 ID 검색
+ */
 async function fetchGopaxNotice(noticeId: string): Promise<string> {
-  try {
-    const res = await fetch(`https://api.gopax.co.kr/notices/${noticeId}`, {
-      headers: {
-        'User-Agent': 'MyCoinBot-Crawler/1.0',
-        Accept: 'application/json',
-      },
-      signal: AbortSignal.timeout(8000),
-    })
-    if (!res.ok) return ''
-    const data = await res.json()
-    // title + content (HTML) → 태그 제거 후 반환
-    const raw = `${data.title ?? ''} ${data.content ?? ''}`
-    return stripHtmlTags(raw)
-  } catch {
-    return ''
+  // page 0, 1 순서로 검색 (최근 공지는 page 0에 존재)
+  for (const page of [0, 1]) {
+    try {
+      const res = await fetch(
+        `https://api.gopax.co.kr/notices?type=0&limit=50&page=${page}`,
+        {
+          headers: { 'User-Agent': 'MyCoinBot-Crawler/1.0', Accept: 'application/json' },
+          signal: AbortSignal.timeout(8000),
+        },
+      )
+      if (!res.ok) break
+      const list = await res.json()
+      if (!Array.isArray(list)) break
+
+      const found = list.find(
+        (item: { id?: number | string }) => String(item.id) === noticeId,
+      )
+      if (found) {
+        const raw = `${found.title ?? ''} ${found.content ?? ''}`
+        return stripHtmlTags(raw)
+      }
+
+      // 결과가 50개 미만이면 다음 페이지 없음
+      if (list.length < 50) break
+    } catch {
+      break
+    }
   }
+  return ''
 }
 
 /** HTML 페치 → __NEXT_DATA__ 우선, 없으면 body 텍스트 */
