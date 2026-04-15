@@ -107,7 +107,7 @@ function StepMockup({ step, guide }: { step: GuideStep; guide: ExchangeGuideData
               <span className={`text-sm ${p.danger ? 'font-bold text-red-600' : p.checked ? 'text-gray-800' : 'text-gray-500'}`}>
                 {p.label}
               </span>
-              {p.danger && <span className="ml-auto text-xs font-bold text-red-500">❌ 절대 금지</span>}
+              {p.danger && <span className="ml-auto text-xs font-bold text-red-500">❌</span>}
               {p.checked && !p.danger && <span className="ml-auto text-xs text-green-600">✅</span>}
             </label>
           ))}
