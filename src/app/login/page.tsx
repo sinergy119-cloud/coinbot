@@ -5,8 +5,6 @@ import { useRouter } from 'next/navigation'
 import { X } from 'lucide-react'
 import ExchangeApiGuide from '@/components/ExchangeApiGuide'
 
-const SAVED_ID_KEY = 'coinbot_saved_id'
-
 // ─── 섹션 아이콘/색상 매핑 ──────────────────────────
 const SECTION_STYLES: Record<string, { icon: string; color: string }> = {
   '에어드랍':   { icon: '🎁', color: 'text-pink-600' },
@@ -477,14 +475,7 @@ function PrivacyModal({ onClose }: { onClose: () => void }) {
 
 export default function LoginPage() {
   const router = useRouter()
-  const [userId, setUserId] = useState('')
-  const [password, setPassword] = useState('')
-  const [showPw, setShowPw] = useState(false)
-  const [autoLogin, setAutoLogin] = useState(false)
-  const [showAutoLoginConfirm, setShowAutoLoginConfirm] = useState(false)
   const [socialLoginMsg, setSocialLoginMsg] = useState('')
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
   const [checking, setChecking] = useState(true)
   const [activeModal, setActiveModal] = useState<'service' | 'exchange' | 'signup' | 'apikey' | 'apikey-detail' | 'privacy' | null>(null)
   const [guideExchange, setGuideExchange] = useState('BITHUMB')
@@ -494,9 +485,7 @@ export default function LoginPage() {
   })
 
   // 세션 체크: 이미 로그인되어 있으면 대시보드로 이동
-  // 자동 로그인: 저장된 아이디 불러오기
   useEffect(() => {
-    // 1) 세션 체크
     fetch('/api/auth/me')
       .then((r) => r.json())
       .then((d) => {
@@ -504,47 +493,7 @@ export default function LoginPage() {
         setChecking(false)
       })
       .catch(() => setChecking(false))
-
-    // 2) 저장된 아이디 불러오기
-    const savedAutoLogin = localStorage.getItem('coinbot_auto_login') === 'true'
-    if (savedAutoLogin) {
-      const saved = localStorage.getItem(SAVED_ID_KEY)
-      if (saved) setUserId(saved)
-      setAutoLogin(true)
-    }
   }, [router])
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setError('')
-    if (!userId.trim() || !password) {
-      setError('사용자 ID와 비밀번호를 입력해주세요.')
-      return
-    }
-    setLoading(true)
-    try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: userId.trim(), password, autoLogin }),
-      })
-      const data = await res.json()
-      if (!res.ok) { setError(data.error || '오류가 발생했습니다.'); return }
-      if (autoLogin) {
-        localStorage.setItem(SAVED_ID_KEY, userId.trim())
-        localStorage.setItem('coinbot_auto_login', 'true')
-      } else {
-        localStorage.removeItem(SAVED_ID_KEY)
-        localStorage.removeItem('coinbot_auto_login')
-      }
-      router.push('/')
-      router.refresh()
-    } catch {
-      setError('네트워크 오류가 발생했습니다.')
-    } finally {
-      setLoading(false)
-    }
-  }
 
   if (checking) {
     return (
@@ -614,77 +563,8 @@ export default function LoginPage() {
           )}
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">사용자 ID</label>
-            <input
-              type="text"
-              value={userId}
-              onChange={(e) => setUserId(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              placeholder="ID를 입력하세요"
-              autoComplete="username"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">비밀번호</label>
-            <div className="relative">
-              <input
-                type={showPw ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 pr-10 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                placeholder="비밀번호를 입력하세요"
-                autoComplete="current-password"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPw(!showPw)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600"
-                aria-label={showPw ? '비밀번호 숨기기' : '비밀번호 보기'}
-              >
-                {showPw ? '🙈' : '👁'}
-              </button>
-            </div>
-          </div>
-
-          {/* 자동 로그인 */}
-          <div className="flex items-center">
-            <label className="flex cursor-pointer items-center gap-2">
-              <input
-                type="checkbox"
-                checked={autoLogin}
-                onChange={(e) => {
-                  if (e.target.checked) {
-                    setShowAutoLoginConfirm(true)
-                  } else {
-                    setAutoLogin(false)
-                    localStorage.removeItem('coinbot_auto_login')
-                    localStorage.removeItem(SAVED_ID_KEY)
-                  }
-                }}
-                className="accent-blue-600"
-              />
-              <span className="text-sm text-gray-600">자동 로그인</span>
-            </label>
-          </div>
-
-          {error && (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-          >
-            {loading ? '처리 중...' : '로그인'}
-          </button>
-        </form>
-
         {/* 소셜 로그인 */}
-        <div className="mt-4">
+        <div className="mt-2">
           <div className="flex items-center gap-3 mb-3">
             <div className="h-px flex-1 bg-gray-200" />
             <span className="text-xs text-gray-400">간편 로그인</span>
@@ -795,46 +675,19 @@ export default function LoginPage() {
       )}
       {activeModal === 'privacy' && <PrivacyModal onClose={() => setActiveModal(null)} />}
 
-      {/* 자동 로그인 확인 모달 */}
-      {/* 간편 로그인 준비 중 모달 */}
+      {/* 간편 로그인 미설정 안내 모달 */}
       {socialLoginMsg && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 px-4">
           <div className="w-full max-w-xs rounded-2xl bg-white p-6 shadow-2xl text-center">
             <div className="mb-3 text-3xl">🚧</div>
             <h3 className="mb-2 text-base font-bold text-gray-900">{socialLoginMsg} 로그인</h3>
-            <p className="mb-1 text-sm text-gray-600">{socialLoginMsg} 간편 로그인은 현재 설정 중입니다.</p>
-            <p className="mb-4 text-xs text-gray-400">곧 이용 가능합니다.<br />일반 로그인을 이용해주세요.</p>
+            <p className="mb-4 text-sm text-gray-600">{socialLoginMsg} 간편 로그인은 현재 준비 중입니다.</p>
             <button
               onClick={() => setSocialLoginMsg('')}
               className="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition"
             >
               확인
             </button>
-          </div>
-        </div>
-      )}
-
-      {showAutoLoginConfirm && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 px-4">
-          <div className="w-full max-w-xs rounded-2xl bg-white p-6 shadow-2xl text-center">
-            <div className="mb-3 text-3xl">🔒</div>
-            <h3 className="mb-2 text-base font-bold text-gray-900">자동 로그인</h3>
-            <p className="mb-1 text-sm text-gray-600">이 기기에 로그인 정보가 저장됩니다.</p>
-            <p className="mb-4 text-xs text-gray-400">공용 PC 또는 타인과 함께 사용하는 기기라면<br />사용하지 않는 것을 권장합니다.</p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => { setAutoLogin(true); setShowAutoLoginConfirm(false) }}
-                className="flex-1 rounded-lg bg-blue-600 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition"
-              >
-                확인
-              </button>
-              <button
-                onClick={() => setShowAutoLoginConfirm(false)}
-                className="flex-1 rounded-lg bg-gray-200 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-300 transition"
-              >
-                취소
-              </button>
-            </div>
           </div>
         </div>
       )}
