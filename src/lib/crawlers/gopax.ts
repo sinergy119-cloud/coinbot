@@ -24,7 +24,7 @@ export interface CrawledItem {
   url: string | null
 }
 
-export async function crawlGopax(keywords: Keywords, since: Date): Promise<CrawledItem[]> {
+export async function crawlGopax(keywords: Keywords, since: Date, until?: Date): Promise<CrawledItem[]> {
   const res = await withRetry(
     () =>
       fetch(NOTICE_API_URL, {
@@ -49,7 +49,10 @@ export async function crawlGopax(keywords: Keywords, since: Date): Promise<Crawl
       // 최근 12시간 이내 게시글만 수집
       if (item.createdAt) {
         const posted = new Date(item.createdAt)
-        if (!isNaN(posted.getTime()) && posted < since) return false
+        if (!isNaN(posted.getTime())) {
+          if (posted < since) return false
+          if (until && posted >= until) return false
+        }
       }
       return matchesKeyword(item.title ?? '', keywords)
     })

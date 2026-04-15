@@ -91,8 +91,13 @@ export async function executeCrawl(
     }
   }
 
-  // ── since 결정 ──
+  // ── since / until 결정 ──
+  // sinceOverride 있으면: 해당 날 하루치 (00:00 KST ~ 다음날 00:00 KST)
+  // sinceOverride 없으면: 최근 13시간, until 없음
   const since = sinceOverride ?? new Date(Date.now() - 13 * 60 * 60 * 1000)
+  const until = sinceOverride
+    ? new Date(sinceOverride.getTime() + 24 * 60 * 60 * 1000)
+    : undefined
 
   // ── 1) 키워드 로드 ──
   const { data: kwData } = await db.from('crawler_keywords').select('keyword, type')
@@ -108,7 +113,7 @@ export async function executeCrawl(
         }
 
   // ── 2) 크롤링 실행 ──
-  const { items, errors } = await crawlAllExchanges(keywords, since)
+  const { items, errors } = await crawlAllExchanges(keywords, since, until)
 
   // ── 3) crawl_logs 초기 삽입 ──
   const { data: logRow } = await db

@@ -30,6 +30,7 @@ export interface CrawlResult {
 export async function crawlAllExchanges(
   keywords?: Keywords,
   since?: Date,
+  until?: Date,
 ): Promise<CrawlResult> {
   const kw: Keywords = keywords ?? {
     include: DEFAULT_INCLUDE_KEYWORDS,
@@ -39,11 +40,11 @@ export async function crawlAllExchanges(
   const sinceDate = since ?? new Date(Date.now() - 13 * 60 * 60 * 1000)
 
   const crawlers: Array<{ exchange: string; fn: () => Promise<CrawledItem[]> }> = [
-    { exchange: 'BITHUMB', fn: () => crawlBithumb(kw, sinceDate) },
-    { exchange: 'UPBIT',   fn: () => crawlUpbit(kw, sinceDate) },
-    { exchange: 'COINONE', fn: () => crawlCoinone(kw, sinceDate) },
-    { exchange: 'KORBIT',  fn: () => crawlKorbit(kw, sinceDate) },
-    { exchange: 'GOPAX',   fn: () => crawlGopax(kw, sinceDate) },
+    { exchange: 'BITHUMB', fn: () => crawlBithumb(kw, sinceDate, until) },
+    { exchange: 'UPBIT',   fn: () => crawlUpbit(kw, sinceDate, until) },
+    { exchange: 'COINONE', fn: () => crawlCoinone(kw, sinceDate, until) },
+    { exchange: 'KORBIT',  fn: () => crawlKorbit(kw, sinceDate, until) },
+    { exchange: 'GOPAX',   fn: () => crawlGopax(kw, sinceDate, until) },
   ]
 
   const settled = await Promise.allSettled(crawlers.map((c) => c.fn()))

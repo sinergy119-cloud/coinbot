@@ -48,7 +48,7 @@ interface UpbitResponse {
   }
 }
 
-export async function crawlUpbit(keywords: Keywords, since: Date): Promise<CrawledItem[]> {
+export async function crawlUpbit(keywords: Keywords, since: Date, until?: Date): Promise<CrawledItem[]> {
   const results: CrawledItem[] = []
   const seen = new Set<number>()
 
@@ -90,6 +90,7 @@ export async function crawlUpbit(keywords: Keywords, since: Date): Promise<Crawl
 
     const listedAt = new Date(notice.listed_at)
     if (listedAt < since) continue
+    if (until && listedAt >= until) continue
 
     const title = notice.title
     const titleLower = title.toLowerCase()

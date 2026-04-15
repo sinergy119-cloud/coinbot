@@ -22,7 +22,7 @@ export interface CrawledItem {
   url: string | null
 }
 
-export async function crawlCoinone(keywords: Keywords, since: Date): Promise<CrawledItem[]> {
+export async function crawlCoinone(keywords: Keywords, since: Date, until?: Date): Promise<CrawledItem[]> {
   const res = await withRetry(
     () =>
       fetch(NOTICE_URL, {
@@ -58,7 +58,10 @@ export async function crawlCoinone(keywords: Keywords, since: Date): Promise<Cra
             const dateStr = n.created_at ?? n.createdAt ?? n.regDate
             if (dateStr) {
               const posted = new Date(dateStr)
-              if (!isNaN(posted.getTime()) && posted < since) return false
+              if (!isNaN(posted.getTime())) {
+                if (posted < since) return false
+                if (until && posted >= until) return false
+              }
             }
             return matchesKeyword(n.title ?? '', keywords)
           })
