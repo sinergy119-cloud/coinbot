@@ -14,7 +14,7 @@
     "ccxt": "^4.5.46",
     "jose": "^6.2.2",
     "lucide-react": "^1.7.0",
-    "next": "16.2.2",
+    "next": "16.2.3",
     "nodemailer": "^8.0.5",
     "react": "19.2.4",
     "react-dom": "19.2.4"
