@@ -1,8 +1,12 @@
 /**
- * /api/admin/crawl-preview — 이벤트 URL을 크롤링해 코인·금액·기간 자동 추출 (관리자 전용)
+ * /api/admin/crawl-preview — 이벤트 URL 크롤링 후 코인·금액·기간 자동 추출 (관리자 전용)
  *
  * GET ?url=<이벤트URL>&title=<제목>
  * Returns { coin, amount, startDate, endDate }
+ *
+ * 거래소별 전략:
+ *   GOPAX  → api.gopax.co.kr/notices/{id} (REST API, content 필드 포함)
+ *   기타   → HTML 페치 + __NEXT_DATA__ 우선 파싱
  */
 
 import { NextRequest } from 'next/server'
@@ -22,7 +26,6 @@ export async function GET(req: NextRequest) {
     return Response.json({ error: 'url 파라미터가 필요합니다.' }, { status: 400 })
   }
 
-  // URL 검증
   let parsedUrl: URL
   try {
     parsedUrl = new URL(url)
@@ -33,31 +36,11 @@ export async function GET(req: NextRequest) {
     return Response.json({ error: '유효하지 않은 URL' }, { status: 400 })
   }
 
-  // 제목에서 코인 코드 추출 — (ELSA), (BTC) 형태
+  // 1. 제목에서 코인 코드 추출
   const coin = extractCoinFromTitle(title)
 
-  // 페이지 HTML 가져오기
-  let bodyText = ''
-  try {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 8000)
-    const res = await fetch(parsedUrl.toString(), {
-      signal: controller.signal,
-      headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept-Language': 'ko-KR,ko;q=0.9',
-      },
-    })
-    clearTimeout(timeout)
-
-    if (res.ok) {
-      const html = await res.text()
-      bodyText = extractTextFromHtml(html)
-    }
-  } catch {
-    // URL 페치 실패 시 빈 텍스트로 진행
-  }
+  // 2. 본문 텍스트 추출 (거래소별 전략)
+  const bodyText = await fetchBodyText(parsedUrl)
 
   const amount = extractAmount(bodyText)
   const { startDate, endDate } = extractDateRange(bodyText)
@@ -65,48 +48,96 @@ export async function GET(req: NextRequest) {
   return Response.json({ coin, amount, startDate, endDate })
 }
 
-// ── 헬퍼 함수들 ───────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
+// 본문 텍스트 추출 — 거래소별 전략
+// ═══════════════════════════════════════════════════════════════
 
-/** 제목에서 괄호 안 대문자 코인 코드 추출 — 예: 헤이엘사(ELSA) → ELSA */
-function extractCoinFromTitle(title: string): string | null {
-  const matches = [...title.matchAll(/\(([A-Z]{2,10})\)/g)]
-  if (matches.length === 0) return null
-  return matches[0][1]
+async function fetchBodyText(url: URL): Promise<string> {
+  // ── GOPAX: api.gopax.co.kr/notices/{id} 직접 호출
+  if (url.hostname.includes('gopax.co.kr')) {
+    const m = url.pathname.match(/\/notice\/(\d+)/)
+    if (m) {
+      const text = await fetchGopaxNotice(m[1])
+      if (text) return text
+    }
+  }
+
+  // ── 기타 거래소: HTML 페치 + __NEXT_DATA__ 우선 파싱
+  return fetchHtmlText(url.toString())
+}
+
+/** GOPAX 공식 REST API로 개별 공지 본문 가져오기 */
+async function fetchGopaxNotice(noticeId: string): Promise<string> {
+  try {
+    const res = await fetch(`https://api.gopax.co.kr/notices/${noticeId}`, {
+      headers: {
+        'User-Agent': 'MyCoinBot-Crawler/1.0',
+        Accept: 'application/json',
+      },
+      signal: AbortSignal.timeout(8000),
+    })
+    if (!res.ok) return ''
+    const data = await res.json()
+    // title + content (HTML) → 태그 제거 후 반환
+    const raw = `${data.title ?? ''} ${data.content ?? ''}`
+    return stripHtmlTags(raw)
+  } catch {
+    return ''
+  }
+}
+
+/** HTML 페치 → __NEXT_DATA__ 우선, 없으면 body 텍스트 */
+async function fetchHtmlText(url: string): Promise<string> {
+  try {
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
+          '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept-Language': 'ko-KR,ko;q=0.9',
+      },
+      signal: AbortSignal.timeout(8000),
+    })
+    if (!res.ok) return ''
+    const html = await res.text()
+    return extractTextFromHtml(html)
+  } catch {
+    return ''
+  }
 }
 
 /**
  * HTML → 순수 텍스트
- * 전략:
- *   1) __NEXT_DATA__ (script JSON) 에서 먼저 텍스트 추출 → GOPAX·코인원·코빗 등 Next.js 사이트
- *   2) 나머지 script/style 제거 후 HTML 태그 제거
- *   두 결과를 이어붙여 반환
+ * 1) __NEXT_DATA__ JSON 먼저 평탄화 (Next.js 사이트 대응)
+ * 2) 나머지 HTML body 텍스트
  */
 function extractTextFromHtml(html: string): string {
   let extra = ''
 
-  // ① __NEXT_DATA__ JSON 추출 — script 태그 제거 전에 실행
   const nextDataMatch = html.match(
     /<script[^>]*id=["']__NEXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/i,
   )
   if (nextDataMatch) {
     try {
-      // JSON 파싱 후 전체를 평탄화된 문자열로 변환 (모든 값이 검색 대상이 됨)
       const parsed = JSON.parse(nextDataMatch[1])
       extra = flattenJsonToText(parsed)
     } catch {
-      // 파싱 실패 시 raw 문자열 그대로 사용 (이스케이프 해제)
-      extra = nextDataMatch[1]
-        .replace(/\\n/g, ' ')
-        .replace(/\\t/g, ' ')
-        .replace(/\\r/g, ' ')
-        .replace(/\\u[\da-f]{4}/gi, '')
+      extra = nextDataMatch[1].replace(/\\[ntr]/g, ' ')
     }
   }
 
-  // ② 일반 HTML → 텍스트
-  const bodyText = html
-    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+  const bodyText = stripHtmlTags(
+    html
+      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+      .replace(/<style[\s\S]*?<\/style>/gi, ' '),
+  )
+
+  return `${bodyText} ${extra}`
+}
+
+/** HTML 태그·엔티티 제거 → 순수 텍스트 */
+function stripHtmlTags(html: string): string {
+  return html
     .replace(/<[^>]+>/g, ' ')
     .replace(/&nbsp;/g, ' ')
     .replace(/&amp;/g, '&')
@@ -116,41 +147,54 @@ function extractTextFromHtml(html: string): string {
     .replace(/&#39;/g, "'")
     .replace(/\s+/g, ' ')
     .trim()
-
-  return `${bodyText} ${extra}`
 }
 
-/** JSON 객체/배열을 재귀적으로 순회하며 문자열 값만 이어붙임 */
+/** JSON 값을 재귀 평탄화 — 문자열 값만 이어붙임 */
 function flattenJsonToText(value: unknown): string {
-  if (typeof value === 'string') return value + ' '
-  if (Array.isArray(value)) return value.map(flattenJsonToText).join(' ')
+  if (typeof value === 'string') return `${value} `
+  if (Array.isArray(value)) return value.map(flattenJsonToText).join('')
   if (value && typeof value === 'object') {
-    return Object.values(value as Record<string, unknown>).map(flattenJsonToText).join(' ')
+    return Object.values(value as Record<string, unknown>)
+      .map(flattenJsonToText)
+      .join('')
   }
   return ''
 }
 
+// ═══════════════════════════════════════════════════════════════
+// 코인 코드 추출
+// ═══════════════════════════════════════════════════════════════
+
+/** 제목에서 괄호 안 대문자 코인 코드 추출 — 헤이엘사(ELSA) → ELSA */
+function extractCoinFromTitle(title: string): string | null {
+  const matches = [...title.matchAll(/\(([A-Z]{2,10})\)/g)]
+  return matches.length > 0 ? matches[0][1] : null
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 금액 추출
+// ═══════════════════════════════════════════════════════════════
+
 /**
  * 일일 에어드랍 금액 추출
- * 최대 금액 기준으로 임계치 적용:
+ *   최대 금액 기준으로 임계치 적용:
  *   ≥ 100,000원 → "10만원(일일)"
  *   ≥  10,000원 →  "1만원(일일)"
  */
 function extractAmount(text: string): string | null {
   let maxAmount = 0
 
-  // Pattern 1: N만 원 / N만원 (예: 10만원 = 100,000 / 100만 원 = 1,000,000)
+  // N만원 / N만 원 (예: 10만원 = 100,000 / 100만 원 = 1,000,000)
   for (const m of text.matchAll(/(\d+)\s*만\s*원/g)) {
     maxAmount = Math.max(maxAmount, parseInt(m[1]) * 10000)
   }
 
-  // Pattern 2: 콤마 포함 숫자 + 원 (예: 100,000원)
+  // 콤마 숫자 + 원 (예: 100,000원)
   for (const m of text.matchAll(/(\d{1,3}(?:,\d{3})+)\s*원/g)) {
-    const val = parseInt(m[1].replace(/,/g, ''))
-    maxAmount = Math.max(maxAmount, val)
+    maxAmount = Math.max(maxAmount, parseInt(m[1].replace(/,/g, '')))
   }
 
-  // Pattern 3: 5자리 이상 숫자 + 원 (예: 10000원)
+  // 5자리 이상 숫자 + 원 (예: 10000원)
   for (const m of text.matchAll(/\b(\d{5,})\s*원/g)) {
     maxAmount = Math.max(maxAmount, parseInt(m[1]))
   }
@@ -160,48 +204,53 @@ function extractAmount(text: string): string | null {
   return null
 }
 
+// ═══════════════════════════════════════════════════════════════
+// 날짜 범위 추출
+// ═══════════════════════════════════════════════════════════════
+
 /**
- * 텍스트에서 이벤트 기간(시작일/종료일) 추출
+ * 이벤트 기간(시작일/종료일) 추출
+ *
  * 우선순위:
- *   1. "YYYY.MM.DD(요일) HH:MM ~ YYYY.MM.DD(요일) HH:MM" 형태 범위
- *   2. 개별 날짜 목록에서 최소/최대
+ *   1. 범위 패턴: "YYYY.MM.DD(요일) HH:MM ~ YYYY.MM.DD(요일) HH:MM"
+ *   2. 개별 날짜 목록에서 min/max
  */
 function extractDateRange(text: string): { startDate: string | null; endDate: string | null } {
-  /** "2026.04.14(화) 16:00" 같은 날짜 원시 문자열 → "2026-04-14" */
-  function parseDate(raw: string): string | null {
-    const m = raw.match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/)
+  /** "2026.04.14(화) 16:00" → "2026-04-14" */
+  function toISODate(raw: string): string | null {
+    const m = raw.match(/(\d{4})\D+?(\d{1,2})\D+?(\d{1,2})/)
     if (!m) return null
-    const y = m[1]
-    const mo = m[2].padStart(2, '0')
-    const d = m[3].padStart(2, '0')
+    const y = m[1], mo = m[2].padStart(2, '0'), d = m[3].padStart(2, '0')
     const dt = new Date(`${y}-${mo}-${d}`)
-    if (isNaN(dt.getTime())) return null
-    if (dt.getFullYear() < 2020 || dt.getFullYear() > 2030) return null
+    if (isNaN(dt.getTime()) || dt.getFullYear() < 2020 || dt.getFullYear() > 2030) return null
     return `${y}-${mo}-${d}`
   }
 
-  /**
-   * 날짜 토큰: YYYY.MM.DD 에 선택적으로 (요일), HH:MM 까지 허용
-   * 예: 2026.04.14(화) 16:00
-   */
-  const D = String.raw`\d{4}\s*[.년]\s*\d{1,2}\s*[.월]\s*\d{1,2}(?:\s*\([월화수목금토일]\))?(?:\s+\d{1,2}:\d{2})?`
+  // 날짜 토큰 정규식 (요일, 시간 모두 선택적)
+  //   2026.04.14          ← 기본
+  //   2026.04.14(화)      ← + 요일
+  //   2026.04.14(화) 16:00 ← + 시간
+  const dateToken =
+    /\d{4}\s*[.년]\s*\d{1,2}\s*[.월]\s*\d{1,2}(?:\s*\([월화수목금토일]\))?(?:\s+\d{1,2}:\d{2})?/
 
-  // ① 범위 패턴 우선: date1 ~ date2
-  const rangePat = new RegExp(`(${D})\\s*[~～]\\s*(${D})`, 'g')
+  // ① 범위 패턴 우선
+  const rangeSource = dateToken.source
+  const rangePat = new RegExp(`(${rangeSource})\\s*[~～]\\s*(${rangeSource})`, 'g')
 
   for (const m of text.matchAll(rangePat)) {
-    const s = parseDate(m[1])
-    const e = parseDate(m[2])
+    const s = toISODate(m[1])
+    const e = toISODate(m[2])
     if (s && e) return { startDate: s, endDate: e }
   }
 
   // ② 개별 날짜 수집 후 min/max
-  const datePat = /\d{4}\s*[.년]\s*\d{1,2}\s*[.월]\s*\d{1,2}/g
+  const singlePat = /\d{4}\s*[.년]\s*\d{1,2}\s*[.월]\s*\d{1,2}/g
   const dates: string[] = []
-  for (const m of text.matchAll(datePat)) {
-    const d = parseDate(m[0])
+  for (const m of text.matchAll(singlePat)) {
+    const d = toISODate(m[0])
     if (d) dates.push(d)
   }
+
   const unique = [...new Set(dates)].sort()
   if (unique.length === 0) return { startDate: null, endDate: null }
   if (unique.length === 1) return { startDate: unique[0], endDate: unique[0] }
