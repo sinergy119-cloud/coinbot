@@ -40,8 +40,19 @@ const EXCHANGE_LABELS: Record<string, string> = {
   BITHUMB: '빗썸', UPBIT: '업비트', COINONE: '코인원', KORBIT: '코빗', GOPAX: '고팍스',
 }
 
+interface ApproveItem {
+  id: string
+  exchange: string
+  url: string | null
+  title: string
+  coin?: string
+  amount?: string
+  startDate?: string
+  endDate?: string
+}
+
 interface Props {
-  onApproveNavigation: (item: { id: string; exchange: string; url: string | null; title: string }) => void
+  onApproveNavigation: (item: ApproveItem) => void
 }
 
 const INTERVAL_OPTIONS = [
@@ -86,6 +97,9 @@ export default function CrawledEventManager({ onApproveNavigation }: Props) {
 
   // 텔레그램 테스트
   const [tgTesting, setTgTesting] = useState(false)
+
+  // 승인 처리 중인 항목 ID
+  const [approvingId, setApprovingId] = useState<string | null>(null)
 
   // ── 이벤트 목록 로드
   const load = useCallback(async () => {
@@ -213,6 +227,34 @@ export default function CrawledEventManager({ onApproveNavigation }: Props) {
       setMessage({ type: 'error', text: e instanceof Error ? e.message : '크롤링 실패' })
     } finally {
       setCrawling(false)
+    }
+  }
+
+  // ── 승인: preview API로 코인·금액·기간 추출 후 이벤트 관리 탭으로 이동
+  async function handleApprove(item: CrawledEvent) {
+    setApprovingId(item.id)
+    setMessage(null)
+    try {
+      let extra: Partial<ApproveItem> = {}
+      if (item.url) {
+        const params = new URLSearchParams({ url: item.url, title: item.title })
+        const res = await fetch(`/api/admin/crawl-preview?${params.toString()}`)
+        if (res.ok) {
+          const data = await res.json()
+          extra = {
+            coin: data.coin ?? undefined,
+            amount: data.amount ?? undefined,
+            startDate: data.startDate ?? undefined,
+            endDate: data.endDate ?? undefined,
+          }
+        }
+      }
+      onApproveNavigation({ id: item.id, exchange: item.exchange, url: item.url, title: item.title, ...extra })
+    } catch {
+      // 추출 실패해도 기본 정보로 이동
+      onApproveNavigation({ id: item.id, exchange: item.exchange, url: item.url, title: item.title })
+    } finally {
+      setApprovingId(null)
     }
   }
 
@@ -740,14 +782,19 @@ export default function CrawledEventManager({ onApproveNavigation }: Props) {
                 {tab === 'pending' && (
                   <div className="flex shrink-0 flex-col gap-1.5">
                     <button
-                      onClick={() => onApproveNavigation({ id: item.id, exchange: item.exchange, url: item.url, title: item.title })}
-                      className="flex items-center gap-1 rounded-lg bg-green-50 px-2.5 py-1.5 text-xs font-medium text-green-700 hover:bg-green-100"
+                      onClick={() => handleApprove(item)}
+                      disabled={approvingId === item.id}
+                      className="flex items-center gap-1 rounded-lg bg-green-50 px-2.5 py-1.5 text-xs font-medium text-green-700 hover:bg-green-100 disabled:opacity-60"
                     >
-                      <CheckCircle size={13} /> 승인
+                      {approvingId === item.id
+                        ? <Loader2 size={13} className="animate-spin" />
+                        : <CheckCircle size={13} />}
+                      {approvingId === item.id ? '분석 중...' : '승인'}
                     </button>
                     <button
                       onClick={() => reject(item.id)}
-                      className="flex items-center gap-1 rounded-lg bg-red-50 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-100"
+                      disabled={approvingId === item.id}
+                      className="flex items-center gap-1 rounded-lg bg-red-50 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-100 disabled:opacity-40"
                     >
                       <XCircle size={13} /> 거절
                     </button>

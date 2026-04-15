@@ -21,7 +21,11 @@ export interface CrawledPrefill {
   crawledEventId: string
   exchange: string
   link: string | null
-  notes: string
+  notes: string        // 배너 표시용 제목 (폼 특이사항 필드에는 미입력)
+  coin?: string        // 크롤링 추출 코인 코드
+  amount?: string      // 크롤링 추출 금액
+  startDate?: string   // 크롤링 추출 시작일 (YYYY-MM-DD)
+  endDate?: string     // 크롤링 추출 종료일 (YYYY-MM-DD)
 }
 
 export default function AdminTabs({ loginId }: { loginId: string }) {
@@ -44,12 +48,19 @@ export default function AdminTabs({ loginId }: { loginId: string }) {
   }, [activeTab])
 
   // 수집 이벤트 승인 → 이벤트 관리 탭으로 이동 + 기본정보 주입
-  function handleApproveNavigation(item: { id: string; exchange: string; url: string | null; title: string }) {
+  function handleApproveNavigation(item: {
+    id: string; exchange: string; url: string | null; title: string
+    coin?: string; amount?: string; startDate?: string; endDate?: string
+  }) {
     setPrefillFromCrawled({
       crawledEventId: item.id,
       exchange: item.exchange,
       link: item.url,
       notes: item.title,
+      coin: item.coin,
+      amount: item.amount,
+      startDate: item.startDate,
+      endDate: item.endDate,
     })
     setActiveTab('events')
   }

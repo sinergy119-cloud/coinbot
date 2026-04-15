@@ -16,22 +16,24 @@ CoinBot
 
 ## 1.2 한 줄 정의
 
-여러 코인 거래소 계정을 대상으로 시장가 매수/매도를 즉시 또는 예약 실행할 수 있는 로그인 기반 Private 웹 서비스
+한국 5개 거래소(빗썸·업비트·코인원·코빗·고팍스)의 에어드랍·N빵 이벤트를 자동 수집하고, 사용자 거래소 계정을 통해 이벤트 참여(자동 매수)를 돕는 이벤트 자동 참여 봇.
 
 ## 1.3 서비스 목적
 
-* 여러 계정의 반복적인 코인 거래를 한 번에 처리한다.
-* 정해진 날짜/시간에 거래를 자동 실행한다.
+* 5개 거래소 이벤트 공지를 12시간마다 자동 수집한다.
+* 수집된 이벤트를 자동 승인하거나 관리자가 검토하여 이벤트 게시판에 등록한다.
+* 이벤트 등록 시 API를 등록한 전체 사용자를 대상으로 자동 매수를 실행한다.
+* 거래 결과를 텔레그램 알림으로 즉시 전달한다.
 * 모바일 웹에서도 쉽게 사용할 수 있도록 단순한 UI로 제공한다.
 
 ## 1.4 서비스 성격
 
 * 공개 SaaS가 아닌 소규모 Private Tool
-* 사용자 범위: 재한님 + 친구 3\~5명
-* URL로 접속하는 웹 서비스
-* 배포: Vercel
+* 사용자 범위: 재한님 + 초대된 사용자 (다음 단계: 사용자 초대/회원 설정)
+* URL로 접속하는 웹 서비스 (HTTPS 적용 완료)
+* 배포: AWS EC2 (`43.203.100.239`, Amazon Linux 2, pm2, 포트 3000)
 * DB: Supabase
-* 스케줄러: 외부 cron 서비스
+* 스케줄러: pm2 cron (12시간마다 이벤트 크롤링)
 * 거래 방식: 시장가만 지원
 
 \---
@@ -102,47 +104,37 @@ CoinBot
 
 # 4\. 서비스 범위
 
-## 4.1 MVP 포함 범위
+## 4.1 구현 완료 범위
 
-* ID/비밀번호 로그인
-* 사용자 계정 생성
-* 사용자 본인의 거래소 API 계정 등록/조회/삭제 UI (거래소 등록 탭)
-* 관리자 전용 페이지(/admin)에서 모든 사용자 계정 대리 등록/조회/삭제
-* 거래 입력
-* 거래 목록 저장
-* 거래 목록 수정(날짜/시간만)
-* 거래 목록 삭제
-* 실행 전 검증
-* 지금 실행
-* 스케줄 등록
-* 계정별 결과 표시
-* 자산 현황 표시
-* 코인 입력 검증
-* 최소 금액 검증
-* 중복 스케줄 실행 방지
+* ID/비밀번호 로그인 (세션 기반)
+* 사용자 본인 거래소 API 계정 등록/조회/삭제 UI
+* 관리자 전용 페이지(/admin): 모든 사용자 계정 대리 등록/조회/삭제
+* 수동 즉시 실행 (지금 실행, 실행 전 검증 포함)
+* 스케줄 등록/실행 (trade_jobs, pm2 cron)
+* **이벤트 자동 수집**: 5개 거래소 공지 크롤링 (12시간 간격, pm2 cron)
+* **텔레그램 알림**: 신규 이벤트 수집 알림, 거래 결과 알림
+* **관리자 이벤트 검토 UI**: 수집된 이벤트 승인/거절, 이벤트 게시판 등록
+* **크롤러 키워드 관리**: 포함/제외 키워드 UI에서 관리 (DB 저장)
+* **수집 이력 조회**: crawl_logs 기반 최근 20건 조회
+* GitHub Actions CI/CD: main push → EC2 자동 배포
+* React ErrorBoundary: 흰 화면 방지
+* 이미지 최적화 (WebP 압축)
 
-## 4.2 MVP 제외 범위
+## 4.2 미구현 범위 (제외 또는 보류)
 
 * 지정가 거래
 * 분할 매수/매도
 * 손절 기능
-* 텔레그램 알림
-* 거래 로그 DB 저장
-* 스케줄 실행 결과 알림
-* 외부 공개용 SaaS 구조
-* API 정보 수정 화면 (등록/삭제만 지원, 수정 불가)
+* API 정보 수정 화면 (등록/삭제만 지원)
 * 실행 결과 다운로드
-* 지정가용 추가 데이터 구조
+* 업비트 이벤트 수집 (EC2 IP Cloudflare 차단 — Lambda@Edge로 해결 예정)
 
-## 4.3 2단계 개발
+## 4.3 다음 단계 개발
 
-* Supabase 거래 로그 저장
-* 텔레그램 결과 알림
-* 스케줄 실행 결과 알림
-* 거래 기록 조회 화면
-* 코인 자동완성 UX 강화
-* 동시 실행 내부 제한 최적화
-* 로그 기반 운영 모니터링
+* **완전 자동화**: 이벤트 자동 승인 (키워드 조건 강화) + 이벤트 등록 시 전체 사용자 자동 매수
+* **업비트 수집 해결**: Lambda@Edge / CloudFront 프록시 경유
+* **사용자 초대/회원 설정**: 초대 링크, 회원 관리 UI
+* 자동 매수 실패 시 재시도 후 텔레그램 알림
 
 \---
 
@@ -706,19 +698,21 @@ if today in \\\[schedule\\\_from, schedule\\\_to]:
 
 ## 10.1 구성
 
-* Frontend: Next.js 기반 웹앱
-* Hosting: Vercel
-* Backend: Vercel API Routes
+* Frontend: Next.js App Router 기반 웹앱
+* Hosting: AWS EC2 (`43.203.100.239`, Amazon Linux 2, Node.js 20, pm2)
+* Backend: Next.js API Routes (포트 3000)
 * DB: Supabase
-* Scheduler: cron-job.org 또는 유사 외부 cron
-* Exchange API 연동: CCXT 또는 개별 거래소 API
+* Scheduler: pm2 cron (크롤링 12시간, trade_jobs 스케줄 실행)
+* Exchange API 연동: 빗썸 V2 JWT 직접 구현 + 나머지 4개 ccxt
+* CI/CD: GitHub Actions → EC2 SSH 자동 배포
+* HTTPS: DuckDNS + Let's Encrypt (적용 완료)
 
 ## 10.2 아키텍처 흐름
 
 ```text
-사용자 브라우저
+사용자 브라우저 (HTTPS)
 ↓
-Vercel (Next.js)
+EC2 (Next.js, pm2, 포트 3000)
 ↓
 API Routes
 ↓
@@ -727,18 +721,48 @@ Supabase
 코인 거래소 API
 ```
 
-스케줄 흐름
+이벤트 크롤링 흐름
 
 ```text
-외부 cron
+pm2 cron (0 0,12 * * *)
 ↓
-Vercel 실행 API
+POST /api/cron/crawl-events (CRON_SECRET 인증)
 ↓
-trade\\\_jobs 조회
+5개 거래소 Promise.allSettled 동시 크롤링
+↓
+crawled_events 저장 (pending)
+↓
+관리자 검토 → 승인 시 announcements 등록
+↓
+텔레그램 알림 발송
+```
+
+스케줄 거래 흐름
+
+```text
+pm2 cron
+↓
+실행 API
+↓
+trade_jobs 조회
 ↓
 조건 확인
 ↓
 거래소 API 실행
+```
+
+완전 자동화 목표 흐름 (다음 단계)
+
+```text
+이벤트 수집
+↓
+키워드 자동 승인 (엄격한 조건)
+↓
+announcements 등록
+↓
+모든 사용자 API 계정 대상 자동 매수 (Promise.all)
+↓
+실패 시 재시도 → 텔레그램 알림
 ```
 
 \---
@@ -833,6 +857,15 @@ trade\\\_jobs 조회
 32. 거래소 표시 순서는 빗썸 → 업비트 → 코인원 → 코빗 → 고팍스로 고정
 33. 빗썸은 V2 API(JWT Bearer) 직접 구현 사용, 나머지 4개는 ccxt 라이브러리 사용
 34. Supabase는 `claude_dev` 커스텀 스키마 사용 (`NEXT_PUBLIC_DB_SCHEMA` 환경변수)
+35. 배포는 Vercel이 아닌 AWS EC2 + pm2 (포트 3000)로 확정 전환
+36. 이벤트 크롤링은 pm2 cron으로 12시간 간격 실행 (`0 0,12 * * *`)
+37. 텔레그램 알림 MVP에 포함 (신규 이벤트 수집·거래 결과)
+38. HTTPS는 DuckDNS + Let's Encrypt로 적용 완료
+39. 업비트 수집 차단(EC2 IP → Cloudflare WAF) 해결책: Lambda@Edge / CloudFront
+40. 자동 승인 방향: 관리자 검토 제거 → 키워드 조건을 더 엄격하게 하여 자동 승인
+41. 완전 자동화 매수: 이벤트 등록 시 모든 사용자 자동 매수 (사용자별 ON/OFF 없음)
+42. 자동 매수 실패 처리: N회 재시도 후 텔레그램 알림
+43. 다음 개발 우선순위: 완전 자동화 → 업비트 수집 해결 → 사용자 초대/회원 설정
 
 \---
 
@@ -855,17 +888,20 @@ UX 권장 사항
 
 # 15\. 리스크와 대응
 
-## 15.1 API 보안 리스크
+## 15.1 API 보안 리스크 ⚠️ (주요 관심사)
 
 위험
 
-* DB 유출 시 API 정보 노출 위험
+* DB 유출 시 API 정보 노출 → 자동 매수 사고 가능성
+* 완전 자동화 도입 시 API 키 오용 위험 증가
 
 대응
 
-* 암호화 저장
-* 출금 권한 제외
-* 관리자만 입력
+* AES-256-GCM 암호화 저장 (현재 적용)
+* 출금 권한 제외 (거래/조회 권한만)
+* 일반 사용자 UI에서 API 원문 노출 금지
+* Supabase Row Level Security + service_role 분리
+* 자동 매수는 입출금 불가 API만 허용하므로 금전 직접 피해 불가
 
 ## 15.2 동시 실행 리스크
 
@@ -945,4 +981,125 @@ UX 권장 사항
 * 에러 메시지 정책
 
 이 문서는 현재 대화 기준 최종 planning.md 마스터 문서로 사용한다.
+
+\---
+
+# 18\. 이벤트 크롤링 시스템 (2026-04-14 추가)
+
+## 18.1 개요
+
+5개 거래소 공지사항에서 에어드랍/N빵 이벤트를 자동 수집하여 관리자 검토 또는 자동 승인 후 게시판에 등록하는 반자동/완전자동 워크플로우.
+
+## 18.2 DB 테이블
+
+### crawled_events
+
+```sql
+CREATE TABLE crawled_events (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  exchange TEXT NOT NULL,
+  source_id TEXT NOT NULL,
+  title TEXT NOT NULL,
+  url TEXT,
+  crawled_at TIMESTAMPTZ DEFAULT now(),
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+  reviewed_by TEXT,
+  reviewed_at TIMESTAMPTZ,
+  published_event_id UUID REFERENCES announcements(id) ON DELETE SET NULL,
+  UNIQUE (exchange, source_id)
+);
+```
+
+### crawl_logs
+
+```sql
+CREATE TABLE crawl_logs (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  triggered_by TEXT NOT NULL CHECK (triggered_by IN ('cron', 'manual')),
+  started_at TIMESTAMPTZ DEFAULT now(),
+  total_collected INTEGER DEFAULT 0,
+  new_count INTEGER DEFAULT 0,
+  telegram_sent BOOLEAN DEFAULT false,
+  errors JSONB DEFAULT '[]'
+);
+```
+
+### crawler_keywords
+
+포함/제외 키워드를 DB에 저장. 관리자 UI에서 실시간 편집 가능 (재배포 불필요).
+
+## 18.3 거래소별 수집 방식
+
+| 거래소 | 방식 | 상태 |
+|--------|------|------|
+| 빗썸 | 공식 REST API | ✅ 정상 |
+| 업비트 | 비공식 API | ❌ EC2 IP Cloudflare 차단 |
+| 코인원 | HTML 파싱 (`__NEXT_DATA__`) | ✅ 정상 |
+| 코빗 | HTML 파싱 (`__NEXT_DATA__`) | ✅ 정상 |
+| 고팍스 | 공식 REST API | ✅ 정상 |
+
+## 18.4 재시도 로직
+
+* `withRetry(fn, { retries: 2, delayMs: 1000, label })` — 지수 백오프 (1s→2s→4s)
+* 빗썸·코인원·코빗·고팍스 적용 (업비트는 차단으로 제외)
+* 5분 중복 실행 방지: `crawl_logs` 최근 5분 내 실행 여부 확인
+
+## 18.5 자동 승인 방향 (다음 단계)
+
+현재: 관리자가 수동 검토 → 승인/거절
+
+목표: 키워드 조건을 충분히 엄격하게 설정 → 수집 즉시 자동 승인 + 이벤트 게시판 등록
+
+리스크 대응:
+* 포함 키워드를 "에어드랍", "N빵", "무료 지급" 등 명확한 이벤트 용어로 한정
+* 제외 키워드로 점검·공지·거래량 관련 게시글 필터링
+* 자동 승인된 이벤트는 관리자 UI에서 언제든 거절(삭제) 가능
+
+\---
+
+# 19\. 완전 자동화 매수 (다음 단계)
+
+## 19.1 개념
+
+이벤트가 announcements에 등록되는 순간, API를 등록한 모든 사용자를 대상으로 자동으로 매수 실행.
+
+## 19.2 실행 흐름
+
+```text
+이벤트 승인/등록 (자동 또는 수동)
+↓
+전체 사용자 exchange_accounts 조회 (해당 거래소)
+↓
+Promise.all 동시 매수 실행
+↓
+성공: DB 기록 + 텔레그램 알림
+실패: N회 재시도 → 여전히 실패 시 텔레그램 알림 (계정별 실패 원인 포함)
+```
+
+## 19.3 실패 처리 정책
+
+* 재시도: 즉시 1~2회 재시도 (지수 백오프)
+* 재시도 후 실패: 텔레그램으로 실패 계정 + 원인 알림
+* 부분 성공: 성공한 계정과 실패한 계정을 분리하여 알림
+
+## 19.4 사용자 선택권
+
+* 사용자별 ON/OFF 없음 → API를 등록한 모든 계정이 자동 매수 대상
+* 특정 거래소를 빠지려면 해당 거래소 API 계정을 삭제하면 됨
+
+\---
+
+# 20\. 업비트 수집 해결 방안 (미구현)
+
+## 현황
+
+EC2 IP(`43.203.100.239`)가 Cloudflare WAF에 차단되어 업비트 비공식 API 접근 불가.
+
+## 목표 해결책: Lambda@Edge / CloudFront
+
+* AWS Lambda@Edge 또는 CloudFront를 경유하여 국내 IP처럼 보이게 처리
+* 또는 국내 ISP 경유 프록시 서버 사용
+* 구현 시 업비트 크롤러(`src/lib/crawlers/upbit.ts`) 프록시 URL 설정만으로 활성화 가능
+
+\---
 

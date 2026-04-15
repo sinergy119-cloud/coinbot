@@ -61,17 +61,22 @@ export default function EventManager({ prefill, onClearPrefill }: Props) {
   // ── prefill 주입: 수집 이벤트 승인 시 기본값 채움
   useEffect(() => {
     if (!prefill) return
-    // 거래소 세팅 + 코인 목록 로드
+    // 거래소 세팅
     const ex = prefill.exchange as Exchange
     setExchange(ex)
-    setCoin('')
+    // 코인 — preview API가 추출한 코드가 있으면 사용, 없으면 빈 값
+    setCoin(prefill.coin ?? '')
+    // 이벤트 링크
     setLink(prefill.link ?? '')
-    setNotes(prefill.notes)
-    setAmount('1만원(일일)')
+    // 특이사항 — 비워두기 (직접 입력)
+    setNotes('')
+    // 금액 — 추출 값 우선, 없으면 기본값
+    setAmount(prefill.amount ?? '1만원(일일)')
     setRequireApply(false)
     setApiAllowed(true)
-    setStartDate('')
-    setEndDate('')
+    // 기간 — 추출 값 우선
+    setStartDate(prefill.startDate ?? '')
+    setEndDate(prefill.endDate ?? '')
     setEditingId(null)
     // 코인 자동완성용 목록 로드
     setCoinsLoading(true)
