@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "ui-guide",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "-p", "4000", "C:\claude\ui-guide"],
+      "port": 4000
+    }
+  ]
+}

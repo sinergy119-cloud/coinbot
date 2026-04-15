@@ -82,7 +82,7 @@ export async function GET(req: NextRequest) {
     } catch { /* 무시 */ }
 
     await createSession(existingUser.id, existingUser.user_id, true)
-    return Response.redirect(`${origin}/`)
+    return Response.redirect(`${origin}/?welcome=naver`)
   }
 
   // 4) 신규 사용자 자동 가입
@@ -124,5 +124,5 @@ export async function GET(req: NextRequest) {
   } catch { /* 무시 */ }
 
   await createSession(newUser.id, newUser.user_id, true)
-  return Response.redirect(`${origin}/`)
+  return Response.redirect(`${origin}/?welcome=naver`)
 }

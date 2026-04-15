@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { ChevronDown, ChevronUp, BookOpen } from 'lucide-react'
 import Header from '@/components/Header'
 import UserGuideModal from '@/components/UserGuideModal'
@@ -34,6 +35,28 @@ interface DashboardProps {
 }
 
 export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) {
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const [welcomeToast, setWelcomeToast] = useState<string | null>(null)
+
+  // 소셜 로그인 후 환영 토스트
+  useEffect(() => {
+    const provider = searchParams.get('welcome')
+    if (!provider) return
+    const labels: Record<string, string> = {
+      kakao: '카카오',
+      naver: '네이버',
+      google: '구글',
+    }
+    const label = labels[provider] ?? provider
+    setWelcomeToast(`${label} 로그인 완료! 환영합니다 🎉`)
+    // URL에서 파라미터 제거
+    router.replace('/', { scroll: false })
+    // 4초 후 토스트 사라짐
+    const t = setTimeout(() => setWelcomeToast(null), 4000)
+    return () => clearTimeout(t)
+  }, [searchParams, router])
+
   // 스케줄 목록
   const [tradeJobs, setTradeJobs] = useState<TradeJobRow[]>([])
   const [accountMap, setAccountMap] = useState<Record<string, string>>({})
@@ -254,6 +277,17 @@ export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) 
   return (
     <div className="min-h-screen bg-gray-50">
       <Header loginId={loginId} isAdmin={isAdmin} />
+
+      {/* 소셜 로그인 환영 토스트 */}
+      {welcomeToast && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[100] animate-fade-in-down">
+          <div className="flex items-center gap-2.5 rounded-2xl bg-gray-900 px-5 py-3 shadow-2xl text-white text-sm font-medium break-keep">
+            <span className="text-lg">🎉</span>
+            <span>{welcomeToast}</span>
+            <button onClick={() => setWelcomeToast(null)} className="ml-1 text-gray-400 hover:text-white text-xs">✕</button>
+          </div>
+        </div>
+      )}
 
       <main className="mx-auto max-w-2xl px-4 py-4">
         {/* 사용 가이드 배너 (첫 방문 시만 펼침) */}

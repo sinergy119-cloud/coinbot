@@ -84,7 +84,7 @@ export async function GET(req: NextRequest) {
     } catch { /* 무시 */ }
 
     await createSession(existingUser.id, existingUser.user_id, true)
-    return Response.redirect(`${origin}/`)
+    return Response.redirect(`${origin}/?welcome=kakao`)
   }
 
   // 4) 신규 사용자 → 자동 가입 (이메일 인증 불필요)
@@ -126,5 +126,5 @@ export async function GET(req: NextRequest) {
   } catch { /* 무시 */ }
 
   await createSession(newUser.id, newUser.user_id, true)
-  return Response.redirect(`${origin}/`)
+  return Response.redirect(`${origin}/?welcome=kakao`)
 }
