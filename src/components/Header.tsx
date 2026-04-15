@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { LogOut, Shield, Building2, X, User, MessageCircle, HelpCircle } from 'lucide-react'
@@ -19,6 +19,7 @@ export default function Header({ loginId, isAdmin = false, showBackToHome = fals
   const [showAccountModal, setShowAccountModal] = useState(false)
   const [showInquiryModal, setShowInquiryModal] = useState(false)
   const [showGuideModal, setShowGuideModal] = useState(false)
+  const [displayName, setDisplayName] = useState('')
   const [profileName, setProfileName] = useState('')
   const [profileEmail, setProfileEmail] = useState('')
   const [originalEmail, setOriginalEmail] = useState('')
@@ -26,6 +27,14 @@ export default function Header({ loginId, isAdmin = false, showBackToHome = fals
   const [profileLoading, setProfileLoading] = useState(false)
   const [profileError, setProfileError] = useState('')
   const [profileSuccess, setProfileSuccess] = useState('')
+
+  // 마운트 시 닉네임 로드
+  useEffect(() => {
+    fetch('/api/user/profile')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.name) setDisplayName(d.name) })
+      .catch(() => {})
+  }, [])
 
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' })
@@ -44,6 +53,7 @@ export default function Header({ loginId, isAdmin = false, showBackToHome = fals
         setProfileEmail(d.email ?? '')
         setOriginalEmail(d.email ?? '')
         setPendingEmail(d.pendingEmail ?? '')
+        if (d.name) setDisplayName(d.name)
       }
     } catch { /* 무시 */ }
   }
@@ -66,6 +76,7 @@ export default function Header({ loginId, isAdmin = false, showBackToHome = fals
         setProfileEmail(originalEmail) // 원래 이메일로 복원 (인증 전까지)
       } else {
         setProfileSuccess('저장되었습니다.')
+        if (profileName) setDisplayName(profileName)
         setTimeout(() => setProfileSuccess(''), 2000)
       }
     } catch { setProfileError('네트워크 오류') }
@@ -96,7 +107,7 @@ export default function Header({ loginId, isAdmin = false, showBackToHome = fals
         </div>
 
         <div className="flex items-center gap-1 sm:gap-3">
-          <span className="hidden text-sm text-gray-500 sm:inline">{loginId}</span>
+          <span className="hidden text-sm text-gray-700 sm:inline">{displayName || loginId}</span>
 
           {/* 계정 설정 (내 정보 + 비밀번호) */}
           <button
