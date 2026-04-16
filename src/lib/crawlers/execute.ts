@@ -64,28 +64,18 @@ export async function executeCrawl(
 
   // ── since / until 결정 ──
   // sinceOverride 있으면: 해당 날 하루치 (00:00 KST ~ 다음날 00:00 KST)
-  // sinceOverride 없으면: crawler_settings.crawl_period_days 일치 재스캔
-  //   기본 2일, 허용 1~7. since = 오늘(KST) 00:00 - (period_days - 1)일
-  //   예) period_days=2 이고 오늘이 2026-04-16이면 since = 2026-04-15 00:00 KST
+  // sinceOverride 없으면: 어제 00:00 KST ~ 오늘 끝 (고정 2일치)
   let since: Date
   if (sinceOverride) {
     since = sinceOverride
   } else {
-    const { data: periodSetting } = await db
-      .from('crawler_settings')
-      .select('value')
-      .eq('key', 'crawl_period_days')
-      .maybeSingle()
-    let periodDays = parseInt(periodSetting?.value ?? '2')
-    if (isNaN(periodDays) || periodDays < 1) periodDays = 1
-    if (periodDays > 7) periodDays = 7
-    // 오늘 00:00 KST를 UTC 기준으로 계산 (KST = UTC+9)
+    // 어제 00:00 KST = 오늘 00:00 KST - 24h
     const nowUtc = new Date()
     const kstNow = new Date(nowUtc.getTime() + 9 * 60 * 60 * 1000)
     const kstMidnightUtcMs =
       Date.UTC(kstNow.getUTCFullYear(), kstNow.getUTCMonth(), kstNow.getUTCDate()) -
       9 * 60 * 60 * 1000
-    since = new Date(kstMidnightUtcMs - (periodDays - 1) * 24 * 60 * 60 * 1000)
+    since = new Date(kstMidnightUtcMs - 24 * 60 * 60 * 1000) // 어제 00:00 KST
   }
   const until = sinceOverride
     ? new Date(sinceOverride.getTime() + 24 * 60 * 60 * 1000)
