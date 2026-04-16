@@ -89,7 +89,6 @@ export default function CrawledEventManager({ onApproveNavigation }: Props) {
   // 수집 설정 패널
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [intervalHours, setIntervalHours] = useState(12)
-  const [nextCrawlAt, setNextCrawlAt] = useState<string | null>(null)
   const [settingsSaving, setSettingsSaving] = useState(false)
 
   // 수집 이력 패널
@@ -141,7 +140,6 @@ export default function CrawledEventManager({ onApproveNavigation }: Props) {
       const res = await fetch('/api/admin/crawler-settings')
       const data = await res.json()
       if (data.crawl_interval_hours) setIntervalHours(data.crawl_interval_hours)
-      setNextCrawlAt(data.next_crawl_at ?? null)
     } catch {
       // 조회 실패 시 기본값 유지
     }
@@ -162,7 +160,6 @@ export default function CrawledEventManager({ onApproveNavigation }: Props) {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? '저장 실패')
-      setNextCrawlAt(data.next_crawl_at)
       setMessage({
         type: 'success',
         text: `자동 수집 설정이 저장되었습니다 (매 ${intervalHours}시간마다 · 기간: 어제~오늘 고정).`,
@@ -353,13 +350,7 @@ export default function CrawledEventManager({ onApproveNavigation }: Props) {
   }
 
   // ─────────────────────────────────────────────
-  // 다음 수집 예정 시각 포맷
-  function formatNextCrawl(iso: string | null) {
-    if (!iso) return '—'
-    return new Date(iso).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })
-  }
-
-  // ═══ 렌더링 ═══
+// ═══ 렌더링 ═══
   return (
     <div className="space-y-4">
 
@@ -606,15 +597,6 @@ export default function CrawledEventManager({ onApproveNavigation }: Props) {
                   </label>
                 ))}
               </div>
-            </div>
-
-            {/* 다음 수집 예정 */}
-            <div className="rounded-lg bg-gray-50 px-3 py-2.5">
-              <p className="text-xs text-gray-600 break-keep">
-                <span className="font-medium text-gray-700">다음 수집 예정</span>
-                {' '}
-                {formatNextCrawl(nextCrawlAt)}
-              </p>
             </div>
 
             <div className="flex justify-end">
