@@ -624,9 +624,6 @@ export default function CrawledEventManager({ onApproveNavigation }: Props) {
                 {' '}
                 {formatNextCrawl(nextCrawlAt)}
               </p>
-              <p className="mt-1 text-[11px] text-gray-600 break-keep">
-                저장 시 지금으로부터 {intervalHours}시간 후로 재설정됩니다.
-              </p>
             </div>
 
             <div className="flex justify-end">
