@@ -202,12 +202,6 @@ export default function CrawledEventManager({ onApproveNavigation }: Props) {
       })
       const data = await res.json()
 
-      // R-3: 쿨다운 중 (429)
-      if (res.status === 429) {
-        setMessage({ type: 'warn', text: data.message ?? '잠시 후 다시 시도해주세요.' })
-        return
-      }
-
       if (!res.ok) throw new Error(data.error ?? '오류')
 
       const dateLabel = sinceDate ? ` (${sinceDate} 이후)` : ''

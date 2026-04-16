@@ -5,7 +5,6 @@
  *
  * 포함된 기능:
  *  - R-2: 텔레그램 발송 성공/실패 로그 기록
- *  - R-3: 중복 실행 방지 (manual + sinceOverride 없을 때 5분 쿨다운)
  *  - 로드맵 3: crawl_logs 테이블에 실행 이력 저장
  *  - cron: crawler_settings.crawl_interval_hours 기준 interval 체크
  */
@@ -28,7 +27,6 @@ export interface ExecuteResult {
   found: number
   inserted: number
   errors: Array<{ exchange: string; message: string }>
-  cooldown?: boolean
   skipped?: boolean
 }
 
@@ -59,33 +57,6 @@ export async function executeCrawl(
           inserted: 0,
           errors: [],
           skipped: true,
-        },
-      }
-    }
-  }
-
-  // ── Manual: 5분 쿨다운 (sinceOverride 없을 때만) ──
-  if (triggeredBy === 'manual' && !sinceOverride) {
-    const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
-    const { data: recentLog } = await db
-      .from('crawl_logs')
-      .select('id, started_at')
-      .gte('started_at', fiveMinAgo)
-      .order('started_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-
-    if (recentLog) {
-      const diff = Math.ceil((Date.now() - new Date(recentLog.started_at).getTime()) / 1000)
-      const remaining = Math.max(0, 300 - diff)
-      return {
-        httpStatus: 429,
-        result: {
-          message: `최근 수집이 ${diff}초 전에 실행되었습니다. ${remaining}초 후 다시 시도해주세요.`,
-          found: 0,
-          inserted: 0,
-          errors: [],
-          cooldown: true,
         },
       }
     }
