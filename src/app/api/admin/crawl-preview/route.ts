@@ -71,7 +71,7 @@ export async function GET(req: NextRequest) {
   const { bodyText, rscDates, imageUrls } = await fetchBodyTextAndDates(parsedUrl)
 
   // 2. 텍스트 정규식 기반 추출 (베이스라인)
-  const regexCoin = extractCoinFromTitle(title)
+  const regexCoin = extractCoin(title, bodyText)
   const regexAmount = extractAmount(bodyText)
   const regexDates = extractDateRange(bodyText)
   const regexRewardDate = extractRewardDate(bodyText)
@@ -289,9 +289,34 @@ function flattenJsonToText(value: unknown): string {
 // 텍스트 정규식 추출 함수들 (Claude Vision 실패 시 폴백)
 // ═══════════════════════════════════════════════════════════════
 
-function extractCoinFromTitle(title: string): string | null {
-  const matches = [...title.matchAll(/\(([A-Z]{2,10})\)/g)]
-  return matches.length > 0 ? matches[0][1] : null
+// 코인 티커 추출 시 제외할 일반 영문 단어
+const COIN_EXCLUDE = new Set([
+  'API', 'VIP', 'KRW', 'USD', 'KST', 'UTC', 'NFT', 'P2P', 'OTP',
+  'URL', 'FAQ', 'APP', 'iOS', 'PC', 'ID', 'IP',
+])
+
+function extractCoin(title: string, bodyText: string): string | null {
+  // 1. 괄호 안 티커: (BTC), (SPACE)
+  for (const src of [title, bodyText]) {
+    for (const m of src.matchAll(/\(([A-Z]{2,10})\)/g)) {
+      if (!COIN_EXCLUDE.has(m[1])) return m[1]
+    }
+  }
+
+  // 2. 제목에서 "COIN N천/만 원" 또는 "COIN 거래" 패턴
+  const titleCtx = title.match(/\b([A-Z]{2,10})\s+(?:\d[\d,]*\s*(?:천|만|원)|거래|매수|매도|이상)/)
+  if (titleCtx && !COIN_EXCLUDE.has(titleCtx[1])) return titleCtx[1]
+
+  // 3. 본문에서 "코인명[:：]?\s*TICKER" 패턴
+  const bodyLabel = bodyText.match(/코인\s*명?\s*[:：]\s*([A-Z]{2,10})\b/)
+  if (bodyLabel && !COIN_EXCLUDE.has(bodyLabel[1])) return bodyLabel[1]
+
+  // 4. 제목의 첫 번째 대문자 단어 (비제외 단어)
+  for (const m of title.matchAll(/\b([A-Z]{2,10})\b/g)) {
+    if (!COIN_EXCLUDE.has(m[1])) return m[1]
+  }
+
+  return null
 }
 
 function extractAmount(text: string): string | null {
