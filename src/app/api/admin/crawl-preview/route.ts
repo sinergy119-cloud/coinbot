@@ -5,19 +5,20 @@
  * Returns { coin, amount, startDate, endDate, rewardDate, requireApply, apiAllowed }
  *
  * 추출 우선순위:
- *   startDate/endDate : RSC eventPeriod > Claude Vision > 텍스트 정규식
- *   rewardDate        : Claude Vision (이미지 OCR) > 텍스트 정규식
- *   requireApply      : Claude Vision > 텍스트 정규식
- *   apiAllowed        : Claude Vision > 텍스트 정규식
- *   coin              : Claude Vision > 제목 파싱
- *   amount            : 텍스트 정규식 > Claude Vision
- *
- * ANTHROPIC_API_KEY 환경변수가 없으면 Claude Vision 스킵, 정규식만 사용
+ *   startDate/endDate : RSC eventPeriod > 텍스트 정규식
+ *   rewardDate        : 텍스트 정규식 → null이면 Tesseract OCR (이미지)
+ *   requireApply      : 텍스트 정규식
+ *   apiAllowed        : 텍스트 정규식
+ *   coin              : 제목 파싱
+ *   amount            : 텍스트 정규식
  */
 
 import { NextRequest } from 'next/server'
 import { getSession } from '@/lib/session'
 import { isAdmin } from '@/lib/admin'
+
+// Next.js Edge Runtime 비활성화 — tesseract.js는 Node.js 전용
+export const runtime = 'nodejs'
 
 // ═══════════════════════════════════════════════════════════════
 // 타입 정의
@@ -77,21 +78,21 @@ export async function GET(req: NextRequest) {
   const regexRequireApply = extractRequireApply(bodyText)
   const regexApiAllowed = extractApiAllowed(bodyText)
 
-  // 3. Claude Vision 추출 (ANTHROPIC_API_KEY 있을 때만)
-  let vision: Partial<PreviewResult> | null = null
-  if (process.env.ANTHROPIC_API_KEY && imageUrls.length > 0) {
-    vision = await extractWithClaude(bodyText, imageUrls, title)
+  // 3. OCR — rewardDate 텍스트 추출 실패 시에만 이미지에서 시도
+  let ocrRewardDate: string | null = null
+  if (!regexRewardDate && imageUrls.length > 0) {
+    ocrRewardDate = await extractRewardDateWithOcr(imageUrls)
   }
 
   // 4. 우선순위 병합
   const result: PreviewResult = {
-    coin:         vision?.coin        ?? regexCoin,
-    amount:       regexAmount         ?? vision?.amount ?? null,
-    startDate:    rscDates?.startDate ?? vision?.startDate ?? regexDates.startDate,
-    endDate:      rscDates?.endDate   ?? vision?.endDate   ?? regexDates.endDate,
-    rewardDate:   vision?.rewardDate  ?? regexRewardDate,
-    requireApply: vision?.requireApply != null ? vision.requireApply : regexRequireApply,
-    apiAllowed:   vision?.apiAllowed  != null ? vision.apiAllowed   : regexApiAllowed,
+    coin:         regexCoin,
+    amount:       regexAmount,
+    startDate:    rscDates?.startDate ?? regexDates.startDate,
+    endDate:      rscDates?.endDate   ?? regexDates.endDate,
+    rewardDate:   regexRewardDate ?? ocrRewardDate,
+    requireApply: regexRequireApply,
+    apiAllowed:   regexApiAllowed,
   }
 
   return Response.json(result)
@@ -155,90 +156,42 @@ async function fetchHtmlTextAndDates(url: string): Promise<FetchResult> {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// Claude Vision — 이미지 기반 종합 추출
+// Tesseract OCR — 이미지에서 혜택 지급일 추출
 // ═══════════════════════════════════════════════════════════════
 
-async function extractWithClaude(
-  bodyText: string,
-  imageUrls: string[],
-  title: string,
-): Promise<Partial<PreviewResult> | null> {
+async function extractRewardDateWithOcr(imageUrls: string[]): Promise<string | null> {
   try {
-    const { default: Anthropic } = await import('@anthropic-ai/sdk')
-    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+    const { createWorker } = await import('tesseract.js')
 
     // 이미지 다운로드: 20KB~600KB, 최대 5장
-    type AllowedMime = 'image/png' | 'image/jpeg' | 'image/gif' | 'image/webp'
-    const ALLOWED_MIMES: AllowedMime[] = ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
-    type ImageBlock = { type: 'image'; source: { type: 'base64'; media_type: AllowedMime; data: string } }
-    const imageParts: ImageBlock[] = []
-
+    const buffers: Buffer[] = []
     for (const imgUrl of imageUrls.slice(0, 10)) {
-      if (imageParts.length >= 5) break
+      if (buffers.length >= 5) break
       try {
         const imgRes = await fetch(imgUrl, { signal: AbortSignal.timeout(6000) })
         if (!imgRes.ok) continue
-        const contentLength = parseInt(imgRes.headers.get('content-length') ?? '0')
-        if (contentLength > 0 && (contentLength < 20_000 || contentLength > 600_000)) continue
         const buf = await imgRes.arrayBuffer()
         if (buf.byteLength < 20_000 || buf.byteLength > 600_000) continue
-        const b64 = Buffer.from(buf).toString('base64')
-        const rawMime = (imgRes.headers.get('content-type') ?? 'image/png').split(';')[0].trim()
-        const mime: AllowedMime = ALLOWED_MIMES.includes(rawMime as AllowedMime)
-          ? (rawMime as AllowedMime)
-          : 'image/png'
-        imageParts.push({ type: 'image', source: { type: 'base64', media_type: mime, data: b64 } })
+        buffers.push(Buffer.from(buf))
       } catch { continue }
     }
 
-    if (imageParts.length === 0) return null
+    if (buffers.length === 0) return null
 
-    const textSnippet = bodyText.slice(0, 1500)
-
-    const message = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 512,
-      messages: [{
-        role: 'user',
-        content: [
-          ...imageParts,
-          {
-            type: 'text',
-            text: `이 이미지들은 한국 암호화폐 거래소 이벤트 공지의 본문 이미지입니다.
-공지 제목: ${title}
-공지 텍스트(일부): ${textSnippet}
-
-아래 항목을 이미지와 텍스트에서 파악해 JSON만 응답하세요 (설명 없이 JSON만):
-{
-  "coin": "코인 티커 코드(예: BTC, SPACE, ETH) 또는 null",
-  "amount": "지급 금액/수량 요약(예: '1위 200,000 SPACE') 또는 null",
-  "rewardDate": "혜택·리워드 지급일 YYYY-MM-DD 또는 null",
-  "requireApply": true 또는 false,
-  "apiAllowed": true 또는 false
-}
-
-판단 기준:
-- requireApply: 이벤트 코드 등록, 사전 신청, 응모 등이 필요하면 true
-- apiAllowed: "API를 통한 거래는 제외" 등 문구가 있으면 false, 언급 없으면 true`,
-          },
-        ],
-      }],
-    })
-
-    const text = message.content[0].type === 'text' ? message.content[0].text : ''
-    const jsonMatch = text.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) return null
-
-    const raw = JSON.parse(jsonMatch[0])
-    return {
-      coin:         typeof raw.coin === 'string'         ? raw.coin         : null,
-      amount:       typeof raw.amount === 'string'       ? raw.amount       : null,
-      rewardDate:   typeof raw.rewardDate === 'string'   ? raw.rewardDate   : null,
-      requireApply: typeof raw.requireApply === 'boolean' ? raw.requireApply : undefined,
-      apiAllowed:   typeof raw.apiAllowed === 'boolean'   ? raw.apiAllowed   : undefined,
+    const worker = await createWorker(['kor', 'eng'])
+    try {
+      for (const buf of buffers) {
+        const { data: { text } } = await worker.recognize(buf)
+        const date = extractRewardDate(text)
+        if (date) return date
+      }
+    } finally {
+      await worker.terminate()
     }
+
+    return null
   } catch (err) {
-    console.error('[crawl-preview] Claude Vision 실패:', err instanceof Error ? err.message : err)
+    console.error('[crawl-preview] Tesseract OCR 실패:', err instanceof Error ? err.message : err)
     return null
   }
 }
