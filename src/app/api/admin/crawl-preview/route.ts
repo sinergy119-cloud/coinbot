@@ -13,6 +13,7 @@
  *   amount            : 텍스트 정규식
  */
 
+import path from 'path'
 import { NextRequest } from 'next/server'
 import { getSession } from '@/lib/session'
 import { isAdmin } from '@/lib/admin'
@@ -159,37 +160,56 @@ async function fetchHtmlTextAndDates(url: string): Promise<FetchResult> {
 // Tesseract OCR — 이미지에서 혜택 지급일 추출
 // ═══════════════════════════════════════════════════════════════
 
+// Worker 모듈 레벨 캐시 — 프로세스당 1회 초기화 후 재사용
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let _workerPromise: Promise<any> | null = null
+
+function getOcrWorker() {
+  if (!_workerPromise) {
+    _workerPromise = (async () => {
+      const { createWorker } = await import('tesseract.js')
+      // langPath: 로컬 .tessdata 디렉터리 → CDN 다운로드 없이 바로 로드
+      const langPath = path.join(process.cwd(), '.tessdata')
+      return createWorker(['kor', 'eng'], 1, { langPath })
+    })().catch((err) => {
+      _workerPromise = null // 초기화 실패 시 다음 요청에서 재시도
+      throw err
+    })
+  }
+  return _workerPromise
+}
+
 async function extractRewardDateWithOcr(imageUrls: string[]): Promise<string | null> {
-  try {
-    const { createWorker } = await import('tesseract.js')
-
-    // 이미지 다운로드: 20KB~600KB, 최대 5장
-    const buffers: Buffer[] = []
-    for (const imgUrl of imageUrls.slice(0, 10)) {
-      if (buffers.length >= 5) break
-      try {
-        const imgRes = await fetch(imgUrl, { signal: AbortSignal.timeout(6000) })
-        if (!imgRes.ok) continue
-        const buf = await imgRes.arrayBuffer()
-        if (buf.byteLength < 20_000 || buf.byteLength > 600_000) continue
-        buffers.push(Buffer.from(buf))
-      } catch { continue }
-    }
-
-    if (buffers.length === 0) return null
-
-    const worker = await createWorker(['kor', 'eng'])
+  // 이미지 다운로드: 20KB~600KB, 최대 5장
+  const buffers: Buffer[] = []
+  for (const imgUrl of imageUrls.slice(0, 10)) {
+    if (buffers.length >= 5) break
     try {
-      for (const buf of buffers) {
-        const { data: { text } } = await worker.recognize(buf)
-        const date = extractRewardDate(text)
-        if (date) return date
-      }
-    } finally {
-      await worker.terminate()
-    }
+      const imgRes = await fetch(imgUrl, { signal: AbortSignal.timeout(6000) })
+      if (!imgRes.ok) continue
+      const buf = await imgRes.arrayBuffer()
+      if (buf.byteLength < 20_000 || buf.byteLength > 600_000) continue
+      buffers.push(Buffer.from(buf))
+    } catch { continue }
+  }
 
-    return null
+  if (buffers.length === 0) return null
+
+  try {
+    // 전체 OCR 작업 8초 제한
+    const result = await Promise.race([
+      (async () => {
+        const worker = await getOcrWorker()
+        for (const buf of buffers) {
+          const { data: { text } } = await worker.recognize(buf)
+          const date = extractRewardDate(text)
+          if (date) return date
+        }
+        return null
+      })(),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000)),
+    ])
+    return result
   } catch (err) {
     console.error('[crawl-preview] Tesseract OCR 실패:', err instanceof Error ? err.message : err)
     return null
