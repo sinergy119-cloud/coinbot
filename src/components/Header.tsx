@@ -188,7 +188,7 @@ export default function Header({ loginId, isAdmin = false, showBackToHome = fals
             <div className="mt-4 border-t border-gray-100 pt-3 text-center">
               <button
                 onClick={() => { setShowAccountModal(false); setShowWithdrawModal(true) }}
-                className="text-xs text-gray-400 hover:text-red-500 underline transition-colors"
+                className="text-xs text-gray-600 hover:text-red-500 underline transition-colors"
               >
                 회원 탈퇴
               </button>

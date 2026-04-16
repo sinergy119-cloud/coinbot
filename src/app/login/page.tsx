@@ -113,7 +113,7 @@ function renderMarkdown(md: string) {
               return (
                 <div key={item.key} className="flex items-center gap-2.5 rounded-xl border border-gray-100 bg-white px-3 py-3 opacity-40">
                   <span className={`flex h-9 w-9 items-center justify-center rounded-lg text-lg ${iconBg}`}>{emoji}</span>
-                  <span className="flex-1"><span className="block text-xs font-bold text-gray-900">{name}</span><span className="block text-[10px] text-gray-400">{desc}</span></span>
+                  <span className="flex-1"><span className="block text-xs font-bold text-gray-900">{name}</span><span className="block text-[10px] text-gray-600">{desc}</span></span>
                 </div>
               )
             }
@@ -362,7 +362,7 @@ function renderMarkdown(md: string) {
       flushList()
       elements.push(
         <div key={i} className="mt-4 border-t border-gray-100 pt-3 text-center">
-          <p className="text-xs text-gray-400 italic">{line.slice(1, -1)}</p>
+          <p className="text-xs text-gray-600 italic">{line.slice(1, -1)}</p>
         </div>
       )
       continue
@@ -409,7 +409,7 @@ function GuideModal({ apiUrl, onClose, footer }: { apiUrl: string; onClose: () =
 
         {content === null ? (
           <div className="flex items-center justify-center py-12">
-            <p className="text-sm text-gray-400 animate-pulse">로딩 중...</p>
+            <p className="text-sm text-gray-500 animate-pulse">로딩 중...</p>
           </div>
         ) : (
           <>
@@ -566,7 +566,7 @@ export default function LoginPage() {
             className="flex w-full items-center justify-between px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-100 transition"
           >
             <span>{guideFolded ? '📌 처음이신가요?' : '📌 처음이신가요?'}</span>
-            <span className="text-xs text-gray-400">{guideFolded ? '펼치기 ▼' : '접기 ▲'}</span>
+            <span className="text-xs text-gray-600">{guideFolded ? '펼치기 ▼' : '접기 ▲'}</span>
           </button>
           {!guideFolded && (
             <div className="border-t border-gray-200 px-4 pb-3 pt-2 space-y-2">
@@ -611,7 +611,7 @@ export default function LoginPage() {
         <div className="mt-2">
           <div className="flex items-center gap-3 mb-3">
             <div className="h-px flex-1 bg-gray-200" />
-            <span className="text-xs text-gray-400">간편 로그인</span>
+            <span className="text-xs text-gray-600">간편 로그인</span>
             <div className="h-px flex-1 bg-gray-200" />
           </div>
             <div className="flex gap-2">
@@ -678,8 +678,8 @@ export default function LoginPage() {
 
       </div>
 
-      <div className="mt-2 flex items-center justify-between text-xs text-gray-400">
-        <button type="button" onClick={() => setActiveModal('privacy')} className="hover:text-gray-600 hover:underline">
+      <div className="mt-2 flex items-center justify-between text-xs text-gray-600">
+        <button type="button" onClick={() => setActiveModal('privacy')} className="hover:text-gray-800 hover:underline">
           개인정보처리방침
         </button>
         <span>Last updated: {process.env.NEXT_PUBLIC_BUILD_TIME}</span>

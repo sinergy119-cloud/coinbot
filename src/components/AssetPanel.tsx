@@ -101,13 +101,13 @@ export default function AssetPanel({ defaultExchange, onExchangeChange }: AssetP
               <div className="space-y-1 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">KRW</span>
-                  <span className="font-medium">{Math.floor(acc.krw).toLocaleString()}원</span>
+                  <span className="font-medium text-gray-900">{Math.floor(acc.krw).toLocaleString()}원</span>
                 </div>
                 {acc.coins.map((c) => (
                   <div key={c.coin} className="flex justify-between">
                     <span className="text-gray-600">{c.coin}</span>
                     <span className="text-right">
-                      <span className="text-gray-700">
+                      <span className="text-gray-900 font-medium">
                         {c.qty.toFixed(8).replace(/\.?0+$/, '') || '0'}
                       </span>
                       {c.value > 0 && (

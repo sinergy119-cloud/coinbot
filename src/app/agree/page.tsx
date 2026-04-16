@@ -198,7 +198,7 @@ export default function AgreePage() {
                 </span>
                 <button
                   onClick={() => toggleExpand(term.id)}
-                  className="shrink-0 text-gray-400 hover:text-gray-600 flex items-center gap-0.5 text-xs"
+                  className="shrink-0 text-gray-600 hover:text-gray-800 flex items-center gap-0.5 text-xs"
                 >
                   {expanded[term.id] ? (
                     <><span>접기</span><ChevronUp size={14} /></>

@@ -196,7 +196,7 @@ export default function InquiryManager() {
                       {/* 삭제 */}
                       <button
                         onClick={() => handleDelete(inq.id)}
-                        className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-red-600"
+                        className="flex items-center gap-1 text-[10px] text-gray-600 hover:text-red-600"
                       >
                         <Trash2 size={10} /> 삭제
                       </button>

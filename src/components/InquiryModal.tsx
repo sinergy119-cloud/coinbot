@@ -91,7 +91,7 @@ export default function InquiryModal({ onClose }: { onClose: () => void }) {
             type="button"
             onClick={() => setTab('new')}
             className={`flex-1 px-3 py-2.5 text-sm font-medium transition-colors ${
-              tab === 'new' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-400 hover:text-gray-600'
+              tab === 'new' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-600 hover:text-gray-800'
             }`}
           >
             새 문의 작성
@@ -100,7 +100,7 @@ export default function InquiryModal({ onClose }: { onClose: () => void }) {
             type="button"
             onClick={() => setTab('list')}
             className={`flex-1 px-3 py-2.5 text-sm font-medium transition-colors ${
-              tab === 'list' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-400 hover:text-gray-600'
+              tab === 'list' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-600 hover:text-gray-800'
             }`}
           >
             내 문의 목록

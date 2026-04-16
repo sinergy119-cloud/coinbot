@@ -248,7 +248,7 @@ export default function AccountRegister() {
               </span>
               <button
                 onClick={handleCancelPending}
-                className="text-xs text-gray-400 hover:text-red-500 underline"
+                className="text-xs text-gray-600 hover:text-red-500 underline"
               >
                 취소
               </button>

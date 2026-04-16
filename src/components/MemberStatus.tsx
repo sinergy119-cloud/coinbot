@@ -315,7 +315,7 @@ export default function MemberStatus() {
                         <div className="flex gap-0 mb-3 border-b border-purple-200">
                           {([['schedule', '스케줄'], ['assets', '나의 자산'], ['logs', '거래 내역']] as const).map(([id, label]) => (
                             <button key={id} onClick={() => { setViewTab(id); if (id === 'assets') { setAssetExchange(null); setAssetData([]) } }}
-                              className={`px-3 py-1.5 text-xs border-b-2 -mb-px ${viewTab === id ? 'border-purple-600 text-purple-600 font-semibold' : 'border-transparent text-gray-400'}`}>
+                              className={`px-3 py-1.5 text-xs border-b-2 -mb-px ${viewTab === id ? 'border-purple-600 text-purple-600 font-semibold' : 'border-transparent text-gray-600'}`}>
                               {label}
                             </button>
                           ))}
