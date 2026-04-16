@@ -27,6 +27,8 @@ export interface CrawledPrefill {
   startDate?: string   // 크롤링 추출 시작일 (YYYY-MM-DD)
   endDate?: string     // 크롤링 추출 종료일 (YYYY-MM-DD)
   rewardDate?: string  // 크롤링 추출 리워드 지급일 (YYYY-MM-DD)
+  requireApply?: boolean  // 이벤트 신청 필요 여부
+  apiAllowed?: boolean    // API 거래 허용 여부
 }
 
 export default function AdminTabs({ loginId }: { loginId: string }) {
@@ -52,6 +54,7 @@ export default function AdminTabs({ loginId }: { loginId: string }) {
   function handleApproveNavigation(item: {
     id: string; exchange: string; url: string | null; title: string
     coin?: string; amount?: string; startDate?: string; endDate?: string; rewardDate?: string
+    requireApply?: boolean; apiAllowed?: boolean
   }) {
     setPrefillFromCrawled({
       crawledEventId: item.id,
@@ -63,6 +66,8 @@ export default function AdminTabs({ loginId }: { loginId: string }) {
       startDate: item.startDate,
       endDate: item.endDate,
       rewardDate: item.rewardDate,
+      requireApply: item.requireApply,
+      apiAllowed: item.apiAllowed,
     })
     setActiveTab('events')
   }

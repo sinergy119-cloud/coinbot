@@ -74,8 +74,8 @@ export default function EventManager({ prefill, onClearPrefill }: Props) {
     setNotes('')
     // 금액 — 추출 값 우선, 없으면 기본값
     setAmount(prefill.amount ?? '1만원(일일)')
-    setRequireApply(false)
-    setApiAllowed(true)
+    setRequireApply(prefill.requireApply ?? false)
+    setApiAllowed(prefill.apiAllowed ?? true)
     // 기간 — 추출 값 우선
     setStartDate(prefill.startDate ?? '')
     setEndDate(prefill.endDate ?? '')

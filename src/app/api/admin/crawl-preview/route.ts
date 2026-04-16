@@ -39,32 +39,40 @@ export async function GET(req: NextRequest) {
   // 1. 제목에서 코인 코드 추출
   const coin = extractCoinFromTitle(title)
 
-  // 2. 본문 텍스트 추출 (거래소별 전략)
-  const bodyText = await fetchBodyText(parsedUrl)
+  // 2. 본문 텍스트 + RSC 구조화 날짜 추출 (거래소별 전략)
+  const { bodyText, rscDates } = await fetchBodyTextAndDates(parsedUrl)
 
   const amount = extractAmount(bodyText)
-  const { startDate, endDate } = extractDateRange(bodyText)
+  // RSC eventPeriod가 있으면 우선 사용 (더 정확), 없으면 텍스트 기반 추출
+  const { startDate, endDate } = rscDates ?? extractDateRange(bodyText)
   const rewardDate = extractRewardDate(bodyText)
+  const requireApply = extractRequireApply(bodyText)
+  const apiAllowed = extractApiAllowed(bodyText)
 
-  return Response.json({ coin, amount, startDate, endDate, rewardDate })
+  return Response.json({ coin, amount, startDate, endDate, rewardDate, requireApply, apiAllowed })
 }
 
 // ═══════════════════════════════════════════════════════════════
 // 본문 텍스트 추출 — 거래소별 전략
 // ═══════════════════════════════════════════════════════════════
 
-async function fetchBodyText(url: URL): Promise<string> {
+interface FetchResult {
+  bodyText: string
+  rscDates: { startDate: string | null; endDate: string | null } | null
+}
+
+async function fetchBodyTextAndDates(url: URL): Promise<FetchResult> {
   // ── GOPAX: api.gopax.co.kr/notices/{id} 직접 호출
   if (url.hostname.includes('gopax.co.kr')) {
     const m = url.pathname.match(/\/notice\/(\d+)/)
     if (m) {
       const text = await fetchGopaxNotice(m[1])
-      if (text) return text
+      if (text) return { bodyText: text, rscDates: null }
     }
   }
 
-  // ── 기타 거래소: HTML 페치 + __NEXT_DATA__ 우선 파싱
-  return fetchHtmlText(url.toString())
+  // ── 기타 거래소: HTML 페치 + RSC eventPeriod 우선 추출
+  return fetchHtmlTextAndDates(url.toString())
 }
 
 /**
@@ -104,8 +112,8 @@ async function fetchGopaxNotice(noticeId: string): Promise<string> {
   return ''
 }
 
-/** HTML 페치 → __NEXT_DATA__ 우선, 없으면 body 텍스트 */
-async function fetchHtmlText(url: string): Promise<string> {
+/** HTML 페치 → RSC eventPeriod 우선 추출 + 본문 텍스트 */
+async function fetchHtmlTextAndDates(url: string): Promise<FetchResult> {
   try {
     const res = await fetch(url, {
       headers: {
@@ -116,11 +124,58 @@ async function fetchHtmlText(url: string): Promise<string> {
       },
       signal: AbortSignal.timeout(8000),
     })
-    if (!res.ok) return ''
+    if (!res.ok) return { bodyText: '', rscDates: null }
     const html = await res.text()
-    return extractTextFromHtml(html)
+    const bodyText = extractTextFromHtml(html)
+    const rscDates = extractRscEventPeriod(html)
+    return { bodyText, rscDates }
   } catch {
-    return ''
+    return { bodyText: '', rscDates: null }
+  }
+}
+
+/**
+ * RSC(React Server Components) 스트리밍 페이로드에서 eventPeriod 추출
+ * 코인원 등 Next.js RSC 사이트 전용
+ * 형식: \"eventPeriod\":{\"startDate\":\"$D2026-04-16T01:00:00.000Z\",\"endDate\":\"$D2026-04-19T14:59:00.000Z\"}
+ */
+function extractRscEventPeriod(html: string): { startDate: string | null; endDate: string | null } | null {
+  // 이스케이프된 RSC 형식 (self.__next_f.push 내부)
+  const escapedPat = /\\"eventPeriod\\":\{\\"startDate\\":\\"(?:\\\$D|\$D)([\dT:.Z-]+)\\",\\"endDate\\":\\"(?:\\\$D|\$D)([\dT:.Z-]+)\\"/
+  const m = html.match(escapedPat)
+  if (m) {
+    return {
+      startDate: utcIsoToKstDate(m[1]),
+      endDate: utcIsoToKstDate(m[2]),
+    }
+  }
+
+  // 일반 JSON 형식 (비이스케이프)
+  const normalPat = /"eventPeriod":\{"startDate":"(?:\$D)?([\dT:.Z-]+)","endDate":"(?:\$D)?([\dT:.Z-]+)"/
+  const m2 = html.match(normalPat)
+  if (m2) {
+    return {
+      startDate: utcIsoToKstDate(m2[1]),
+      endDate: utcIsoToKstDate(m2[2]),
+    }
+  }
+
+  return null
+}
+
+/** UTC ISO 문자열 → KST 날짜 (YYYY-MM-DD) */
+function utcIsoToKstDate(iso: string): string | null {
+  try {
+    const d = new Date(iso)
+    if (isNaN(d.getTime())) return null
+    // KST = UTC+9
+    const kst = new Date(d.getTime() + 9 * 60 * 60 * 1000)
+    const y = kst.getUTCFullYear()
+    const mo = String(kst.getUTCMonth() + 1).padStart(2, '0')
+    const da = String(kst.getUTCDate()).padStart(2, '0')
+    return `${y}-${mo}-${da}`
+  } catch {
+    return null
   }
 }
 
@@ -294,4 +349,27 @@ function extractDateRange(text: string): { startDate: string | null; endDate: st
   if (unique.length === 0) return { startDate: null, endDate: null }
   if (unique.length === 1) return { startDate: unique[0], endDate: unique[0] }
   return { startDate: unique[0], endDate: unique[unique.length - 1] }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 이벤트 신청 필요 여부 추출
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * 이벤트 코드 등록, 사전 신청 등 문구가 있으면 true
+ * 예: "이벤트 코드 등록", "코드 입력", "사전 신청", "응모 신청"
+ */
+function extractRequireApply(text: string): boolean {
+  return /이벤트\s*코드|코드\s*등록|코드\s*입력|사전\s*신청|신청\s*필요|응모\s*신청|이벤트\s*응모/.test(text)
+}
+
+// ═══════════════════════════════════════════════════════════════
+// API 허용 여부 추출
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * "API를 통한 거래는 혜택 지급 대상에서 제외" 등 문구가 있으면 false
+ */
+function extractApiAllowed(text: string): boolean {
+  return !/API(?:를?\s*통한?\s*거래|거래는?)\s*(?:혜택\s*)?지급\s*대상에서\s*제외|API\s*이벤트\s*제외/.test(text)
 }

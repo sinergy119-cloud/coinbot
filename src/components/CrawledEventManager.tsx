@@ -50,6 +50,8 @@ interface ApproveItem {
   startDate?: string
   endDate?: string
   rewardDate?: string
+  requireApply?: boolean
+  apiAllowed?: boolean
 }
 
 interface Props {
@@ -248,6 +250,8 @@ export default function CrawledEventManager({ onApproveNavigation }: Props) {
             startDate: data.startDate ?? undefined,
             endDate: data.endDate ?? undefined,
             rewardDate: data.rewardDate ?? undefined,
+            requireApply: data.requireApply,
+            apiAllowed: data.apiAllowed,
           }
         }
       }
