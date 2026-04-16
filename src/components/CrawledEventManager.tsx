@@ -405,7 +405,7 @@ export default function CrawledEventManager({ onApproveNavigation }: Props) {
                 className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900"
               />
               <p className="text-xs text-gray-600 break-keep">
-                {sinceDate} 00:00 KST 이후 24시간 내 게시된 공지를 수집합니다.
+                {sinceDate} 00:00 ~ 23:59 KST 사이에 게시된 공지를 수집합니다.
               </p>
             </div>
             <div className="flex justify-end">
