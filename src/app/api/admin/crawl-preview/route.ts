@@ -2,16 +2,46 @@
  * /api/admin/crawl-preview — 이벤트 URL 크롤링 후 코인·금액·기간 자동 추출 (관리자 전용)
  *
  * GET ?url=<이벤트URL>&title=<제목>
- * Returns { coin, amount, startDate, endDate }
+ * Returns { coin, amount, startDate, endDate, rewardDate, requireApply, apiAllowed }
  *
- * 거래소별 전략:
- *   GOPAX  → api.gopax.co.kr/notices/{id} (REST API, content 필드 포함)
- *   기타   → HTML 페치 + __NEXT_DATA__ 우선 파싱
+ * 추출 우선순위:
+ *   startDate/endDate : RSC eventPeriod > Claude Vision > 텍스트 정규식
+ *   rewardDate        : Claude Vision (이미지 OCR) > 텍스트 정규식
+ *   requireApply      : Claude Vision > 텍스트 정규식
+ *   apiAllowed        : Claude Vision > 텍스트 정규식
+ *   coin              : Claude Vision > 제목 파싱
+ *   amount            : 텍스트 정규식 > Claude Vision
+ *
+ * ANTHROPIC_API_KEY 환경변수가 없으면 Claude Vision 스킵, 정규식만 사용
  */
 
 import { NextRequest } from 'next/server'
 import { getSession } from '@/lib/session'
 import { isAdmin } from '@/lib/admin'
+
+// ═══════════════════════════════════════════════════════════════
+// 타입 정의
+// ═══════════════════════════════════════════════════════════════
+
+interface PreviewResult {
+  coin: string | null
+  amount: string | null
+  startDate: string | null
+  endDate: string | null
+  rewardDate: string | null
+  requireApply: boolean
+  apiAllowed: boolean
+}
+
+interface FetchResult {
+  bodyText: string
+  rscDates: { startDate: string | null; endDate: string | null } | null
+  imageUrls: string[]
+}
+
+// ═══════════════════════════════════════════════════════════════
+// API 핸들러
+// ═══════════════════════════════════════════════════════════════
 
 export async function GET(req: NextRequest) {
   const session = await getSession()
@@ -36,282 +66,305 @@ export async function GET(req: NextRequest) {
     return Response.json({ error: '유효하지 않은 URL' }, { status: 400 })
   }
 
-  // 1. 제목에서 코인 코드 추출
-  const coin = extractCoinFromTitle(title)
+  // 1. HTML 페치 + 텍스트/RSC날짜/이미지 URL 추출
+  const { bodyText, rscDates, imageUrls } = await fetchBodyTextAndDates(parsedUrl)
 
-  // 2. 본문 텍스트 + RSC 구조화 날짜 추출 (거래소별 전략)
-  const { bodyText, rscDates } = await fetchBodyTextAndDates(parsedUrl)
+  // 2. 텍스트 정규식 기반 추출 (베이스라인)
+  const regexCoin = extractCoinFromTitle(title)
+  const regexAmount = extractAmount(bodyText)
+  const regexDates = extractDateRange(bodyText)
+  const regexRewardDate = extractRewardDate(bodyText)
+  const regexRequireApply = extractRequireApply(bodyText)
+  const regexApiAllowed = extractApiAllowed(bodyText)
 
-  const amount = extractAmount(bodyText)
-  // RSC eventPeriod가 있으면 우선 사용 (더 정확), 없으면 텍스트 기반 추출
-  const { startDate, endDate } = rscDates ?? extractDateRange(bodyText)
-  const rewardDate = extractRewardDate(bodyText)
-  const requireApply = extractRequireApply(bodyText)
-  const apiAllowed = extractApiAllowed(bodyText)
+  // 3. Claude Vision 추출 (ANTHROPIC_API_KEY 있을 때만)
+  let vision: Partial<PreviewResult> | null = null
+  if (process.env.ANTHROPIC_API_KEY && imageUrls.length > 0) {
+    vision = await extractWithClaude(bodyText, imageUrls, title)
+  }
 
-  return Response.json({ coin, amount, startDate, endDate, rewardDate, requireApply, apiAllowed })
+  // 4. 우선순위 병합
+  const result: PreviewResult = {
+    coin:         vision?.coin        ?? regexCoin,
+    amount:       regexAmount         ?? vision?.amount ?? null,
+    startDate:    rscDates?.startDate ?? vision?.startDate ?? regexDates.startDate,
+    endDate:      rscDates?.endDate   ?? vision?.endDate   ?? regexDates.endDate,
+    rewardDate:   vision?.rewardDate  ?? regexRewardDate,
+    requireApply: vision?.requireApply != null ? vision.requireApply : regexRequireApply,
+    apiAllowed:   vision?.apiAllowed  != null ? vision.apiAllowed   : regexApiAllowed,
+  }
+
+  return Response.json(result)
 }
 
 // ═══════════════════════════════════════════════════════════════
-// 본문 텍스트 추출 — 거래소별 전략
+// HTML 페치 — 거래소별 전략
 // ═══════════════════════════════════════════════════════════════
-
-interface FetchResult {
-  bodyText: string
-  rscDates: { startDate: string | null; endDate: string | null } | null
-}
 
 async function fetchBodyTextAndDates(url: URL): Promise<FetchResult> {
-  // ── GOPAX: api.gopax.co.kr/notices/{id} 직접 호출
+  // GOPAX: REST API 직접 호출 (이미지 없음)
   if (url.hostname.includes('gopax.co.kr')) {
     const m = url.pathname.match(/\/notice\/(\d+)/)
     if (m) {
       const text = await fetchGopaxNotice(m[1])
-      if (text) return { bodyText: text, rscDates: null }
+      if (text) return { bodyText: text, rscDates: null, imageUrls: [] }
     }
   }
 
-  // ── 기타 거래소: HTML 페치 + RSC eventPeriod 우선 추출
+  // 기타: HTML 페치
   return fetchHtmlTextAndDates(url.toString())
 }
 
-/**
- * GOPAX 공지 본문 가져오기
- * - /notices/{id} 엔드포인트는 존재하지 않음
- * - /notices?type=0&limit=N&page=P 목록에서 ID 검색
- */
 async function fetchGopaxNotice(noticeId: string): Promise<string> {
-  // page 0, 1 순서로 검색 (최근 공지는 page 0에 존재)
   for (const page of [0, 1]) {
     try {
       const res = await fetch(
         `https://api.gopax.co.kr/notices?type=0&limit=50&page=${page}`,
-        {
-          headers: { 'User-Agent': 'MyCoinBot-Crawler/1.0', Accept: 'application/json' },
-          signal: AbortSignal.timeout(8000),
-        },
+        { headers: { 'User-Agent': 'MyCoinBot-Crawler/1.0', Accept: 'application/json' }, signal: AbortSignal.timeout(8000) },
       )
       if (!res.ok) break
       const list = await res.json()
       if (!Array.isArray(list)) break
-
-      const found = list.find(
-        (item: { id?: number | string }) => String(item.id) === noticeId,
-      )
-      if (found) {
-        const raw = `${found.title ?? ''} ${found.content ?? ''}`
-        return stripHtmlTags(raw)
-      }
-
-      // 결과가 50개 미만이면 다음 페이지 없음
+      const found = list.find((item: { id?: number | string }) => String(item.id) === noticeId)
+      if (found) return stripHtmlTags(`${found.title ?? ''} ${found.content ?? ''}`)
       if (list.length < 50) break
-    } catch {
-      break
-    }
+    } catch { break }
   }
   return ''
 }
 
-/** HTML 페치 → RSC eventPeriod 우선 추출 + 본문 텍스트 */
 async function fetchHtmlTextAndDates(url: string): Promise<FetchResult> {
   try {
     const res = await fetch(url, {
       headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
-          '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept-Language': 'ko-KR,ko;q=0.9',
       },
-      signal: AbortSignal.timeout(8000),
+      signal: AbortSignal.timeout(10000),
     })
-    if (!res.ok) return { bodyText: '', rscDates: null }
+    if (!res.ok) return { bodyText: '', rscDates: null, imageUrls: [] }
     const html = await res.text()
-    const bodyText = extractTextFromHtml(html)
-    const rscDates = extractRscEventPeriod(html)
-    return { bodyText, rscDates }
+    return {
+      bodyText:  extractTextFromHtml(html),
+      rscDates:  extractRscEventPeriod(html),
+      imageUrls: extractImageUrls(html),
+    }
   } catch {
-    return { bodyText: '', rscDates: null }
+    return { bodyText: '', rscDates: null, imageUrls: [] }
   }
 }
 
-/**
- * RSC(React Server Components) 스트리밍 페이로드에서 eventPeriod 추출
- * 코인원 등 Next.js RSC 사이트 전용
- * 형식: \"eventPeriod\":{\"startDate\":\"$D2026-04-16T01:00:00.000Z\",\"endDate\":\"$D2026-04-19T14:59:00.000Z\"}
- */
-function extractRscEventPeriod(html: string): { startDate: string | null; endDate: string | null } | null {
-  // 이스케이프된 RSC 형식 (self.__next_f.push 내부)
-  const escapedPat = /\\"eventPeriod\\":\{\\"startDate\\":\\"(?:\\\$D|\$D)([\dT:.Z-]+)\\",\\"endDate\\":\\"(?:\\\$D|\$D)([\dT:.Z-]+)\\"/
-  const m = html.match(escapedPat)
-  if (m) {
-    return {
-      startDate: utcIsoToKstDate(m[1]),
-      endDate: utcIsoToKstDate(m[2]),
+// ═══════════════════════════════════════════════════════════════
+// Claude Vision — 이미지 기반 종합 추출
+// ═══════════════════════════════════════════════════════════════
+
+async function extractWithClaude(
+  bodyText: string,
+  imageUrls: string[],
+  title: string,
+): Promise<Partial<PreviewResult> | null> {
+  try {
+    const { default: Anthropic } = await import('@anthropic-ai/sdk')
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+
+    // 이미지 다운로드: 20KB~600KB, 최대 5장
+    type AllowedMime = 'image/png' | 'image/jpeg' | 'image/gif' | 'image/webp'
+    const ALLOWED_MIMES: AllowedMime[] = ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
+    type ImageBlock = { type: 'image'; source: { type: 'base64'; media_type: AllowedMime; data: string } }
+    const imageParts: ImageBlock[] = []
+
+    for (const imgUrl of imageUrls.slice(0, 10)) {
+      if (imageParts.length >= 5) break
+      try {
+        const imgRes = await fetch(imgUrl, { signal: AbortSignal.timeout(6000) })
+        if (!imgRes.ok) continue
+        const contentLength = parseInt(imgRes.headers.get('content-length') ?? '0')
+        if (contentLength > 0 && (contentLength < 20_000 || contentLength > 600_000)) continue
+        const buf = await imgRes.arrayBuffer()
+        if (buf.byteLength < 20_000 || buf.byteLength > 600_000) continue
+        const b64 = Buffer.from(buf).toString('base64')
+        const rawMime = (imgRes.headers.get('content-type') ?? 'image/png').split(';')[0].trim()
+        const mime: AllowedMime = ALLOWED_MIMES.includes(rawMime as AllowedMime)
+          ? (rawMime as AllowedMime)
+          : 'image/png'
+        imageParts.push({ type: 'image', source: { type: 'base64', media_type: mime, data: b64 } })
+      } catch { continue }
     }
+
+    if (imageParts.length === 0) return null
+
+    const textSnippet = bodyText.slice(0, 1500)
+
+    const message = await client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 512,
+      messages: [{
+        role: 'user',
+        content: [
+          ...imageParts,
+          {
+            type: 'text',
+            text: `이 이미지들은 한국 암호화폐 거래소 이벤트 공지의 본문 이미지입니다.
+공지 제목: ${title}
+공지 텍스트(일부): ${textSnippet}
+
+아래 항목을 이미지와 텍스트에서 파악해 JSON만 응답하세요 (설명 없이 JSON만):
+{
+  "coin": "코인 티커 코드(예: BTC, SPACE, ETH) 또는 null",
+  "amount": "지급 금액/수량 요약(예: '1위 200,000 SPACE') 또는 null",
+  "rewardDate": "혜택·리워드 지급일 YYYY-MM-DD 또는 null",
+  "requireApply": true 또는 false,
+  "apiAllowed": true 또는 false
+}
+
+판단 기준:
+- requireApply: 이벤트 코드 등록, 사전 신청, 응모 등이 필요하면 true
+- apiAllowed: "API를 통한 거래는 제외" 등 문구가 있으면 false, 언급 없으면 true`,
+          },
+        ],
+      }],
+    })
+
+    const text = message.content[0].type === 'text' ? message.content[0].text : ''
+    const jsonMatch = text.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) return null
+
+    const raw = JSON.parse(jsonMatch[0])
+    return {
+      coin:         typeof raw.coin === 'string'         ? raw.coin         : null,
+      amount:       typeof raw.amount === 'string'       ? raw.amount       : null,
+      rewardDate:   typeof raw.rewardDate === 'string'   ? raw.rewardDate   : null,
+      requireApply: typeof raw.requireApply === 'boolean' ? raw.requireApply : undefined,
+      apiAllowed:   typeof raw.apiAllowed === 'boolean'   ? raw.apiAllowed   : undefined,
+    }
+  } catch (err) {
+    console.error('[crawl-preview] Claude Vision 실패:', err instanceof Error ? err.message : err)
+    return null
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 이미지 URL 추출
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * HTML에서 공지 본문 이미지 URL 추출
+ * - <img src="..."> 태그
+ * - RSC 페이로드의 S3/CDN 이미지 URL
+ */
+function extractImageUrls(html: string): string[] {
+  const seen = new Set<string>()
+
+  // 1. <img src="..."> 태그
+  for (const m of html.matchAll(/<img[^>]+src=["']([^"']+)["']/gi)) {
+    const u = m[1]
+    if (u.startsWith('http') && /\.(png|jpe?g|webp)(\?|$)/i.test(u)) seen.add(u)
   }
 
-  // 일반 JSON 형식 (비이스케이프)
+  // 2. HTML 내 절대 이미지 URL (RSC 페이로드 포함, 이스케이프 해제)
+  for (const m of html.matchAll(/https?:\\?\/\\?\/[^\s"'<>\\]+?\.(png|jpe?g|webp)/gi)) {
+    seen.add(m[0].replace(/\\\//g, '/'))
+  }
+
+  // 3. 첫 번째 URL(썸네일)은 제외 (주로 메인 배너 — 정보가 없음)
+  const urls = [...seen]
+  return urls.length > 1 ? urls.slice(1) : urls
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RSC eventPeriod 추출
+// ═══════════════════════════════════════════════════════════════
+
+function extractRscEventPeriod(html: string): { startDate: string | null; endDate: string | null } | null {
+  const escapedPat = /\\"eventPeriod\\":\{\\"startDate\\":\\"(?:\\\$D|\$D)([\dT:.Z-]+)\\",\\"endDate\\":\\"(?:\\\$D|\$D)([\dT:.Z-]+)\\"/
+  const m = html.match(escapedPat)
+  if (m) return { startDate: utcIsoToKstDate(m[1]), endDate: utcIsoToKstDate(m[2]) }
+
   const normalPat = /"eventPeriod":\{"startDate":"(?:\$D)?([\dT:.Z-]+)","endDate":"(?:\$D)?([\dT:.Z-]+)"/
   const m2 = html.match(normalPat)
-  if (m2) {
-    return {
-      startDate: utcIsoToKstDate(m2[1]),
-      endDate: utcIsoToKstDate(m2[2]),
-    }
-  }
+  if (m2) return { startDate: utcIsoToKstDate(m2[1]), endDate: utcIsoToKstDate(m2[2]) }
 
   return null
 }
 
-/** UTC ISO 문자열 → KST 날짜 (YYYY-MM-DD) */
 function utcIsoToKstDate(iso: string): string | null {
   try {
     const d = new Date(iso)
     if (isNaN(d.getTime())) return null
-    // KST = UTC+9
     const kst = new Date(d.getTime() + 9 * 60 * 60 * 1000)
     const y = kst.getUTCFullYear()
     const mo = String(kst.getUTCMonth() + 1).padStart(2, '0')
     const da = String(kst.getUTCDate()).padStart(2, '0')
     return `${y}-${mo}-${da}`
-  } catch {
-    return null
-  }
+  } catch { return null }
 }
 
-/**
- * HTML → 순수 텍스트
- * 1) __NEXT_DATA__ JSON 먼저 평탄화 (Next.js 사이트 대응)
- * 2) 나머지 HTML body 텍스트
- */
+// ═══════════════════════════════════════════════════════════════
+// HTML → 텍스트
+// ═══════════════════════════════════════════════════════════════
+
 function extractTextFromHtml(html: string): string {
   let extra = ''
-
-  const nextDataMatch = html.match(
-    /<script[^>]*id=["']__NEXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/i,
-  )
-  if (nextDataMatch) {
-    try {
-      const parsed = JSON.parse(nextDataMatch[1])
-      extra = flattenJsonToText(parsed)
-    } catch {
-      extra = nextDataMatch[1].replace(/\\[ntr]/g, ' ')
-    }
+  const nd = html.match(/<script[^>]*id=["']__NEXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/i)
+  if (nd) {
+    try { extra = flattenJsonToText(JSON.parse(nd[1])) }
+    catch { extra = nd[1].replace(/\\[ntr]/g, ' ') }
   }
-
-  const bodyText = stripHtmlTags(
-    html
-      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-      .replace(/<style[\s\S]*?<\/style>/gi, ' '),
+  const body = stripHtmlTags(
+    html.replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ')
   )
-
-  return `${bodyText} ${extra}`
+  return `${body} ${extra}`
 }
 
-/** HTML 태그·엔티티 제거 → 순수 텍스트 */
 function stripHtmlTags(html: string): string {
   return html
     .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/\s+/g, ' ')
-    .trim()
+    .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    .replace(/\s+/g, ' ').trim()
 }
 
-/** JSON 값을 재귀 평탄화 — 문자열 값만 이어붙임 */
 function flattenJsonToText(value: unknown): string {
   if (typeof value === 'string') return `${value} `
   if (Array.isArray(value)) return value.map(flattenJsonToText).join('')
-  if (value && typeof value === 'object') {
-    return Object.values(value as Record<string, unknown>)
-      .map(flattenJsonToText)
-      .join('')
-  }
+  if (value && typeof value === 'object')
+    return Object.values(value as Record<string, unknown>).map(flattenJsonToText).join('')
   return ''
 }
 
 // ═══════════════════════════════════════════════════════════════
-// 코인 코드 추출
+// 텍스트 정규식 추출 함수들 (Claude Vision 실패 시 폴백)
 // ═══════════════════════════════════════════════════════════════
 
-/** 제목에서 괄호 안 대문자 코인 코드 추출 — 헤이엘사(ELSA) → ELSA */
 function extractCoinFromTitle(title: string): string | null {
   const matches = [...title.matchAll(/\(([A-Z]{2,10})\)/g)]
   return matches.length > 0 ? matches[0][1] : null
 }
 
-// ═══════════════════════════════════════════════════════════════
-// 금액 추출
-// ═══════════════════════════════════════════════════════════════
-
-/**
- * 일일 에어드랍 금액 추출
- *   최대 금액 기준으로 임계치 적용:
- *   ≥ 100,000원 → "10만원(일일)"
- *   ≥  10,000원 →  "1만원(일일)"
- */
 function extractAmount(text: string): string | null {
   let maxAmount = 0
-
-  // N만원 / N만 원 (예: 10만원 = 100,000 / 100만 원 = 1,000,000)
-  for (const m of text.matchAll(/(\d+)\s*만\s*원/g)) {
+  for (const m of text.matchAll(/(\d+)\s*만\s*원/g))
     maxAmount = Math.max(maxAmount, parseInt(m[1]) * 10000)
-  }
-
-  // 콤마 숫자 + 원 (예: 100,000원)
-  for (const m of text.matchAll(/(\d{1,3}(?:,\d{3})+)\s*원/g)) {
+  for (const m of text.matchAll(/(\d{1,3}(?:,\d{3})+)\s*원/g))
     maxAmount = Math.max(maxAmount, parseInt(m[1].replace(/,/g, '')))
-  }
-
-  // 5자리 이상 숫자 + 원 (예: 10000원)
-  for (const m of text.matchAll(/\b(\d{5,})\s*원/g)) {
+  for (const m of text.matchAll(/\b(\d{5,})\s*원/g))
     maxAmount = Math.max(maxAmount, parseInt(m[1]))
-  }
-
   if (maxAmount >= 100000) return '10만원(일일)'
   if (maxAmount >= 10000) return '1만원(일일)'
   return null
 }
 
-// ═══════════════════════════════════════════════════════════════
-// 리워드 지급일 추출
-// ═══════════════════════════════════════════════════════════════
-
-/**
- * 리워드 지급일 추출
- * 패턴 예: "혜택 지급일 2026. 4. 22. (수)", "리워드 지급일: 2026.05.15(금)", "지급 예정일 2026.05.15"
- * 날짜 형식: "2026.05.15" / "2026. 4. 22." (공백 포함) / "2026년 5월 15일" 등
- */
 function extractRewardDate(text: string): string | null {
   const keywordPat = /(?:혜택\s*지급일|리워드\s*지급일|지급\s*예정일|지급일|보상\s*지급일)\s*[:：]?\s*(\d{4}\s*[.년/-]\s*\d{1,2}\s*[.월/-]\s*\d{1,2})/
   const m = text.match(keywordPat)
   if (m) {
-    const raw = m[1]
-    const parts = raw.match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/)
-    if (parts) {
-      return `${parts[1]}-${parts[2].padStart(2, '0')}-${parts[3].padStart(2, '0')}`
-    }
+    const parts = m[1].match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/)
+    if (parts) return `${parts[1]}-${parts[2].padStart(2, '0')}-${parts[3].padStart(2, '0')}`
   }
   return null
 }
 
-// ═══════════════════════════════════════════════════════════════
-// 날짜 범위 추출
-// ═══════════════════════════════════════════════════════════════
-
-/**
- * 이벤트 기간(시작일/종료일) 추출
- *
- * 우선순위:
- *   1. 범위 패턴: "YYYY.MM.DD(요일) HH:MM ~ YYYY.MM.DD(요일) HH:MM"
- *   2. 개별 날짜 목록에서 min/max
- */
 function extractDateRange(text: string): { startDate: string | null; endDate: string | null } {
-  /** "2026.04.14(화) 16:00" → "2026-04-14" */
   function toISODate(raw: string): string | null {
     const m = raw.match(/(\d{4})\D+?(\d{1,2})\D+?(\d{1,2})/)
     if (!m) return null
@@ -320,57 +373,26 @@ function extractDateRange(text: string): { startDate: string | null; endDate: st
     if (isNaN(dt.getTime()) || dt.getFullYear() < 2020 || dt.getFullYear() > 2030) return null
     return `${y}-${mo}-${d}`
   }
-
-  // 날짜 토큰 정규식 (요일, 시간 모두 선택적)
-  //   2026.04.14          ← 기본
-  //   2026.04.14(화)      ← + 요일
-  //   2026.04.14(화) 16:00 ← + 시간
-  const dateToken =
-    /\d{4}\s*[.년]\s*\d{1,2}\s*[.월]\s*\d{1,2}(?:\s*\([월화수목금토일]\))?(?:\s+\d{1,2}:\d{2})?/
-
-  // ① 범위 패턴 우선
-  const rangeSource = dateToken.source
-  const rangePat = new RegExp(`(${rangeSource})\\s*[~～]\\s*(${rangeSource})`, 'g')
-
+  const dateToken = /\d{4}\s*[.년]\s*\d{1,2}\s*[.월]\s*\d{1,2}(?:\s*\([월화수목금토일]\))?(?:\s+\d{1,2}:\d{2})?/
+  const rangePat = new RegExp(`(${dateToken.source})\\s*[~～]\\s*(${dateToken.source})`, 'g')
   for (const m of text.matchAll(rangePat)) {
-    const s = toISODate(m[1])
-    const e = toISODate(m[2])
+    const s = toISODate(m[1]), e = toISODate(m[2])
     if (s && e) return { startDate: s, endDate: e }
   }
-
-  // ② 개별 날짜 수집 후 min/max
-  const singlePat = /\d{4}\s*[.년]\s*\d{1,2}\s*[.월]\s*\d{1,2}/g
   const dates: string[] = []
-  for (const m of text.matchAll(singlePat)) {
-    const d = toISODate(m[0])
-    if (d) dates.push(d)
+  for (const m of text.matchAll(/\d{4}\s*[.년]\s*\d{1,2}\s*[.월]\s*\d{1,2}/g)) {
+    const d = toISODate(m[0]); if (d) dates.push(d)
   }
-
   const unique = [...new Set(dates)].sort()
   if (unique.length === 0) return { startDate: null, endDate: null }
   if (unique.length === 1) return { startDate: unique[0], endDate: unique[0] }
   return { startDate: unique[0], endDate: unique[unique.length - 1] }
 }
 
-// ═══════════════════════════════════════════════════════════════
-// 이벤트 신청 필요 여부 추출
-// ═══════════════════════════════════════════════════════════════
-
-/**
- * 이벤트 코드 등록, 사전 신청 등 문구가 있으면 true
- * 예: "이벤트 코드 등록", "코드 입력", "사전 신청", "응모 신청"
- */
 function extractRequireApply(text: string): boolean {
   return /이벤트\s*코드|코드\s*등록|코드\s*입력|사전\s*신청|신청\s*필요|응모\s*신청|이벤트\s*응모/.test(text)
 }
 
-// ═══════════════════════════════════════════════════════════════
-// API 허용 여부 추출
-// ═══════════════════════════════════════════════════════════════
-
-/**
- * "API를 통한 거래는 혜택 지급 대상에서 제외" 등 문구가 있으면 false
- */
 function extractApiAllowed(text: string): boolean {
   return !/API를?\s*통한?\s*거래는?\s*혜택\s*지급\s*대상에서\s*제외|API\s*이벤트\s*제외/.test(text)
 }
