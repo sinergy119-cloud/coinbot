@@ -3,10 +3,13 @@
  * 대상 URL: https://coinone.co.kr/info/notice/
  *
  * ⚠️ 코인원은 공식 API가 없어 HTML을 파싱합니다.
- *    사이트 구조 변경 시 정규식/선택자를 수정하세요.
+ *    2026-04 기준: 코인원이 Next.js RSC(React Server Components) 스트리밍으로
+ *    전환되어 `__NEXT_DATA__` 스크립트가 사라지고, 대신 HTML 안에
+ *    escape된 JSON 페이로드가 인라인 문자열로 포함됨.
+ *    예) {\"id\":5320,\"category\":\"이벤트\",...,\"title\":\"[...]\",
+ *        \"exposedAt\":\"$D2026-04-16T01:00:00.000Z\"...}
  *
- * 날짜 필터: __NEXT_DATA__에서 날짜를 추출할 수 있으면 12시간 필터 적용
- *            날짜 파싱 불가 시 source_id 중복 제거(DB upsert)에 의존
+ *    사이트 구조 변경 시 정규식을 수정하세요.
  */
 
 import { matchesKeyword, Keywords } from './keywords'
@@ -20,6 +23,16 @@ export interface CrawledItem {
   sourceId: string
   title: string
   url: string | null
+}
+
+// RSC 페이로드 내 JSON 문자열에서 \"(backslash+quote) → " 등으로 언이스케이프
+function unescapeRscString(s: string): string {
+  return s
+    .replace(/\\"/g, '"')
+    .replace(/\\\\/g, '\\')
+    .replace(/\\n/g, '\n')
+    .replace(/\\\//g, '/')
+    .replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
 }
 
 export async function crawlCoinone(keywords: Keywords, since: Date, until?: Date): Promise<CrawledItem[]> {
@@ -40,57 +53,44 @@ export async function crawlCoinone(keywords: Keywords, since: Date, until?: Date
 
   const html = await res.text()
   const results: CrawledItem[] = []
+  const seen = new Set<string>()
 
-  // 방법 1: __NEXT_DATA__ 파싱 (날짜 포함 가능)
-  const nextDataMatch = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/)
-  if (nextDataMatch) {
-    try {
-      const nextData = JSON.parse(nextDataMatch[1])
-      const notices =
-        nextData?.props?.pageProps?.notices ??
-        nextData?.props?.pageProps?.data?.notices ??
-        nextData?.props?.pageProps?.list ??
-        []
-      if (Array.isArray(notices) && notices.length > 0) {
-        return notices
-          .filter((n: { title?: string; created_at?: string; createdAt?: string; regDate?: string }) => {
-            // 날짜 필터
-            const dateStr = n.created_at ?? n.createdAt ?? n.regDate
-            if (dateStr) {
-              const posted = new Date(dateStr)
-              if (!isNaN(posted.getTime())) {
-                if (posted < since) return false
-                if (until && posted >= until) return false
-              }
-            }
-            return matchesKeyword(n.title ?? '', keywords)
-          })
-          .map((n: { id?: string | number; title?: string; slug?: string }) => ({
-            exchange: 'COINONE',
-            sourceId: String(n.id ?? n.slug ?? ''),
-            title: String(n.title ?? ''),
-            url: n.id ? `${BASE_URL}/info/notice/${n.id}` : null,
-          }))
-      }
-    } catch {
-      // JSON 파싱 실패 → HTML 정규식 폴백
-    }
-  }
+  // RSC 페이로드 내 이스케이프된 JSON 블록을 매칭
+  //   시작: \"id\":숫자,\"category\":\"카테고리\"
+  //   끝:   \"exposedAt\":\"$D날짜\"
+  //   사이 거리: 최대 3000자 (안전 마진)
+  const blockPattern =
+    /\\"id\\":(\d+),\\"category\\":\\"([^"\\]+)\\"[\s\S]{0,3000}?\\"exposedAt\\":\\"\$D(\d{4}-\d{2}-\d{2}T[\d:.]+Z)\\"/g
 
-  // 방법 2: HTML 정규식 파싱
-  const linkPattern = /href="(\/info\/notice\/(\d+)[^"]*)">([^<]+)</g
   let match
-  while ((match = linkPattern.exec(html)) !== null) {
-    const path = match[1]
-    const id = match[2]
-    const title = match[3].trim()
-    if (!title || !matchesKeyword(title, keywords)) continue
-    if (results.some((r) => r.sourceId === id)) continue
+  while ((match = blockPattern.exec(html)) !== null) {
+    const id = match[1]
+    const exposedAt = match[3]
+    const block = match[0]
+
+    if (seen.has(id)) continue
+
+    // 블록 내에서 title 추출
+    const titleMatch = block.match(/\\"title\\":\\"((?:[^"\\]|\\.)*?)\\"/)
+    if (!titleMatch) continue
+    const title = unescapeRscString(titleMatch[1]).trim()
+    if (!title) continue
+
+    // 날짜 필터 (exposedAt 기준)
+    const posted = new Date(exposedAt)
+    if (!isNaN(posted.getTime())) {
+      if (posted < since) continue
+      if (until && posted >= until) continue
+    }
+
+    if (!matchesKeyword(title, keywords)) continue
+
+    seen.add(id)
     results.push({
       exchange: 'COINONE',
       sourceId: id,
       title,
-      url: `${BASE_URL}${path}`,
+      url: `${BASE_URL}/info/notice/${id}`,
     })
   }
 
