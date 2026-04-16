@@ -74,7 +74,7 @@ export default function CrawledEventManager({ onApproveNavigation }: Props) {
   const [message, setMessage] = useState<{ type: 'success' | 'error' | 'warn'; text: string } | null>(null)
 
   // 지금 수집 패널
-  const [crawlPanelOpen, setCrawlPanelOpen] = useState(false)
+  const [crawlPanelOpen, setCrawlPanelOpen] = useState(true)
   const getTodayKST = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' })
   const [sinceDate, setSinceDate] = useState(getTodayKST)
 
@@ -378,58 +378,49 @@ export default function CrawledEventManager({ onApproveNavigation }: Props) {
             </button>
           ))}
         </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => { setCrawlPanelOpen((v) => !v); setMessage(null) }}
-            disabled={crawling}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50 ${
-              crawlPanelOpen ? 'bg-blue-700' : 'bg-blue-600 hover:bg-blue-700'
-            }`}
-          >
-            <RefreshCw size={14} />
-            지금 수집
-          </button>
-        </div>
       </div>
 
-      {/* ── 지금 수집 인라인 패널 ── */}
-      {crawlPanelOpen && (
-        <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 space-y-3">
+      {/* ── 지금 수집 아코디언 ── */}
+      <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+        <button
+          onClick={() => { setCrawlPanelOpen((v) => !v); setMessage(null) }}
+          className="flex w-full items-center justify-between px-4 py-3"
+        >
           <div className="flex items-center gap-2">
-            <Calendar size={14} className="text-blue-600 shrink-0" />
-            <span className="text-sm font-medium text-gray-900">수집 시작일 지정</span>
+            <RefreshCw size={15} className="text-blue-600" />
+            <span className="text-sm font-medium text-gray-900">지금 수집</span>
           </div>
-          <div className="flex flex-col gap-1.5">
-            <input
-              type="date"
-              value={sinceDate}
-              onChange={(e) => setSinceDate(e.target.value)}
-              max={getTodayKST()}
-              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900"
-            />
-            <p className="text-xs text-gray-600 break-keep">
-              {sinceDate} 00:00 KST 이후 24시간 내 게시된 공지를 수집합니다.
-            </p>
+          {crawlPanelOpen ? <ChevronUp size={15} className="text-gray-400" /> : <ChevronDown size={15} className="text-gray-400" />}
+        </button>
+
+        {crawlPanelOpen && (
+          <div className="border-t border-gray-100 px-4 pb-4 pt-3 space-y-3">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-gray-700">수집 시작일</label>
+              <input
+                type="date"
+                value={sinceDate}
+                onChange={(e) => setSinceDate(e.target.value)}
+                max={getTodayKST()}
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900"
+              />
+              <p className="text-xs text-gray-600 break-keep">
+                {sinceDate} 00:00 KST 이후 24시간 내 게시된 공지를 수집합니다.
+              </p>
+            </div>
+            <div className="flex justify-end">
+              <button
+                onClick={runCrawl}
+                disabled={crawling}
+                className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {crawling ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+                {crawling ? '수집 중...' : '수집 시작'}
+              </button>
+            </div>
           </div>
-          <div className="flex justify-end gap-2">
-            <button
-              onClick={() => { setCrawlPanelOpen(false); setSinceDate(getTodayKST()) }}
-              disabled={crawling}
-              className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-            >
-              취소
-            </button>
-            <button
-              onClick={runCrawl}
-              disabled={crawling}
-              className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-            >
-              {crawling ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-              {crawling ? '수집 중...' : '수집 시작'}
-            </button>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* ── 메시지 ── */}
       {message && (
