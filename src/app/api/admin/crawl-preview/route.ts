@@ -283,10 +283,11 @@ function extractAmount(text: string): string | null {
 
 /**
  * 리워드 지급일 추출
- * 패턴 예: "리워드 지급일: 2026.05.15(금)", "지급일: 2026.05.15", "지급 예정일 2026.05.15"
+ * 패턴 예: "혜택 지급일 2026. 4. 22. (수)", "리워드 지급일: 2026.05.15(금)", "지급 예정일 2026.05.15"
+ * 날짜 형식: "2026.05.15" / "2026. 4. 22." (공백 포함) / "2026년 5월 15일" 등
  */
 function extractRewardDate(text: string): string | null {
-  const keywordPat = /(?:리워드\s*지급일|지급\s*예정일|지급일|보상\s*지급일)\s*[:：]?\s*(\d{4}[.년/-]\d{1,2}[.월/-]\d{1,2})/
+  const keywordPat = /(?:혜택\s*지급일|리워드\s*지급일|지급\s*예정일|지급일|보상\s*지급일)\s*[:：]?\s*(\d{4}\s*[.년/-]\s*\d{1,2}\s*[.월/-]\s*\d{1,2})/
   const m = text.match(keywordPat)
   if (m) {
     const raw = m[1]
@@ -371,5 +372,5 @@ function extractRequireApply(text: string): boolean {
  * "API를 통한 거래는 혜택 지급 대상에서 제외" 등 문구가 있으면 false
  */
 function extractApiAllowed(text: string): boolean {
-  return !/API(?:를?\s*통한?\s*거래|거래는?)\s*(?:혜택\s*)?지급\s*대상에서\s*제외|API\s*이벤트\s*제외/.test(text)
+  return !/API를?\s*통한?\s*거래는?\s*혜택\s*지급\s*대상에서\s*제외|API\s*이벤트\s*제외/.test(text)
 }
