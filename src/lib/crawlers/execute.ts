@@ -93,8 +93,21 @@ export async function executeCrawl(
 
   // ── since / until 결정 ──
   // sinceOverride 있으면: 해당 날 하루치 (00:00 KST ~ 다음날 00:00 KST)
-  // sinceOverride 없으면: 최근 13시간, until 없음
-  const since = sinceOverride ?? new Date(Date.now() - 13 * 60 * 60 * 1000)
+  // sinceOverride 없으면: crawler_settings.crawl_interval_hours + 1시간 여유
+  //   (interval이 2시간이면 since는 3시간 전 — 누락 방지 1시간 오버랩)
+  let lookbackHours = 13
+  if (!sinceOverride) {
+    const { data: intervalSetting } = await db
+      .from('crawler_settings')
+      .select('value')
+      .eq('key', 'crawl_interval_hours')
+      .maybeSingle()
+    const intervalHours = parseInt(intervalSetting?.value ?? '12')
+    if (!isNaN(intervalHours) && intervalHours > 0) {
+      lookbackHours = intervalHours + 1
+    }
+  }
+  const since = sinceOverride ?? new Date(Date.now() - lookbackHours * 60 * 60 * 1000)
   const until = sinceOverride
     ? new Date(sinceOverride.getTime() + 24 * 60 * 60 * 1000)
     : undefined
