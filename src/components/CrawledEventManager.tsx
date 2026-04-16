@@ -56,12 +56,10 @@ interface Props {
   onApproveNavigation: (item: ApproveItem) => void
 }
 
-const INTERVAL_OPTIONS = [
-  { value: 4,  label: '4시간' },
-  { value: 6,  label: '6시간' },
-  { value: 12, label: '12시간' },
-  { value: 24, label: '24시간' },
-]
+const INTERVAL_MIN = 2
+const INTERVAL_MAX = 23
+const PERIOD_MIN = 1
+const PERIOD_MAX = 7
 
 // ═══════════════════════════════════════════════════════
 export default function CrawledEventManager({ onApproveNavigation }: Props) {
@@ -87,7 +85,8 @@ export default function CrawledEventManager({ onApproveNavigation }: Props) {
 
   // 수집 설정 패널
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [intervalHours, setIntervalHours] = useState(12)
+  const [intervalHours, setIntervalHours] = useState(2)
+  const [periodDays, setPeriodDays] = useState(2)
   const [nextCrawlAt, setNextCrawlAt] = useState<string | null>(null)
   const [settingsSaving, setSettingsSaving] = useState(false)
 
@@ -140,6 +139,7 @@ export default function CrawledEventManager({ onApproveNavigation }: Props) {
       const res = await fetch('/api/admin/crawler-settings')
       const data = await res.json()
       if (data.crawl_interval_hours) setIntervalHours(data.crawl_interval_hours)
+      if (data.crawl_period_days) setPeriodDays(data.crawl_period_days)
       setNextCrawlAt(data.next_crawl_at ?? null)
     } catch {
       // 조회 실패 시 기본값 유지
@@ -155,12 +155,18 @@ export default function CrawledEventManager({ onApproveNavigation }: Props) {
       const res = await fetch('/api/admin/crawler-settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ crawl_interval_hours: intervalHours }),
+        body: JSON.stringify({
+          crawl_interval_hours: intervalHours,
+          crawl_period_days: periodDays,
+        }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? '저장 실패')
       setNextCrawlAt(data.next_crawl_at)
-      setMessage({ type: 'success', text: `수집 주기가 ${intervalHours}시간으로 저장되었습니다.` })
+      setMessage({
+        type: 'success',
+        text: `자동 수집 설정이 저장되었습니다 (최근 ${periodDays}일치 · ${intervalHours}시간마다).`,
+      })
     } catch (e) {
       setMessage({ type: 'error', text: e instanceof Error ? e.message : '설정 저장 실패' })
     } finally {
@@ -396,13 +402,11 @@ export default function CrawledEventManager({ onApproveNavigation }: Props) {
               type="date"
               value={sinceDate}
               onChange={(e) => setSinceDate(e.target.value)}
-              max={new Date().toISOString().slice(0, 10)}
+              max={getTodayKST()}
               className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900"
             />
             <p className="text-xs text-gray-600 break-keep">
-              {sinceDate
-                ? `${sinceDate} 00:00 KST 이후 게시된 공지를 수집합니다. 5분 쿨다운이 면제됩니다.`
-                : '비워두면 최근 13시간 기준으로 수집합니다. (기본값)'}
+              {sinceDate} 00:00 KST 이후 24시간 내 게시된 공지를 수집합니다.
             </p>
           </div>
           <div className="flex justify-end gap-2">
@@ -557,7 +561,7 @@ export default function CrawledEventManager({ onApproveNavigation }: Props) {
             <Settings size={15} className="text-blue-500" />
             <span className="text-sm font-medium text-gray-900">자동 수집 설정</span>
             <span className="text-xs text-gray-600">
-              {intervalHours}시간마다
+              최근 {periodDays}일 · {intervalHours}시간마다
             </span>
           </div>
           {settingsOpen ? <ChevronUp size={15} className="text-gray-400" /> : <ChevronDown size={15} className="text-gray-400" />}
@@ -566,31 +570,61 @@ export default function CrawledEventManager({ onApproveNavigation }: Props) {
         {settingsOpen && (
           <div className="border-t border-gray-100 px-4 pb-4 pt-3 space-y-4">
 
-            {/* 주기 선택 */}
+            {/* 기간 입력 */}
+            <div>
+              <p className="mb-2 text-xs font-medium text-gray-700">수집 기간</p>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-700">최근</span>
+                <input
+                  type="number"
+                  min={PERIOD_MIN}
+                  max={PERIOD_MAX}
+                  step={1}
+                  value={periodDays}
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value, 10)
+                    if (!isNaN(v)) setPeriodDays(v)
+                  }}
+                  onBlur={(e) => {
+                    const v = parseInt(e.target.value, 10)
+                    if (isNaN(v) || v < PERIOD_MIN) setPeriodDays(PERIOD_MIN)
+                    else if (v > PERIOD_MAX) setPeriodDays(PERIOD_MAX)
+                  }}
+                  className="w-20 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 text-right"
+                />
+                <span className="text-sm text-gray-700">일치</span>
+              </div>
+              <p className="mt-1.5 text-[11px] text-gray-600 break-keep">
+                매 실행마다 오늘 00:00 KST로부터 최근 N일 범위를 재스캔합니다. (허용: {PERIOD_MIN}~{PERIOD_MAX}일 정수)
+              </p>
+            </div>
+
+            {/* 주기 입력 */}
             <div>
               <p className="mb-2 text-xs font-medium text-gray-700">수집 주기</p>
-              <div className="flex gap-2 flex-wrap">
-                {INTERVAL_OPTIONS.map((opt) => (
-                  <label
-                    key={opt.value}
-                    className={`flex cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-2 text-sm transition-colors ${
-                      intervalHours === opt.value
-                        ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium'
-                        : 'border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="interval"
-                      value={opt.value}
-                      checked={intervalHours === opt.value}
-                      onChange={() => setIntervalHours(opt.value)}
-                      className="sr-only"
-                    />
-                    {opt.label}
-                  </label>
-                ))}
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min={INTERVAL_MIN}
+                  max={INTERVAL_MAX}
+                  step={1}
+                  value={intervalHours}
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value, 10)
+                    if (!isNaN(v)) setIntervalHours(v)
+                  }}
+                  onBlur={(e) => {
+                    const v = parseInt(e.target.value, 10)
+                    if (isNaN(v) || v < INTERVAL_MIN) setIntervalHours(INTERVAL_MIN)
+                    else if (v > INTERVAL_MAX) setIntervalHours(INTERVAL_MAX)
+                  }}
+                  className="w-20 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 text-right"
+                />
+                <span className="text-sm text-gray-700">시간마다</span>
               </div>
+              <p className="mt-1.5 text-[11px] text-gray-600 break-keep">
+                허용 범위: {INTERVAL_MIN} ~ {INTERVAL_MAX}시간 (정수)
+              </p>
             </div>
 
             {/* 다음 수집 예정 */}
