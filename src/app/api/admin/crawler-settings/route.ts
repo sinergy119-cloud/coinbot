@@ -11,6 +11,7 @@ import { NextRequest } from 'next/server'
 import { getSession } from '@/lib/session'
 import { isAdmin } from '@/lib/admin'
 import { createServerClient } from '@/lib/supabase'
+import { getNextScheduledTime } from '@/lib/crawlers/execute'
 
 const VALID_INTERVALS = [6, 12, 24]
 
@@ -55,8 +56,8 @@ export async function POST(req: NextRequest) {
 
   const db = createServerClient()
 
-  // 설정 저장 + next_crawl_at = 지금부터 interval 시간 후
-  const nextCrawlAt = new Date(Date.now() + intervalHours * 60 * 60 * 1000).toISOString()
+  // 설정 저장 + next_crawl_at = 다음 고정 스케줄 시각 (KST 0/6/12/18시)
+  const nextCrawlAt = getNextScheduledTime(intervalHours).toISOString()
 
   await db.from('crawler_settings').upsert([
     { key: 'crawl_interval_hours', value: String(intervalHours) },

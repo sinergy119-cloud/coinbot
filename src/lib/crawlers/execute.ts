@@ -22,6 +22,30 @@ const EXCHANGE_LABELS: Record<string, string> = {
   GOPAX: '고팍스',
 }
 
+/**
+ * 다음 고정 스케줄 시각 계산 (KST 기준 고정 시간)
+ *  6h  → 0시·6시·12시·18시 (KST)
+ * 12h  → 0시·12시 (KST)
+ * 24h  → 0시 (KST)
+ */
+export function getNextScheduledTime(intervalHours: number): Date {
+  const KST_OFFSET_MS = 9 * 60 * 60 * 1000
+  const scheduledKstHours: Record<number, number[]> = {
+    6:  [0, 6, 12, 18],
+    12: [0, 12],
+    24: [0],
+  }
+  const hours = scheduledKstHours[intervalHours] ?? [0, 12]
+  const kstNowMs = Date.now() + KST_OFFSET_MS
+  const kstHour = Math.floor((kstNowMs % 86400000) / 3600000)
+  const nextHour = hours.find((h) => h > kstHour)
+  const targetKstHour = nextHour ?? hours[0]
+  const daysOffset = nextHour !== undefined ? 0 : 1
+  const kstDayStartMs = Math.floor(kstNowMs / 86400000) * 86400000
+  const targetKstMs = kstDayStartMs + targetKstHour * 3600000 + daysOffset * 86400000
+  return new Date(targetKstMs - KST_OFFSET_MS)
+}
+
 export interface ExecuteResult {
   message: string
   found: number
@@ -234,7 +258,7 @@ async function updateNextCrawlAt(db: SupabaseClient<any, any, any>) {
     .maybeSingle()
 
   const intervalHours = parseInt(intervalSetting?.value ?? '12')
-  const nextCrawlAt = new Date(Date.now() + intervalHours * 60 * 60 * 1000).toISOString()
+  const nextCrawlAt = getNextScheduledTime(intervalHours).toISOString()
 
   await db
     .from('crawler_settings')

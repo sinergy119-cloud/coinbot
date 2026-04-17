@@ -64,6 +64,25 @@ const INTERVAL_PRESETS = [
   { hours: 24, label: '24시간', desc: '24시 (KST)' },
 ]
 
+/** 다음 고정 스케줄 시각 계산 (클라이언트용) */
+function getNextScheduledTime(intervalHours: number): Date {
+  const KST_OFFSET_MS = 9 * 60 * 60 * 1000
+  const scheduledKstHours: Record<number, number[]> = {
+    6:  [0, 6, 12, 18],
+    12: [0, 12],
+    24: [0],
+  }
+  const hours = scheduledKstHours[intervalHours] ?? [0, 12]
+  const kstNowMs = Date.now() + KST_OFFSET_MS
+  const kstHour = Math.floor((kstNowMs % 86400000) / 3600000)
+  const nextHour = hours.find((h) => h > kstHour)
+  const targetKstHour = nextHour ?? hours[0]
+  const daysOffset = nextHour !== undefined ? 0 : 1
+  const kstDayStartMs = Math.floor(kstNowMs / 86400000) * 86400000
+  const targetKstMs = kstDayStartMs + targetKstHour * 3600000 + daysOffset * 86400000
+  return new Date(targetKstMs - KST_OFFSET_MS)
+}
+
 // ═══════════════════════════════════════════════════════
 export default function CrawledEventManager({ onApproveNavigation }: Props) {
   // 탭·상태
@@ -89,7 +108,6 @@ export default function CrawledEventManager({ onApproveNavigation }: Props) {
   // 수집 설정 패널
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [intervalHours, setIntervalHours] = useState(12)
-  const [nextCrawlAt, setNextCrawlAt] = useState<string | null>(null)
   const [settingsSaving, setSettingsSaving] = useState(false)
 
   // 수집 이력 패널
@@ -141,7 +159,6 @@ export default function CrawledEventManager({ onApproveNavigation }: Props) {
       const res = await fetch('/api/admin/crawler-settings')
       const data = await res.json()
       if (data.crawl_interval_hours) setIntervalHours(data.crawl_interval_hours)
-      setNextCrawlAt(data.next_crawl_at ?? null)
     } catch {
       // 조회 실패 시 기본값 유지
     }
@@ -162,7 +179,6 @@ export default function CrawledEventManager({ onApproveNavigation }: Props) {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? '저장 실패')
-      setNextCrawlAt(data.next_crawl_at)
       setMessage({
         type: 'success',
         text: `자동 수집 설정이 저장되었습니다 (매 ${intervalHours}시간마다 · 기간: 어제~오늘 고정).`,
@@ -350,13 +366,6 @@ export default function CrawledEventManager({ onApproveNavigation }: Props) {
         )}
       </span>
     )
-  }
-
-  // ─────────────────────────────────────────────
-  // 다음 수집 예정 시각 포맷
-  function formatNextCrawl(iso: string | null) {
-    if (!iso) return '—'
-    return new Date(iso).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })
   }
 
   // ═══ 렌더링 ═══
@@ -622,10 +631,7 @@ export default function CrawledEventManager({ onApproveNavigation }: Props) {
               <p className="text-xs text-gray-600 break-keep">
                 <span className="font-medium text-gray-700">다음 수집 예정</span>
                 {' '}
-                {formatNextCrawl(nextCrawlAt)}
-              </p>
-              <p className="mt-1 text-[11px] text-gray-600 break-keep">
-                저장 시 지금으로부터 {intervalHours}시간 후로 재설정됩니다.
+                {getNextScheduledTime(intervalHours).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}
               </p>
             </div>
 
