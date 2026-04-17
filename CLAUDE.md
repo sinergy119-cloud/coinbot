@@ -21,7 +21,7 @@
 - **서버**: AWS EC2 (`43.203.100.239`), Amazon Linux 2, Node.js 20
 - **프로세스**: pm2 (`coinbot` — 포트 3000)
 - **배포 흐름**: 로컬 `git push` → EC2 `git pull` + `npm run build` + `pm2 restart coinbot`
-- **cron**: pm2 cron `0 0,12 * * *` → `POST /api/cron/crawl-events` (12시간마다 크롤링)
+- **cron**: pm2 cron `0 3,15 * * *` (UTC) = KST 12시·24시 → `POST /api/cron/crawl-events` (12시간마다 크롤링)
 - **SSH 접속**: `ssh -i C:\Users\ADMIN\.ssh\coinbot-key.pem ec2-user@43.203.100.239`
 
 ### DB 테이블 목록 (Supabase)
@@ -86,10 +86,13 @@ src/
 
 ## 절대 규칙 (이 규칙을 어기면 멈추고 알려주세요)
 
-### 0. 시간 표시 규칙
+### 0. 시간 표시 규칙 (절대 원칙)
 
-- 개발 시 화면에 표시되는 시간은 기본적으로 **한국시간(KST, Asia/Seoul)**으로 한다.
-- 서버/API에서 시간 처리 시 `toLocaleString('en-US', { timeZone: 'Asia/Seoul' })` 또는 `TZ=Asia/Seoul` 환경변수 사용.
+- **UI에 표시되는 모든 시간은 예외 없이 한국시간(KST, Asia/Seoul) 기준**으로 한다.
+- cron 스케줄, 수집 주기, 다음 실행 예정 시각 등 시간 관련 모든 표시·설명도 KST 기준으로 작성한다.
+- EC2 cron은 UTC로 설정하더라도 사용자에게 노출되는 시간은 반드시 KST로 변환하여 표시한다.
+- 서버/API에서 시간 처리 시 `toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })` 또는 `TZ=Asia/Seoul` 환경변수 사용.
+- **"UTC 기준"이라는 표현은 UI에 절대 노출하지 않는다.**
 
 ---
 
