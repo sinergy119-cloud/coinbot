@@ -614,53 +614,65 @@ export default function LoginPage() {
             <span className="text-xs text-gray-600">간편 로그인</span>
             <div className="h-px flex-1 bg-gray-200" />
           </div>
-            <div className="flex gap-2">
-              {/* 카카오 로그인 */}
-              <button
-                type="button"
-                onClick={() => {
-                  const clientId = process.env.NEXT_PUBLIC_KAKAO_REST_API_KEY
-                  const redirectUri = `${window.location.origin}/api/auth/kakao/callback`
-                  const state = Math.random().toString(36).slice(2)
-                  sessionStorage.setItem('oauth_state', state)
-                  window.location.href = `https://kauth.kakao.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&state=${state}`
-                }}
-                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#FEE500] py-2.5 text-sm font-medium text-[#3C1E1E] hover:brightness-95 transition"
-              >
-                💬 카카오
-              </button>
-              {/* 네이버 로그인 */}
-              <button
-                type="button"
-                onClick={() => {
-                  const clientId = process.env.NEXT_PUBLIC_NAVER_CLIENT_ID
-                  if (!clientId) { setSocialLoginMsg('네이버'); return }
-                  const redirectUri = `${window.location.origin}/api/auth/naver/callback`
-                  const state = Math.random().toString(36).slice(2)
-                  sessionStorage.setItem('oauth_state', state)
-                  window.location.href = `https://nid.naver.com/oauth2.0/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&state=${state}`
-                }}
-                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#03C75A] py-2.5 text-sm font-medium text-white hover:brightness-95 transition"
-              >
-                N 네이버
-              </button>
-              {/* 구글 로그인 */}
-              <button
-                type="button"
-                onClick={() => {
-                  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
-                  if (!clientId) { setSocialLoginMsg('구글'); return }
-                  const redirectUri = `${window.location.origin}/api/auth/google/callback`
-                  const state = Math.random().toString(36).slice(2)
-                  sessionStorage.setItem('oauth_state', state)
-                  window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=openid+email+profile&state=${state}`
-                }}
-                className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
-              >
-                <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.08 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-3.59-13.46-8.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
-                구글
-              </button>
-            </div>
+          <div className="flex flex-col gap-2.5">
+            {/* 카카오 로그인 */}
+            <button
+              type="button"
+              onClick={() => {
+                const clientId = process.env.NEXT_PUBLIC_KAKAO_REST_API_KEY
+                const redirectUri = `${window.location.origin}/api/auth/kakao/callback`
+                const state = Math.random().toString(36).slice(2)
+                sessionStorage.setItem('oauth_state', state)
+                window.location.href = `https://kauth.kakao.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&state=${state}`
+              }}
+              className="relative flex w-full items-center justify-center rounded-xl bg-[#FEE500] py-3 text-sm font-semibold text-[#3C1E1E] hover:brightness-95 transition"
+            >
+              <span className="absolute left-3.5 flex items-center justify-center">
+                <svg width="22" height="22" viewBox="0 0 40 40">
+                  <ellipse cx="20" cy="19" rx="17" ry="15" fill="#3C1E1E"/>
+                  <circle cx="13" cy="19" r="2.5" fill="#FEE500"/>
+                  <circle cx="20" cy="19" r="2.5" fill="#FEE500"/>
+                  <circle cx="27" cy="19" r="2.5" fill="#FEE500"/>
+                  <polygon points="14,26 17,32 23,26" fill="#FEE500"/>
+                </svg>
+              </span>
+              카카오로 시작하기
+            </button>
+            {/* 네이버 로그인 */}
+            <button
+              type="button"
+              onClick={() => {
+                const clientId = process.env.NEXT_PUBLIC_NAVER_CLIENT_ID
+                if (!clientId) { setSocialLoginMsg('네이버'); return }
+                const redirectUri = `${window.location.origin}/api/auth/naver/callback`
+                const state = Math.random().toString(36).slice(2)
+                sessionStorage.setItem('oauth_state', state)
+                window.location.href = `https://nid.naver.com/oauth2.0/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&state=${state}`
+              }}
+              className="relative flex w-full items-center justify-center rounded-xl bg-[#03C75A] py-3 text-sm font-semibold text-white hover:brightness-95 transition"
+            >
+              <span className="absolute left-3.5 flex h-[22px] w-[22px] items-center justify-center rounded bg-white text-[13px] font-black text-[#03C75A]">N</span>
+              네이버로 시작하기
+            </button>
+            {/* 구글 로그인 */}
+            <button
+              type="button"
+              onClick={() => {
+                const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
+                if (!clientId) { setSocialLoginMsg('구글'); return }
+                const redirectUri = `${window.location.origin}/api/auth/google/callback`
+                const state = Math.random().toString(36).slice(2)
+                sessionStorage.setItem('oauth_state', state)
+                window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=openid+email+profile&state=${state}`
+              }}
+              className="relative flex w-full items-center justify-center rounded-xl border border-gray-200 bg-white py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition"
+            >
+              <span className="absolute left-3.5 flex items-center justify-center">
+                <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.08 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-3.59-13.46-8.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
+              </span>
+              Google로 시작하기
+            </button>
+          </div>
         </div>
 
         {/* 카카오톡 1:1 문의 (비회원용) */}
