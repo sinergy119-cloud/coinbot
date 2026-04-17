@@ -59,9 +59,9 @@ interface Props {
 }
 
 const INTERVAL_PRESETS = [
-  { hours: 6,  label: '6시간',  desc: '6시 · 12시 · 18시 · 24시' },
-  { hours: 12, label: '12시간', desc: '12시 · 24시' },
-  { hours: 24, label: '24시간', desc: '24시' },
+  { hours: 6,  label: '6시간',  desc: '6시 · 12시 · 18시 · 24시 (KST)' },
+  { hours: 12, label: '12시간', desc: '12시 · 24시 (KST)' },
+  { hours: 24, label: '24시간', desc: '24시 (KST)' },
 ]
 
 // ═══════════════════════════════════════════════════════
