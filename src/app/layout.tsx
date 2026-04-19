@@ -18,6 +18,13 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://mycoinbot.duckdns.org"),
   title: "MyCoinBot",
   description: "코인 에어드랍 이벤트용 · 스케줄 등록으로 자동 실행",
+  manifest: "/manifest.json",
+  themeColor: "#111827",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "MyCoinBot",
+  },
   openGraph: {
     title: "MyCoinBot",
     description: "코인 에어드랍 이벤트용 · 스케줄 등록으로 자동 실행",

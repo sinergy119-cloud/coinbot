@@ -7,7 +7,63 @@ import {
   getCoinBalance,
 } from '@/lib/exchange'
 import { sendTelegramMessage } from '@/lib/telegram'
+import { sendFCMToTokens } from '@/lib/push'
 import type { Exchange, TradeType, TradeJobRow } from '@/types/database'
+
+// 앱 사용자 job — account_ids 비어있으면 FCM으로 실행 트리거
+async function dispatchAppJob(
+  db: ReturnType<typeof createServerClient>,
+  job: TradeJobRow,
+  today: string,
+  now: Date,
+): Promise<{ ok: boolean; tokensCount: number; sent: number; reason?: string }> {
+  const { data: subs } = await db
+    .from('push_subscriptions')
+    .select('endpoint')
+    .eq('user_id', job.user_id)
+  const tokens = (subs ?? []).map((s) => s.endpoint as string)
+  if (tokens.length === 0) {
+    // 구독 없음 — 실행 불가. 중복 방지 위해 last_executed_at 갱신 (다음 분 재시도 방지)
+    await db.from('trade_jobs').update({ last_executed_at: now.toISOString() }).eq('id', job.id)
+    return { ok: false, tokensCount: 0, sent: 0, reason: 'no_subscriptions' }
+  }
+
+  const deepLink = `/app/schedule/execute/${job.id}?date=${today}`
+  const result = await sendFCMToTokens(tokens, {
+    title: '자동 거래 실행',
+    body: `${job.exchange} ${job.coin} ${job.trade_type} — 탭해서 PIN 입력`,
+    category: 'schedule',
+    deepLink,
+    data: {
+      type: 'execute_trade',
+      jobId: job.id,
+      executionDate: today,
+      exchange: job.exchange,
+      coin: job.coin,
+      tradeType: job.trade_type,
+      amountKrw: String(job.amount_krw ?? 0),
+    },
+  })
+
+  // 만료 토큰 정리
+  if (result.invalidTokens.length > 0) {
+    await db
+      .from('push_subscriptions')
+      .delete()
+      .eq('user_id', job.user_id)
+      .in('endpoint', result.invalidTokens)
+  }
+
+  // 발송 시도 여부와 무관하게 last_executed_at 갱신 (매 분 재발송 방지)
+  // 실제 실행 결과는 앱이 /app/trade-jobs/[id]/report 로 보고 → job_executions 테이블
+  if (today === job.schedule_to) {
+    await db.from('trade_jobs').update({ status: 'completed', last_executed_at: now.toISOString() }).eq('id', job.id)
+  } else {
+    await db.from('trade_jobs').update({ last_executed_at: now.toISOString() }).eq('id', job.id)
+  }
+
+  return { ok: result.sent > 0, tokensCount: tokens.length, sent: result.sent }
+}
 
 // KST 기준 날짜/시간 반환
 function getKSTDateTime() {
@@ -91,6 +147,20 @@ export async function POST(req: NextRequest) {
   const results = []
 
   for (const job of pendingJobs) {
+    // 앱 사용자 케이스 분기: account_ids 비어있음 → FCM 발송으로 위임
+    if (!job.account_ids || job.account_ids.length === 0) {
+      const d = await dispatchAppJob(db, job, today, now)
+      results.push({
+        jobId: job.id,
+        status: d.ok ? 'DISPATCHED' : 'DISPATCH_FAILED',
+        tokensCount: d.tokensCount,
+        sent: d.sent,
+        ...(d.reason ? { reason: d.reason } : {}),
+      })
+      continue
+    }
+
+    // 기존 웹 DB 키 케이스 (관리자·위임자)
     const { data: accounts } = await db
       .from('exchange_accounts')
       .select('*')
