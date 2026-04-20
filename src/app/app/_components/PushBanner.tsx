@@ -12,6 +12,13 @@ export default function PushBanner() {
   useEffect(() => {
     if (typeof window === 'undefined') return
     if (!('Notification' in window)) return
+
+    // PWA standalone 모드 또는 모바일에서만 배너 표시
+    // 노트북 웹 브라우저에서는 숨김
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+    if (!isStandalone && !isMobile) return
+
     const permission = Notification.permission
     if (permission === 'granted') {
       setStatus('hidden')
