@@ -9,7 +9,17 @@ function getSecret() {
   return new TextEncoder().encode(raw)
 }
 
-const PUBLIC_PATHS = ['/login', '/agree', '/api/auth/', '/api/cron', '/api/markets', '/api/guide']
+const PUBLIC_PATHS = [
+  '/login',
+  '/agree',
+  '/api/auth/',
+  '/api/cron',
+  '/api/markets',
+  '/api/guide',
+  // PWA 필수 파일 — 브라우저가 설치 확인 시 로그인 전 fetch 가능해야 함
+  '/manifest.webmanifest',
+  '/firebase-messaging-sw.js',
+]
 
 export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
