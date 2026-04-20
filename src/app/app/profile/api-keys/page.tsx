@@ -248,6 +248,7 @@ function AddKeyForm({ pin, onDone, onCancel }: { pin: string; onDone: () => void
   const [secretKey, setSecretKey] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [guideOpen, setGuideOpen] = useState(false)
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
@@ -271,6 +272,47 @@ function AddKeyForm({ pin, onDone, onCancel }: { pin: string; onDone: () => void
 
   return (
     <form onSubmit={handleSave} className="flex flex-col gap-4 px-4 py-2">
+
+      {/* 거래소 가입 / API Key 가이드 */}
+      <div className="rounded-xl border border-gray-200 bg-gray-50 overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setGuideOpen((v) => !v)}
+          className="flex w-full items-center justify-between px-4 py-2.5 text-xs font-semibold text-gray-700"
+        >
+          <span>📌 처음 등록하시나요?</span>
+          <span className="text-gray-500">{guideOpen ? '접기 ▲' : '펼치기 ▼'}</span>
+        </button>
+        {guideOpen && (
+          <div className="border-t border-gray-200 px-3 py-3 flex flex-col gap-2">
+            <a
+              href="https://mycoinbot.duckdns.org/login"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-xs font-medium text-green-700"
+            >
+              <span>🏦</span>
+              <div>
+                <p className="font-semibold">거래소 가입</p>
+                <p className="font-normal text-green-600 break-keep">친구 추천 가입 링크 확인</p>
+              </div>
+            </a>
+            <a
+              href="https://mycoinbot.duckdns.org/login"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700"
+            >
+              <span>🔑</span>
+              <div>
+                <p className="font-semibold">API Key 발급 가이드</p>
+                <p className="font-normal text-amber-600 break-keep">거래소별 발급 방법 확인</p>
+              </div>
+            </a>
+          </div>
+        )}
+      </div>
+
       <div>
         <label className="text-xs text-gray-700 font-semibold">거래소</label>
         <select
