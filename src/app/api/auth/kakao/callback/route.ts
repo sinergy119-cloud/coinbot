@@ -1,8 +1,6 @@
 import { NextRequest } from 'next/server'
 import { createServerClient } from '@/lib/supabase'
 import { createSession } from '@/lib/session'
-import { sendTelegramMessage } from '@/lib/telegram'
-import { escapeHtml } from '@/lib/html'
 
 // 프록시 뒤에서 origin이 localhost로 잡히므로 실제 origin 복원
 function getOrigin(req: NextRequest) {
@@ -66,7 +64,7 @@ export async function GET(req: NextRequest) {
   const kakaoUserId = `kakao_${kakaoId}`
   const { data: existingUser } = await db
     .from('users')
-    .select('id, user_id, status')
+    .select('id, user_id, status, is_admin')
     .eq('user_id', kakaoUserId)
     .single()
 
@@ -74,6 +72,10 @@ export async function GET(req: NextRequest) {
     // 기존 사용자 → 로그인
     if (existingUser.status === 'suspended') {
       return Response.redirect(`${origin}/login?error=suspended`)
+    }
+    // 관리자가 아니면 웹 로그인 차단 (일반 사용자는 앱만 사용)
+    if (!existingUser.is_admin) {
+      return Response.redirect(`${origin}/login?error=not_admin`)
     }
     await db.from('users').update({ last_login_at: new Date().toISOString() }).eq('id', existingUser.id)
 
@@ -83,7 +85,7 @@ export async function GET(req: NextRequest) {
       await db.from('login_history').insert({ user_id: existingUser.id, ip_address: ip, user_agent: req.headers.get('user-agent')?.slice(0, 200) ?? '' })
     } catch { /* 무시 */ }
 
-    await createSession(existingUser.id, existingUser.user_id, true)
+    await createSession(existingUser.id, existingUser.user_id, true, existingUser.is_admin)
     return Response.redirect(`${origin}/?welcome=kakao`)
   }
 
@@ -91,7 +93,7 @@ export async function GET(req: NextRequest) {
   if (email) {
     const { data: emailUser } = await db
       .from('users')
-      .select('id, user_id, status')
+      .select('id, user_id, status, is_admin')
       .eq('email', email)
       .single()
 
@@ -99,54 +101,20 @@ export async function GET(req: NextRequest) {
       if (emailUser.status === 'suspended') {
         return Response.redirect(`${origin}/login?error=suspended`)
       }
+      if (!emailUser.is_admin) {
+        return Response.redirect(`${origin}/login?error=not_admin`)
+      }
       await db.from('users').update({ last_login_at: new Date().toISOString() }).eq('id', emailUser.id)
       try {
         const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown'
         await db.from('login_history').insert({ user_id: emailUser.id, ip_address: ip, user_agent: req.headers.get('user-agent')?.slice(0, 200) ?? '' })
       } catch { /* 무시 */ }
-      await createSession(emailUser.id, emailUser.user_id, true)
+      await createSession(emailUser.id, emailUser.user_id, true, emailUser.is_admin)
       return Response.redirect(`${origin}/?welcome=kakao`)
     }
   }
 
-  // 5) 신규 사용자 → 자동 가입 (이메일 인증 불필요)
-  const { data: newUser, error } = await db
-    .from('users')
-    .insert({
-      user_id: kakaoUserId,
-      password_hash: 'kakao_oauth', // 카카오 로그인은 비밀번호 없음
-      name: nickname,
-      email,
-      status: 'approved', // 카카오 인증으로 이메일 인증 대체
-    })
-    .select('id, user_id')
-    .single()
-
-  if (error || !newUser) {
-    return Response.redirect(`${origin}/login?error=kakao_signup`)
-  }
-
-  // 5) 관리자 텔레그램 알림
-  try {
-    const adminId = process.env.ADMIN_USER_ID
-    if (adminId) {
-      const { data: admin } = await db.from('users').select('telegram_chat_id').eq('user_id', adminId).single()
-      if (admin?.telegram_chat_id) {
-        const { count } = await db.from('users').select('id', { count: 'exact', head: true }).eq('status', 'approved')
-        const now = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false })
-        await sendTelegramMessage(admin.telegram_chat_id, [
-          `🎉 <b>MyCoinBot 신규 가입 (카카오)</b>`,
-          ``,
-          `닉네임: ${escapeHtml(nickname)}`,
-          email ? `이메일: ${escapeHtml(email)}` : '',
-          `가입: ${now} (KST)`,
-          ``,
-          `현재 승인 회원: ${count ?? '?'}명`,
-        ].filter(Boolean).join('\n'))
-      }
-    }
-  } catch { /* 무시 */ }
-
-  await createSession(newUser.id, newUser.user_id, true)
-  return Response.redirect(`${origin}/?welcome=kakao`)
+  // 5) 신규 사용자 → 웹은 관리자 전용이므로 자동 가입 차단
+  // (신규 사용자는 is_admin = false → 로그인 불가)
+  return Response.redirect(`${origin}/login?error=not_admin`)
 }

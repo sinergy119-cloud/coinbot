@@ -327,6 +327,7 @@ export default function LoginPage() {
         const errorMessages: Record<string, string> = {
           kakao_disabled: '카카오 로그인은 현재 준비 중입니다.',
           suspended: '이용이 정지된 계정입니다. 관리자에게 문의하세요.',
+          not_admin: '관리자 계정이 아닙니다. 일반 사용자는 앱을 이용해주세요.',
         }
         setOauthError(errorMessages[err] ?? `로그인 오류: ${err}`)
         window.history.replaceState({}, '', '/login')

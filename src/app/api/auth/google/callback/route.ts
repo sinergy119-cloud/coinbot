@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
   // 3) 기존 사용자 확인
   const { data: existingUser } = await db
     .from('users')
-    .select('id, user_id, status')
+    .select('id, user_id, status, is_admin')
     .eq('user_id', googleUserId)
     .single()
 
@@ -80,7 +80,7 @@ export async function GET(req: NextRequest) {
       await db.from('login_history').insert({ user_id: existingUser.id, ip_address: ip, user_agent: req.headers.get('user-agent')?.slice(0, 200) ?? '' })
     } catch { /* 무시 */ }
 
-    await createSession(existingUser.id, existingUser.user_id, true)
+    await createSession(existingUser.id, existingUser.user_id, true, existingUser.is_admin ?? false)
     return Response.redirect(`${origin}/?welcome=google`)
   }
 
@@ -88,7 +88,7 @@ export async function GET(req: NextRequest) {
   if (email) {
     const { data: emailUser } = await db
       .from('users')
-      .select('id, user_id, status')
+      .select('id, user_id, status, is_admin')
       .eq('email', email)
       .single()
 
@@ -101,7 +101,7 @@ export async function GET(req: NextRequest) {
         const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown'
         await db.from('login_history').insert({ user_id: emailUser.id, ip_address: ip, user_agent: req.headers.get('user-agent')?.slice(0, 200) ?? '' })
       } catch { /* 무시 */ }
-      await createSession(emailUser.id, emailUser.user_id, true)
+      await createSession(emailUser.id, emailUser.user_id, true, emailUser.is_admin ?? false)
       return Response.redirect(`${origin}/?welcome=google`)
     }
   }

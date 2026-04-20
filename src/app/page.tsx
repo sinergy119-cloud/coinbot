@@ -1,7 +1,6 @@
 import { getSession } from '@/lib/session'
 import { redirect } from 'next/navigation'
 import Dashboard from '@/components/Dashboard'
-import { isAdmin } from '@/lib/admin'
 
 export default async function Home() {
   const session = await getSession()
@@ -10,7 +9,7 @@ export default async function Home() {
     <Dashboard
       userId={session.userId}
       loginId={session.loginId}
-      isAdmin={isAdmin(session.loginId)}
+      isAdmin={session.isAdmin}
     />
   )
 }

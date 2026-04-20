@@ -1,6 +1,5 @@
 import { NextRequest } from 'next/server'
 import { getSession } from '@/lib/session'
-import { isAdmin } from '@/lib/admin'
 import { createServerClient } from '@/lib/supabase'
 
 type Params = Promise<{ id: string }>
@@ -8,7 +7,7 @@ type Params = Promise<{ id: string }>
 // DELETE /api/admin/accounts/[id] → 관리자가 임의 계정 삭제
 export async function DELETE(_req: NextRequest, { params }: { params: Params }) {
   const session = await getSession()
-  if (!session || !isAdmin(session.loginId)) {
+  if (!session || !session.isAdmin) {
     return Response.json({ error: '관리자만 접근 가능합니다.' }, { status: 403 })
   }
 
