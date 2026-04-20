@@ -52,9 +52,23 @@ export async function POST(req: NextRequest) {
     return fail('잘못된 요청 형식입니다.')
   }
 
-  const { exchange, coin, tradeType, amountKrw, source, accountLabel } = body
+  const { exchange, coin, tradeType, amountKrw, source, accountLabel, jobId, executionDate } = body
   // eslint-disable-next-line prefer-const
   let { accessKey, secretKey } = body
+
+  // H-3: 스케줄 자동 실행 중복 방지 — jobId 전달 시 job_executions 선점 체크
+  if (typeof jobId === 'string' && typeof executionDate === 'string') {
+    const db = createServerClient()
+    const { data: existing } = await db
+      .from('job_executions')
+      .select('job_id')
+      .eq('job_id', jobId)
+      .eq('execution_date', executionDate)
+      .maybeSingle()
+    if (existing) {
+      return fail('이미 다른 기기에서 실행되었습니다.', 409)
+    }
+  }
 
   if (!isValidExchange(exchange)) return fail('유효하지 않은 거래소입니다.')
   if (!isValidCoin(coin)) return fail('유효하지 않은 코인입니다.')

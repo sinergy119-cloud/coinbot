@@ -122,6 +122,9 @@ async function autoExecuteSchedule(data) {
           amountKrw: Number(amountKrw) || 0,
           accessKey: key.accessKey,
           secretKey: key.secretKey,
+          jobId,
+          executionDate: executionDate || new Date().toISOString().slice(0, 10),
+          source: 'app_schedule',
         }),
       })
       const json = await res.json()

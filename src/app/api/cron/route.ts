@@ -138,10 +138,30 @@ export async function POST(req: NextRequest) {
     return Response.json({ message: '실행 대상 없음', executed: 0 })
   }
 
-  // 2) 중복 실행 방지
+  // 2) 중복 실행 방지 + FCM 발송 후 미실행 건 재시도
+  // - 오늘 처음 실행: last_executed_at 없거나 날짜 다름 → 실행
+  // - 오늘 발송됐지만 job_executions 미기록 → 기기 오프라인 등 미실행으로 판단 → 재발송
+  const dispatchedTodayIds = jobs
+    .filter((j: TradeJobRow) => j.last_executed_at?.slice(0, 10) === today)
+    .map((j: TradeJobRow) => j.id)
+
+  const retryableIds = new Set<string>()
+  if (dispatchedTodayIds.length > 0) {
+    const { data: executed } = await db
+      .from('job_executions')
+      .select('job_id')
+      .in('job_id', dispatchedTodayIds)
+      .eq('execution_date', today)
+    const executedIds = new Set((executed ?? []).map((e: { job_id: string }) => e.job_id))
+    dispatchedTodayIds.forEach((id: string) => {
+      if (!executedIds.has(id)) retryableIds.add(id)
+    })
+  }
+
   const pendingJobs = jobs.filter((job: TradeJobRow) => {
     if (!job.last_executed_at) return true
-    return job.last_executed_at.slice(0, 10) !== today
+    if (job.last_executed_at.slice(0, 10) !== today) return true
+    return retryableIds.has(job.id) // 발송됐지만 미실행 → 재시도
   })
 
   if (pendingJobs.length === 0) {
