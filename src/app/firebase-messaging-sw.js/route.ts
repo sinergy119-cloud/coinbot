@@ -4,8 +4,14 @@
 //
 // 주의: Firebase SDK의 onBackgroundMessage는 특정 환경에서 발화하지 않는 이슈 확인됨
 // → 네이티브 push 이벤트에서 직접 처리하는 방식으로 전환 (Firebase SDK 미사용)
+//
+// Firebase config는 환경변수(NEXT_PUBLIC_FIREBASE_*)에서 런타임 주입 — git에 노출 없음
 
-const SW_CODE = `// Firebase Cloud Messaging Service Worker (native push handler)
+function buildSwCode(cfg: {
+  apiKey: string; authDomain: string; projectId: string
+  storageBucket: string; messagingSenderId: string; appId: string
+}) {
+  return `// Firebase Cloud Messaging Service Worker (native push handler)
 // design-security.md §5-4
 // - Firebase SDK는 client getToken 호환성을 위해 로드만 하고 onBackgroundMessage 미사용
 // - push 이벤트는 네이티브 핸들러에서 직접 처리
@@ -22,12 +28,12 @@ try {
   importScripts('https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js')
   importScripts('https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-compat.js')
   firebase.initializeApp({
-    apiKey: 'AIzaSyBzCtczwiDJwzGTw8v0lRRuoxI5Enlp7Zg',
-    authDomain: 'mycoinbot-app.firebaseapp.com',
-    projectId: 'mycoinbot-app',
-    storageBucket: 'mycoinbot-app.firebasestorage.app',
-    messagingSenderId: '201995976563',
-    appId: '1:201995976563:web:2af1925a084325bb5d4f06',
+    apiKey: '${cfg.apiKey}',
+    authDomain: '${cfg.authDomain}',
+    projectId: '${cfg.projectId}',
+    storageBucket: '${cfg.storageBucket}',
+    messagingSenderId: '${cfg.messagingSenderId}',
+    appId: '${cfg.appId}',
   })
   firebase.messaging()
 } catch (e) {
@@ -213,9 +219,18 @@ self.addEventListener('notificationclick', (event) => {
   )
 })
 `
+}
 
 export async function GET() {
-  return new Response(SW_CODE, {
+  const code = buildSwCode({
+    apiKey:            process.env.NEXT_PUBLIC_FIREBASE_API_KEY            ?? '',
+    authDomain:        process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN        ?? '',
+    projectId:         process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID         ?? '',
+    storageBucket:     process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET     ?? '',
+    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID ?? '',
+    appId:             process.env.NEXT_PUBLIC_FIREBASE_APP_ID             ?? '',
+  })
+  return new Response(code, {
     headers: {
       'Content-Type': 'application/javascript; charset=utf-8',
       'Service-Worker-Allowed': '/',
