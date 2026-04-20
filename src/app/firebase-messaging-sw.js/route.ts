@@ -173,33 +173,18 @@ async function handlePush(event) {
   const type = data.type || 'notification_only'
 
   // 스케줄 자동 실행 처리
+  // 성공/실패 최종 알림은 서버 /api/app/trade-jobs/[id]/report 가 담당 (중복 방지)
+  // SW는 키 미비 등 실행 불가 상황에서만 사용자 유도 알림 표시 (아래 fall-through)
   if (type === 'execute_trade' && data.jobId) {
     try {
       const result = await autoExecuteSchedule(data)
       debugLog('auto-exec-result', { ok: result.ok, reason: result.reason, error: result.error })
 
-      if (result.ok) {
-        await self.registration.showNotification('✅ 자동 거래 완료', {
-          body: data.exchange + ' ' + data.coin + ' ' + data.tradeType,
-          icon: '/icon-192.png',
-          badge: '/icon-192.png',
-          tag: 'trade-' + data.jobId,
-          data: { deepLink: '/app/schedule', type: 'auto_executed' },
-        })
-        return
-      }
+      // 성공 또는 실제 실행 후 실패 → 서버가 /report 수신 시 알림 발송 → SW 종료
+      if (result.ok) return
+      if (result.reason !== 'no_device_key' && result.reason !== 'no_auto_keys' && result.reason !== 'db_not_ready') return
 
-      if (result.reason !== 'no_device_key' && result.reason !== 'no_auto_keys' && result.reason !== 'db_not_ready') {
-        await self.registration.showNotification('❌ 자동 거래 실패', {
-          body: result.error || '거래 실행 실패. 스케줄 탭에서 확인해주세요.',
-          icon: '/icon-192.png',
-          badge: '/icon-192.png',
-          tag: 'trade-' + data.jobId,
-          data: { deepLink: '/app/schedule', type: 'auto_failed' },
-        })
-        return
-      }
-      // no_device_key / no_auto_keys / db_not_ready → 아래 탭 알림으로 fall-through
+      // no_device_key / no_auto_keys / db_not_ready → 아래 fall-through (앱 진입 유도 알림)
     } catch (e) {
       debugLog('auto-exec-error', { err: String(e) })
     }

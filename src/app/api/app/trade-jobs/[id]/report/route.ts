@@ -10,8 +10,26 @@ import { getSession } from '@/lib/session'
 import { createServerClient } from '@/lib/supabase'
 import { ok, unauthorized, notFound, fail } from '@/lib/app/response'
 import { sendNotification } from '@/lib/app/notifications'
+import { EXCHANGE_LABELS } from '@/types/database'
+import type { Exchange, TradeType } from '@/types/database'
 
 const VALID_RESULTS = ['success', 'fail', 'skip'] as const
+
+const TRADE_TYPE_LABEL: Record<TradeType, string> = {
+  BUY: '매수',
+  SELL: '매도',
+  CYCLE: '매수·매도',
+}
+
+function formatKSTTime(): string {
+  const kst = new Date().toLocaleString('ko-KR', {
+    timeZone: 'Asia/Seoul',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  })
+  return kst
+}
 
 export async function POST(
   req: NextRequest,
@@ -96,17 +114,29 @@ export async function POST(
 
   // 알림 기록 + 푸시
   const isSuccess = result === 'success'
-  const title = isSuccess ? `${job.exchange} ${job.coin} 거래 성공` : `${job.exchange} ${job.coin} 거래 실패`
+  const exchangeLabel = EXCHANGE_LABELS[job.exchange as Exchange] ?? job.exchange
+  const tradeTypeLabel = TRADE_TYPE_LABEL[job.trade_type as TradeType] ?? job.trade_type
+  const kstTime = formatKSTTime()
+  const amountKrw = Number(job.amount_krw) || 0
+
+  const title = isSuccess
+    ? `✅ ${exchangeLabel} ${job.coin} ${tradeTypeLabel} 완료`
+    : `❌ ${exchangeLabel} ${job.coin} ${tradeTypeLabel} 실패`
+
   const bodyText = isSuccess
-    ? `${job.trade_type} ${Number(job.amount_krw).toLocaleString()}원 체결 완료`
-    : (typeof errorMessage === 'string' ? errorMessage.slice(0, 100) : '실패')
+    ? (job.trade_type === 'SELL' || amountKrw === 0
+        ? `${kstTime} 체결 완료`
+        : `${amountKrw.toLocaleString()}원 · ${kstTime} 체결`)
+    : (typeof errorMessage === 'string' && errorMessage.length > 0
+        ? errorMessage.slice(0, 100)
+        : '실행 중 오류가 발생했습니다.')
 
   await sendNotification({
     userId: session.userId,
     category: 'trade_result',
     title,
     body: bodyText,
-    deepLink: `/trade-history`,
+    deepLink: `/app/notifications`,
     metadata: { jobId, exchange: job.exchange, coin: job.coin, result },
   })
 
