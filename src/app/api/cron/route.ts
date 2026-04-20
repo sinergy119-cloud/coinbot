@@ -16,7 +16,7 @@ async function dispatchAppJob(
   job: TradeJobRow,
   today: string,
   now: Date,
-): Promise<{ ok: boolean; tokensCount: number; sent: number; reason?: string }> {
+): Promise<{ ok: boolean; tokensCount: number; sent: number; reason?: string; errors?: string[] }> {
   const { data: subs } = await db
     .from('push_subscriptions')
     .select('endpoint')
@@ -62,7 +62,7 @@ async function dispatchAppJob(
     await db.from('trade_jobs').update({ last_executed_at: now.toISOString() }).eq('id', job.id)
   }
 
-  return { ok: result.sent > 0, tokensCount: tokens.length, sent: result.sent }
+  return { ok: result.sent > 0, tokensCount: tokens.length, sent: result.sent, errors: result.errors.length > 0 ? result.errors : undefined }
 }
 
 // KST 기준 날짜/시간 반환
@@ -156,6 +156,7 @@ export async function POST(req: NextRequest) {
         tokensCount: d.tokensCount,
         sent: d.sent,
         ...(d.reason ? { reason: d.reason } : {}),
+        ...(d.errors && d.errors.length > 0 ? { errors: d.errors } : {}),
       })
       continue
     }

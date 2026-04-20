@@ -40,7 +40,7 @@ export interface FCMPayload {
 }
 
 // 단일 토큰 발송
-export async function sendFCMToToken(token: string, payload: FCMPayload): Promise<{ ok: boolean; messageId?: string; error?: string }> {
+export async function sendFCMToToken(token: string, payload: FCMPayload): Promise<{ ok: boolean; messageId?: string; error?: string; errorCode?: string }> {
   try {
     initAdmin()
     const dataPayload: Record<string, string> = {
@@ -58,15 +58,17 @@ export async function sendFCMToToken(token: string, payload: FCMPayload): Promis
     return { ok: true, messageId }
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
-    return { ok: false, error: msg.slice(0, 200) }
+    const errorCode = (err as { code?: string }).code ?? ''
+    return { ok: false, error: msg.slice(0, 200), errorCode }
   }
 }
 
 // 여러 토큰 동시 발송 (다기기 수신)
 export async function sendFCMToTokens(tokens: string[], payload: FCMPayload) {
-  if (tokens.length === 0) return { sent: 0, failed: 0, invalidTokens: [] as string[] }
+  if (tokens.length === 0) return { sent: 0, failed: 0, invalidTokens: [] as string[], errors: [] as string[] }
   const results = await Promise.allSettled(tokens.map((t) => sendFCMToToken(t, payload)))
   const invalidTokens: string[] = []
+  const errors: string[] = []
   let sent = 0
   let failed = 0
   results.forEach((r, i) => {
@@ -74,11 +76,17 @@ export async function sendFCMToTokens(tokens: string[], payload: FCMPayload) {
     else {
       failed++
       // 등록 무효/만료 토큰 수거 (정리용)
-      const errMsg = r.status === 'fulfilled' ? r.value.error ?? '' : String(r.reason)
-      if (/registration-token-not-registered|invalid-argument/i.test(errMsg)) {
+      // Firebase 에러: code = "messaging/registration-token-not-registered", message = "NotRegistered"
+      const errMsg = r.status === 'fulfilled' ? (r.value.error ?? '') : String(r.reason)
+      const errCode = r.status === 'fulfilled' ? (r.value.errorCode ?? '') : ''
+      errors.push(`[${i}] ${errCode || errMsg}`.slice(0, 100))
+      if (
+        /registration-token-not-registered|invalid-argument/i.test(errCode) ||
+        /NotRegistered|InvalidRegistration/i.test(errMsg)
+      ) {
         invalidTokens.push(tokens[i])
       }
     }
   })
-  return { sent, failed, invalidTokens }
+  return { sent, failed, invalidTokens, errors }
 }
