@@ -19,33 +19,33 @@ export interface ExecutionResultItem {
   reason: string
 }
 
-// POST /api/execute ??즉시 ?�행
+// POST /api/execute → 즉시 실행
 export async function POST(req: NextRequest) {
   const session = await getSession()
-  if (!session) return Response.json({ error: '로그???�요' }, { status: 401 })
+  if (!session) return Response.json({ error: '로그인 필요' }, { status: 401 })
 
   const { exchange, coin, tradeType, amountKrw, accountIds } = await req.json()
 
   if (!isValidExchange(exchange)) {
-    return Response.json({ error: '?�효?��? ?��? 거래?�입?�다.' }, { status: 400 })
+    return Response.json({ error: '유효하지 않은 거래소입니다.' }, { status: 400 })
   }
   if (!isValidCoin(coin)) {
-    return Response.json({ error: '?�효?��? ?��? 코인?�니??' }, { status: 400 })
+    return Response.json({ error: '유효하지 않은 코인입니다.' }, { status: 400 })
   }
   if (!isValidTradeType(tradeType)) {
-    return Response.json({ error: '?�효?��? ?��? 거래 방식?�니??' }, { status: 400 })
+    return Response.json({ error: '유효하지 않은 거래 방식입니다.' }, { status: 400 })
   }
   if (!isValidUuidArray(accountIds)) {
-    return Response.json({ error: '계정???�택?�주?�요.' }, { status: 400 })
+    return Response.json({ error: '계정을 선택해주세요.' }, { status: 400 })
   }
 
   const tt = tradeType as TradeType
   const parsedAmount = parseAmountKrw(amountKrw)
 
-  // 매도??금액 불필?? 매수/?�이?��? 최소 금액 검�?
+  // 매도는 금액 불필요, 매수/사이클은 최소 금액 검증
   if (tt !== 'SELL') {
     if (parsedAmount === null || parsedAmount < 5100) {
-      return Response.json({ error: '최소 거래 금액?� 5,100?�입?�다.' }, { status: 400 })
+      return Response.json({ error: '최소 거래 금액은 5,100원입니다.' }, { status: 400 })
     }
   }
 
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
     .in('id', accountIds)
     .eq('user_id', session.userId)
 
-  // 관리자??경우: ?�임??계정???�용
+  // 관리자인 경우: 위임된 계정도 허용
   let delegatedAccounts: typeof myAccounts = []
   if (session.isAdmin) {
     const { data: delegators } = await db
@@ -78,20 +78,20 @@ export async function POST(req: NextRequest) {
 
   const accounts = [...(myAccounts ?? []), ...(delegatedAccounts ?? [])]
   if (accounts.length === 0) {
-    return Response.json({ error: '계정??찾을 ???�습?�다.' }, { status: 404 })
+    return Response.json({ error: '계정을 찾을 수 없습니다.' }, { status: 404 })
   }
 
   const upperCoin = coin.toUpperCase()
   const orderSummary = tt === 'CYCLE'
-    ? `${upperCoin}/KRW 매수(?�장가) & 매도(?�장가, ?�체 ?�량) ${(parsedAmount ?? 0).toLocaleString()}??
+    ? `${upperCoin}/KRW 매수(시장가) & 매도(시장가, 전체 수량) ${(parsedAmount ?? 0).toLocaleString()}원`
     : tt === 'SELL'
-    ? `${upperCoin}/KRW ?�량 매도(?�장가)`
-    : `${upperCoin}/KRW 매수(?�장가) ${(parsedAmount ?? 0).toLocaleString()}??
+    ? `${upperCoin}/KRW 전량 매도(시장가)`
+    : `${upperCoin}/KRW 매수(시장가) ${(parsedAmount ?? 0).toLocaleString()}원`
 
-  // ?��? ?�시???�행 (planning.md 8.4)
+  // 전부 동시에 실행 (planning.md 8.4)
   const results: ExecutionResultItem[] = await Promise.all(
     accounts.map(async (acc) => {
-      // ?�행 ???�고 조회
+      // 실행 전 잔고 조회
       let balanceBefore = 0
       try {
         const bb = await getBalance(exchange as Exchange, acc.access_key, acc.secret_key)
@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
       } catch { /* 무시 */ }
 
       try {
-        // CYCLE: 매수 ???�량 매도
+        // CYCLE: 매수 후 전량 매도
         if (tt === 'CYCLE') {
           const result = await placeCycleOrder(
             exchange as Exchange,
@@ -127,7 +127,7 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        // SELL: 보유 코인 ?�량 매도
+        // SELL: 보유 코인 전량 매도
         if (tt === 'SELL') {
           const coinQty = await getCoinBalance(exchange as Exchange, acc.access_key, acc.secret_key, coin)
           if (coinQty <= 0) {
@@ -139,7 +139,7 @@ export async function POST(req: NextRequest) {
               balanceBefore,
               balance: 0,
               success: false,
-              reason: `FAIL (보유 ${upperCoin} ?�음)`,
+              reason: `FAIL (보유 ${upperCoin} 없음)`,
             }
           }
           const result = await placeMarketOrderByCoinQty(
@@ -166,7 +166,7 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        // BUY: ?�장가 매수
+        // BUY: 시장가 매수
         const result = await placeMarketOrder(
           exchange as Exchange,
           acc.access_key,
@@ -180,7 +180,7 @@ export async function POST(req: NextRequest) {
         try {
           const bal = await getBalance(exchange as Exchange, acc.access_key, acc.secret_key)
           balance = bal.krw
-        } catch { /* ?�고 조회 ?�패??무시 */ }
+        } catch { /* 잔고 조회 실패는 무시 */ }
 
         return {
           accountId: acc.id,
@@ -193,7 +193,7 @@ export async function POST(req: NextRequest) {
           reason: result.success ? 'SUCCESS' : `FAIL (${result.reason})`,
         }
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : '?????�는 ?�류'
+        const msg = err instanceof Error ? err.message : '알 수 없는 오류'
         return {
           accountId: acc.id,
           accountName: acc.account_name,
@@ -208,7 +208,7 @@ export async function POST(req: NextRequest) {
     }),
   )
 
-  // 거래 ?�행 로그 ?�??
+  // 거래 실행 로그 저장
   try {
     const logs = results.map((r) => ({
       user_id: session.userId,
@@ -226,9 +226,9 @@ export async function POST(req: NextRequest) {
       source: 'manual',
     }))
     await db.from('trade_logs').insert(logs)
-  } catch { /* 로그 ?�???�패??무시 */ }
+  } catch { /* 로그 저장 실패는 무시 */ }
 
-  // ?�레그램 ?�림: ?�신?�별 본인 계정 결과�??�터�?
+  // 텔레그램 알림: 수신자별 본인 계정 결과만 필터링
   try {
     const accOwnerMap = new Map<string, string>()
     for (const acc of accounts) accOwnerMap.set(acc.id, acc.user_id)
@@ -254,23 +254,23 @@ export async function POST(req: NextRequest) {
 
       const successCount = filtered.filter((r) => r.success).length
       const failCount = filtered.length - successCount
-      const icon = failCount === 0 ? '?? : successCount === 0 ? '?? : '?�️'
+      const icon = failCount === 0 ? '✅' : successCount === 0 ? '❌' : '⚠️'
       const showAdmin = !isExecutor
       const msg = [
-        `${icon} <b>MyCoinBot 즉시 ?�행 결과</b>`,
-        ...(showAdmin ? [``, `?�� ?�행?? MyCoinBot`] : []),
+        `${icon} <b>MyCoinBot 즉시 실행 결과</b>`,
+        ...(showAdmin ? [``, `🔑 실행자: MyCoinBot`] : []),
         ``,
-        `거래?? ${exchange}`,
+        `거래소: ${exchange}`,
         `코인: ${upperCoin}`,
         `방식: ${TRADE_TYPE_LABEL[tradeType] ?? tradeType}`,
-        tt !== 'SELL' ? `금액: ${(parsedAmount ?? 0).toLocaleString()}?? : '',
+        tt !== 'SELL' ? `금액: ${(parsedAmount ?? 0).toLocaleString()}원` : '',
         ``,
-        `<b>계정�?결과 (${successCount}?�공 / ${failCount}?�패)</b>`,
-        ...filtered.map((r) => `${r.success ? '?? : '??} ${r.accountName}${r.success ? '' : `: ${r.reason}`}`),
+        `<b>계정별 결과 (${successCount}성공 / ${failCount}실패)</b>`,
+        ...filtered.map((r) => `${r.success ? '✅' : '❌'} ${r.accountName}${r.success ? '' : `: ${r.reason}`}`),
       ].filter(Boolean).join('\n')
       await sendTelegramMessage(tu.telegram_chat_id, msg)
     }
-  } catch { /* ?�림 ?�패??무시 */ }
+  } catch { /* 알림 실패는 무시 */ }
 
   return Response.json(results)
 }

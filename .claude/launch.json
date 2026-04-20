@@ -6,6 +6,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
       "port": 3002
+    },
+    {
+      "name": "HTML Preview",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", ".claude", "-p", "3099", "--no-clipboard"],
+      "port": 3099
     }
   ]
 }
