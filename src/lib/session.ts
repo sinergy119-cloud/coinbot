@@ -12,15 +12,16 @@ function getSecret(): Uint8Array {
 }
 
 export interface SessionPayload {
-  userId: string   // users.id (UUID)
-  loginId: string  // users.user_id (로그인 ID)
+  userId: string    // users.id (UUID)
+  loginId: string   // users.user_id (로그인 ID)
+  isAdmin: boolean  // users.is_admin (DB 기반)
 }
 
 // JWT 생성 → httpOnly 세션 쿠키 저장
 // autoLogin=true → 30일 유지, false → 7일 유지
-export async function createSession(userId: string, loginId: string, autoLogin = false) {
+export async function createSession(userId: string, loginId: string, autoLogin = false, isAdmin = false) {
   const days = autoLogin ? 30 : 7
-  const token = await new SignJWT({ userId, loginId } satisfies SessionPayload)
+  const token = await new SignJWT({ userId, loginId, isAdmin } satisfies SessionPayload)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime(`${days}d`)
@@ -44,7 +45,11 @@ export async function getSession(): Promise<SessionPayload | null> {
 
   try {
     const { payload } = await jwtVerify(token, getSecret())
-    return { userId: payload.userId as string, loginId: payload.loginId as string }
+    return {
+      userId: payload.userId as string,
+      loginId: payload.loginId as string,
+      isAdmin: (payload.isAdmin as boolean) ?? false,  // 구 토큰 호환
+    }
   } catch {
     return null
   }

@@ -1,7 +1,6 @@
 import { NextRequest } from 'next/server'
 import { getSession } from '@/lib/session'
 import { createServerClient } from '@/lib/supabase'
-import { isAdmin } from '@/lib/admin'
 import { validateMarket, getBalance, getCoinBalance, getCurrentPrice } from '@/lib/exchange'
 import { isValidExchange, isValidTradeType, isValidCoin, isValidUuidArray, parseAmountKrw } from '@/lib/validation'
 import type { Exchange } from '@/types/database'
@@ -11,41 +10,41 @@ export interface ValidationItem {
   exchange: string
   accountName: string
   orderSummary: string
-  balance: number       // KRW 잔고 (BUY/CYCLE), SELL일 때는 0
-  coinQty?: number      // SELL: 보유 코인 수량
-  coin?: string         // SELL: 코인 심볼
+  balance: number       // KRW ?�고 (BUY/CYCLE), SELL???�는 0
+  coinQty?: number      // SELL: 보유 코인 ?�량
+  coin?: string         // SELL: 코인 ?�볼
   feasible: boolean
   reason: string
 }
 
-// POST /api/validate → 실행 전 검증
+// POST /api/validate ???�행 ??검�?
 export async function POST(req: NextRequest) {
   const session = await getSession()
-  if (!session) return Response.json({ error: '로그인 필요' }, { status: 401 })
+  if (!session) return Response.json({ error: '로그???�요' }, { status: 401 })
 
   const { exchange, coin, tradeType, amountKrw, accountIds } = await req.json()
 
   if (!isValidExchange(exchange)) {
-    return Response.json({ error: '유효하지 않은 거래소입니다.' }, { status: 400 })
+    return Response.json({ error: '?�효?��? ?��? 거래?�입?�다.' }, { status: 400 })
   }
   if (!isValidCoin(coin)) {
-    return Response.json({ error: '유효하지 않은 코인입니다.' }, { status: 400 })
+    return Response.json({ error: '?�효?��? ?��? 코인?�니??' }, { status: 400 })
   }
   if (!isValidTradeType(tradeType)) {
-    return Response.json({ error: '유효하지 않은 거래 방식입니다.' }, { status: 400 })
+    return Response.json({ error: '?�효?��? ?��? 거래 방식?�니??' }, { status: 400 })
   }
   if (!isValidUuidArray(accountIds)) {
-    return Response.json({ error: '계정을 선택해주세요.' }, { status: 400 })
+    return Response.json({ error: '계정???�택?�주?�요.' }, { status: 400 })
   }
   const parsedAmount = parseAmountKrw(amountKrw)
 
-  // 1) 코인 유효성 검증
+  // 1) 코인 ?�효??검�?
   const { valid, symbol } = await validateMarket(exchange as Exchange, coin)
   if (!valid) {
-    return Response.json({ error: `${coin}은(는) ${exchange}에서 지원하지 않는 코인입니다.` }, { status: 400 })
+    return Response.json({ error: `${coin}?�(?? ${exchange}?�서 지?�하지 ?�는 코인?�니??` }, { status: 400 })
   }
 
-  // 2) 선택된 계정 목록 조회 (본인 + 관리자일 때 위임 계정)
+  // 2) ?�택??계정 목록 조회 (본인 + 관리자?????�임 계정)
   const db = createServerClient()
   const { data: myAccounts } = await db
     .from('exchange_accounts')
@@ -54,7 +53,7 @@ export async function POST(req: NextRequest) {
     .eq('user_id', session.userId)
 
   let delegatedAccounts: typeof myAccounts = []
-  if (isAdmin(session.loginId)) {
+  if (session.isAdmin) {
     const { data: delegators } = await db
       .from('users')
       .select('id')
@@ -72,32 +71,32 @@ export async function POST(req: NextRequest) {
 
   const accounts = [...(myAccounts ?? []), ...(delegatedAccounts ?? [])]
   if (accounts.length === 0) {
-    return Response.json({ error: '계정을 찾을 수 없습니다.' }, { status: 404 })
+    return Response.json({ error: '계정??찾을 ???�습?�다.' }, { status: 404 })
   }
 
   const isSell = tradeType === 'SELL'
   const isCycle = tradeType === 'CYCLE'
   const upperCoin = coin.toUpperCase()
 
-  // 주문 요약
+  // 주문 ?�약
   const orderSummary = isCycle
-    ? `${symbol} 매수(시장가) & 매도(시장가, 전체 수량) ${(parsedAmount ?? 0).toLocaleString()}원`
+    ? `${symbol} 매수(?�장가) & 매도(?�장가, ?�체 ?�량) ${(parsedAmount ?? 0).toLocaleString()}??
     : isSell
-    ? `${symbol} 전량 매도(시장가)`
-    : `${symbol} 매수(시장가) ${(parsedAmount ?? 0).toLocaleString()}원`
+    ? `${symbol} ?�량 매도(?�장가)`
+    : `${symbol} 매수(?�장가) ${(parsedAmount ?? 0).toLocaleString()}??
 
-  // 매도/사이클: 현재가 미리 조회
+  // 매도/?�이?? ?�재가 미리 조회
   let currentPrice = 0
   if (isSell || isCycle) {
     try {
       currentPrice = await getCurrentPrice(exchange as Exchange, coin)
-    } catch { /* 현재가 조회 실패 시 0으로 진행 */ }
+    } catch { /* ?�재가 조회 ?�패 ??0?�로 진행 */ }
   }
 
   const results: ValidationItem[] = await Promise.all(
     accounts.map(async (acc) => {
       try {
-        // CYCLE: KRW 잔고 검증
+        // CYCLE: KRW ?�고 검�?
         if (isCycle) {
           const { krw } = await getBalance(exchange as Exchange, acc.access_key, acc.secret_key)
           const feasible = krw >= (parsedAmount ?? 0)
@@ -108,11 +107,11 @@ export async function POST(req: NextRequest) {
             orderSummary,
             balance: krw,
             feasible,
-            reason: feasible ? '가능 (매수 후 전량 매도)' : '잔고 부족',
+            reason: feasible ? '가??(매수 ???�량 매도)' : '?�고 부�?,
           }
         }
 
-        // SELL: 코인 잔고 검증 (보유량 × 현재가 >= 5,000원)
+        // SELL: 코인 ?�고 검�?(보유??× ?�재가 >= 5,000??
         if (isSell) {
           const coinBalance = await getCoinBalance(exchange as Exchange, acc.access_key, acc.secret_key, coin)
           const valueKrw = currentPrice > 0 ? coinBalance * currentPrice : 0
@@ -120,9 +119,9 @@ export async function POST(req: NextRequest) {
           const feasible = coinBalance > 0 && (currentPrice <= 0 || valueKrw >= 5000)
           const reason = !feasible
             ? coinBalance <= 0
-              ? `매도 불가 — 보유 ${upperCoin} 없음`
-              : `매도 불가 — 보유 ${upperCoin}의 시장가 환산액이 5,000원 미만입니다 (보유: ${coinDisplay} ${upperCoin} ≈ ${Math.floor(valueKrw).toLocaleString()}원)`
-            : `가능 (보유 ${coinDisplay} ${upperCoin} 전량 매도)`
+              ? `매도 불�? ??보유 ${upperCoin} ?�음`
+              : `매도 불�? ??보유 ${upperCoin}???�장가 ?�산?�이 5,000??미만?�니??(보유: ${coinDisplay} ${upperCoin} ??${Math.floor(valueKrw).toLocaleString()}??`
+            : `가??(보유 ${coinDisplay} ${upperCoin} ?�량 매도)`
           return {
             accountId: acc.id,
             exchange: acc.exchange,
@@ -136,7 +135,7 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        // BUY: KRW 잔고 검증
+        // BUY: KRW ?�고 검�?
         const { krw } = await getBalance(exchange as Exchange, acc.access_key, acc.secret_key)
         const feasible = krw >= (parsedAmount ?? 0)
         return {
@@ -146,10 +145,10 @@ export async function POST(req: NextRequest) {
           orderSummary,
           balance: krw,
           feasible,
-          reason: feasible ? '가능' : '잔고 부족',
+          reason: feasible ? '가?? : '?�고 부�?,
         }
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : 'API 오류'
+        const msg = err instanceof Error ? err.message : 'API ?�류'
         return {
           accountId: acc.id,
           exchange: acc.exchange,
@@ -157,7 +156,7 @@ export async function POST(req: NextRequest) {
           orderSummary,
           balance: 0,
           feasible: false,
-          reason: `API 오류: ${msg.slice(0, 60)}`,
+          reason: `API ?�류: ${msg.slice(0, 60)}`,
         }
       }
     }),

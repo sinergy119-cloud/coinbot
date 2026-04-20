@@ -1,6 +1,5 @@
 import { NextRequest } from 'next/server'
 import { getSession } from '@/lib/session'
-import { isAdmin } from '@/lib/admin'
 import { createServerClient } from '@/lib/supabase'
 import { sendTelegramMessage } from '@/lib/telegram'
 import { escapeHtml } from '@/lib/html'
@@ -16,7 +15,7 @@ const CATEGORY_LABEL: Record<string, string> = {
 // PATCH /api/admin/inquiries/[id] → 관리자 답변 등록/수정
 export async function PATCH(req: NextRequest, { params }: { params: Params }) {
   const session = await getSession()
-  if (!session || !isAdmin(session.loginId)) {
+  if (!session || !session.isAdmin) {
     return Response.json({ error: '관리자만 접근 가능합니다.' }, { status: 403 })
   }
 
@@ -78,7 +77,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
 // DELETE /api/admin/inquiries/[id] → 문의 삭제
 export async function DELETE(_req: NextRequest, { params }: { params: Params }) {
   const session = await getSession()
-  if (!session || !isAdmin(session.loginId)) {
+  if (!session || !session.isAdmin) {
     return Response.json({ error: '관리자만 접근 가능합니다.' }, { status: 403 })
   }
 
