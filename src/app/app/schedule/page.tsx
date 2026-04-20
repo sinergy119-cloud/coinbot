@@ -244,7 +244,7 @@ function InstantForm({ onDone }: { onDone: () => void }) {
               {!r.ok && <p className="text-xs text-red-700 mt-1">{r.error}</p>}
               {r.ok && (
                 <p className="text-xs text-gray-700 mt-1">
-                  잔액 {r.balanceBefore.toLocaleString()}원 → {r.balance.toLocaleString()}원
+                  잔액 {Math.floor(r.balanceBefore).toLocaleString()}원 → {Math.floor(r.balance).toLocaleString()}원
                 </p>
               )}
             </div>

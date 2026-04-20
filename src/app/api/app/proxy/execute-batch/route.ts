@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
       let balanceBefore = 0
       try {
         const bb = await getBalance(exchange as Exchange, encAccess, encSecret)
-        balanceBefore = bb.krw
+        balanceBefore = Math.floor(bb.krw)
       } catch { /* 무시 */ }
 
       try {
@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
           let balance = 0
           try {
             const bb = await getBalance(exchange as Exchange, encAccess, encSecret)
-            balance = bb.krw
+            balance = Math.floor(bb.krw)
           } catch { /* 무시 */ }
           return {
             label,
@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
           let balance = 0
           try {
             const bb = await getBalance(exchange as Exchange, encAccess, encSecret)
-            balance = bb.krw
+            balance = Math.floor(bb.krw)
           } catch { /* 무시 */ }
           return { label, ok: r.success, balanceBefore, balance, ...(r.success ? {} : { error: r.reason }) }
         }
@@ -110,7 +110,7 @@ export async function POST(req: NextRequest) {
         let balance = 0
         try {
           const bb = await getBalance(exchange as Exchange, encAccess, encSecret)
-          balance = bb.krw
+          balance = Math.floor(bb.krw)
         } catch { /* 무시 */ }
         return { label, ok: r.success, balanceBefore, balance, ...(r.success ? {} : { error: r.reason }) }
       } catch (err: unknown) {

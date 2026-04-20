@@ -74,12 +74,13 @@ export async function POST(req: NextRequest) {
           }),
         )
         const coinsTotal = coins.reduce((s, c) => s + c.valueKrw, 0)
-        const totalKrw = bal.krw + coinsTotal
+        const krw = Math.floor(bal.krw)
+        const totalKrw = krw + coinsTotal
         return {
           ok: true,
           label: typeof a.label === 'string' ? a.label : null,
           exchange: a.exchange,
-          krw: bal.krw,
+          krw,
           coins,
           totalKrw,
         }

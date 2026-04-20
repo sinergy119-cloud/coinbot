@@ -152,7 +152,7 @@ export default function AssetsPage() {
           {/* 총합 카드 */}
           <div className="bg-gray-900 text-white rounded-2xl p-5">
             <p className="text-xs text-gray-300">전체 자산 (KRW + 코인 평가액)</p>
-            <p className="text-3xl font-bold mt-1">{grandTotal.toLocaleString()}원</p>
+            <p className="text-3xl font-bold mt-1">{Math.floor(grandTotal).toLocaleString()}원</p>
           </div>
 
           {/* 계정별 */}
@@ -165,8 +165,8 @@ export default function AssetsPage() {
                 </div>
                 {b.ok ? (
                   <div className="text-right shrink-0">
-                    <p className="text-lg font-bold text-gray-900">{b.totalKrw.toLocaleString()}원</p>
-                    <p className="text-[10px] text-gray-600 mt-0.5">KRW {b.krw.toLocaleString()}</p>
+                    <p className="text-lg font-bold text-gray-900">{Math.floor(b.totalKrw).toLocaleString()}원</p>
+                    <p className="text-[10px] text-gray-600 mt-0.5">KRW {Math.floor(b.krw).toLocaleString()}</p>
                   </div>
                 ) : (
                   <p className="text-xs text-red-600">실패</p>

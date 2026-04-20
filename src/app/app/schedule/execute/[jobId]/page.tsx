@@ -245,8 +245,8 @@ function ExecuteInner() {
           <InfoRow label="거래소" value={EXCHANGE_LABELS[result.exchange as Exchange] ?? result.exchange} />
           <InfoRow label="코인" value={result.coin} />
           <InfoRow label="방식" value={TRADE_TYPE_LABELS[result.tradeType as TradeType] ?? result.tradeType} />
-          <InfoRow label="이전 잔액" value={`${result.balanceBefore.toLocaleString()}원`} />
-          <InfoRow label="현재 잔액" value={`${result.balance.toLocaleString()}원`} />
+          <InfoRow label="이전 잔액" value={`${Math.floor(result.balanceBefore).toLocaleString()}원`} />
+          <InfoRow label="현재 잔액" value={`${Math.floor(result.balance).toLocaleString()}원`} />
           <InfoRow label="실행 시각" value={new Date(result.executedAt).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })} />
         </div>
         <button

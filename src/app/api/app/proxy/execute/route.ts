@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
     let balanceBefore = 0
     try {
       const bb = await getBalance(exchange as Exchange, encAccess, encSecret)
-      balanceBefore = bb.krw
+      balanceBefore = Math.floor(bb.krw)
     } catch { /* 무시 */ }
 
     if (tt === 'CYCLE') {
@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
       let balance = 0
       try {
         const bb = await getBalance(exchange as Exchange, encAccess, encSecret)
-        balance = bb.krw
+        balance = Math.floor(bb.krw)
       } catch { /* 무시 */ }
       await logTrade(session.userId, { ...logBase, success: result.success, reason: result.success ? undefined : result.reason, balance_before: balanceBefore, balance })
       if (!result.success) return fail(`FAIL (${result.reason})`, 400)
@@ -125,7 +125,7 @@ export async function POST(req: NextRequest) {
       let balance = 0
       try {
         const bb = await getBalance(exchange as Exchange, encAccess, encSecret)
-        balance = bb.krw
+        balance = Math.floor(bb.krw)
       } catch { /* 무시 */ }
       await logTrade(session.userId, { ...logBase, success: result.success, reason: result.success ? undefined : result.reason, balance_before: balanceBefore, balance })
       if (!result.success) return fail(`FAIL (${result.reason})`, 400)
@@ -144,7 +144,7 @@ export async function POST(req: NextRequest) {
     let balance = 0
     try {
       const bb = await getBalance(exchange as Exchange, encAccess, encSecret)
-      balance = bb.krw
+      balance = Math.floor(bb.krw)
     } catch { /* 무시 */ }
 
     await logTrade(session.userId, { ...logBase, success: result.success, reason: result.success ? undefined : result.reason, balance_before: balanceBefore, balance })
