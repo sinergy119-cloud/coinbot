@@ -1,19 +1,21 @@
 // Firebase Cloud Messaging Service Worker (Route Handler 서빙)
 // Next.js 16에서 public/ 서빙이 세션 redirect와 충돌하므로 route handler로 우회
 // /firebase-messaging-sw.js 경로로 서빙됨
+//
+// 주의: Firebase SDK의 onBackgroundMessage는 특정 환경에서 발화하지 않는 이슈 확인됨
+// → 네이티브 push 이벤트에서 직접 처리하는 방식으로 전환 (Firebase SDK 미사용)
 
-const SW_CODE = `// Firebase Cloud Messaging Service Worker
+const SW_CODE = `// Firebase Cloud Messaging Service Worker (native push handler)
 // design-security.md §5-4
 
 // PWA 독립 앱 설치를 위한 fetch 핸들러 (Chrome installability 기준 충족)
-// respondWith 미호출 → 브라우저가 기본 네트워크 요청으로 처리 (캐싱 없음)
 self.addEventListener('fetch', () => {})
 
 // 새 SW 즉시 활성화 (대기 없이 교체)
 self.addEventListener('install', () => { self.skipWaiting() })
 self.addEventListener('activate', (event) => { event.waitUntil(self.clients.claim()) })
 
-// ─── 진단용 로그 함수 (서버로 전송) ───
+// ─── 디버그 로그 (서버로 전송) ───
 function debugLog(event, payload) {
   try {
     fetch('/api/debug/sw-log?event=' + encodeURIComponent(event), {
@@ -24,53 +26,6 @@ function debugLog(event, payload) {
     }).catch(() => {})
   } catch {}
 }
-
-// ─── raw push 이벤트 로깅 (Firebase SDK보다 먼저 실행) ───
-self.addEventListener('push', (event) => {
-  let rawData = null
-  let parsed = null
-  try { rawData = event.data ? event.data.text() : null } catch {}
-  try { parsed = rawData ? JSON.parse(rawData) : null } catch {}
-  debugLog('raw-push', { hasData: !!event.data, raw: rawData ? rawData.slice(0, 300) : null })
-
-  // [DIAG] raw push에서 직접 알림 강제 표시 — Firebase SDK 거치지 않고 테스트
-  const title = (parsed && parsed.notification && parsed.notification.title)
-    || (parsed && parsed.data && parsed.data.title)
-    || '[RAW-SW] 직접 표시 테스트'
-  const body = (parsed && parsed.notification && parsed.notification.body)
-    || (parsed && parsed.data && parsed.data.body)
-    || 'SW raw push 핸들러에서 표시'
-
-  event.waitUntil(
-    (async () => {
-      try {
-        await self.registration.showNotification('[RAW-SW] ' + title, {
-          body,
-          icon: '/icon-192.png',
-          badge: '/icon-192.png',
-          tag: 'raw-' + Date.now(),
-        })
-        debugLog('raw-show-ok', { title })
-      } catch (e) {
-        debugLog('raw-show-err', { err: String(e) })
-      }
-    })()
-  )
-})
-
-importScripts('https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js')
-importScripts('https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-compat.js')
-
-firebase.initializeApp({
-  apiKey: 'AIzaSyBzCtczwiDJwzGTw8v0lRRuoxI5Enlp7Zg',
-  authDomain: 'mycoinbot-app.firebaseapp.com',
-  projectId: 'mycoinbot-app',
-  storageBucket: 'mycoinbot-app.firebasestorage.app',
-  messagingSenderId: '201995976563',
-  appId: '1:201995976563:web:2af1925a084325bb5d4f06',
-})
-
-const messaging = firebase.messaging()
 
 // ─────────────────────────────────────────────────────────────
 // SW 자동 실행 헬퍼 (PIN 없이 device key로 복호화)
@@ -85,11 +40,9 @@ function b64ToU8(b64) {
 
 function openSecureDB() {
   return new Promise((resolve, reject) => {
-    // 버전 미지정 → 현재 버전 그대로 (auto_keys 스토어 존재 여부는 직접 확인)
     const req = indexedDB.open('coinbot_secure_store')
     req.onsuccess = () => resolve(req.result)
     req.onerror = () => reject(req.error)
-    // onupgradeneeded 발생 = DB 없음 → reject로 처리
     req.onupgradeneeded = () => { req.transaction && req.transaction.abort(); reject(new Error('db_not_initialized')) }
   })
 }
@@ -124,22 +77,18 @@ async function autoExecuteSchedule(data) {
   let db
   try { db = await openSecureDB() } catch { return { ok: false, reason: 'db_not_ready' } }
 
-  // device key (JWK) 조회
   const meta = await idbGet(db, 'meta', 'meta')
   if (!meta || !meta.deviceKey) return { ok: false, reason: 'no_device_key' }
 
-  // auto_keys 에서 해당 거래소 키 조회
   const allAutoKeys = await idbGetAll(db, 'auto_keys')
   const matchingKeys = allAutoKeys.filter(k => k.exchange === exchange)
   if (matchingKeys.length === 0) return { ok: false, reason: 'no_auto_keys' }
 
-  // device key import
   let deviceKey
   try {
     deviceKey = await crypto.subtle.importKey('jwk', meta.deviceKey, { name: 'AES-GCM', length: 256 }, false, ['decrypt'])
   } catch { return { ok: false, reason: 'key_import_failed' } }
 
-  // 키별 복호화
   const decrypted = await Promise.all(matchingKeys.map(async (row) => {
     try {
       const iv = b64ToU8(row.iv)
@@ -152,7 +101,6 @@ async function autoExecuteSchedule(data) {
   const validKeys = decrypted.filter(Boolean)
   if (validKeys.length === 0) return { ok: false, reason: 'decrypt_failed' }
 
-  // 거래 실행
   let anyOk = false
   let lastError = null
   for (const key of validKeys) {
@@ -175,7 +123,6 @@ async function autoExecuteSchedule(data) {
     } catch (e) { lastError = String(e) }
   }
 
-  // 실행 결과 서버 보고
   try {
     await fetch('/api/app/trade-jobs/' + jobId + '/report', {
       method: 'POST',
@@ -193,11 +140,15 @@ async function autoExecuteSchedule(data) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// 백그라운드 메시지 처리
+// 네이티브 push 이벤트 핸들러 (Firebase SDK 미사용)
 // ─────────────────────────────────────────────────────────────
 
-messaging.onBackgroundMessage(async (payload) => {
-  debugLog('onBackgroundMessage', { hasNotif: !!payload.notification, data: payload.data, notification: payload.notification })
+async function handlePush(event) {
+  let payload = {}
+  try { payload = event.data ? event.data.json() : {} } catch {}
+
+  debugLog('push', { hasData: !!payload.data, hasNotif: !!payload.notification })
+
   const data = payload.data || {}
   const notification = payload.notification || {}
   const type = data.type || 'notification_only'
@@ -206,9 +157,9 @@ messaging.onBackgroundMessage(async (payload) => {
   if (type === 'execute_trade' && data.jobId) {
     try {
       const result = await autoExecuteSchedule(data)
+      debugLog('auto-exec-result', { ok: result.ok, reason: result.reason, error: result.error })
 
       if (result.ok) {
-        // 성공 알림
         await self.registration.showNotification('✅ 자동 거래 완료', {
           body: data.exchange + ' ' + data.coin + ' ' + data.tradeType,
           icon: '/icon-192.png',
@@ -220,7 +171,6 @@ messaging.onBackgroundMessage(async (payload) => {
       }
 
       if (result.reason !== 'no_device_key' && result.reason !== 'no_auto_keys' && result.reason !== 'db_not_ready') {
-        // 키는 있지만 거래 실패 → 실패 알림
         await self.registration.showNotification('❌ 자동 거래 실패', {
           body: result.error || '거래 실행 실패. 스케줄 탭에서 확인해주세요.',
           icon: '/icon-192.png',
@@ -232,8 +182,7 @@ messaging.onBackgroundMessage(async (payload) => {
       }
       // no_device_key / no_auto_keys / db_not_ready → 아래 탭 알림으로 fall-through
     } catch (e) {
-      console.error('[SW] auto-execute error:', e)
-      // fall-through to tap notification
+      debugLog('auto-exec-error', { err: String(e) })
     }
   }
 
@@ -242,14 +191,17 @@ messaging.onBackgroundMessage(async (payload) => {
   const body = notification.body || data.body || ''
   const deepLink = data.deepLink || '/app'
 
-  debugLog('showNotification', { title, body })
-  self.registration.showNotification(title, {
+  await self.registration.showNotification(title, {
     body,
     icon: '/icon-192.png',
     badge: '/icon-192.png',
     tag: type === 'execute_trade' ? 'trade-' + data.jobId : undefined,
     data: { deepLink, type, ...data },
-  }).then(() => debugLog('showNotification-ok', { title })).catch(e => debugLog('showNotification-err', { err: String(e) }))
+  })
+}
+
+self.addEventListener('push', (event) => {
+  event.waitUntil(handlePush(event))
 })
 
 self.addEventListener('notificationclick', (event) => {
