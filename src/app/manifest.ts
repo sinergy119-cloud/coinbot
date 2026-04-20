@@ -7,7 +7,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'MyCoinBot',
     short_name: 'MyCoinBot',
-    description: '한국 5개 거래소 에어드랍·N빵 자동 수집 및 자동 매수',
+    description: '빗썸·업비트·코인원·코빗·고팍스 코인 이벤트 자동 알림 & 자동매매 서비스',
     start_url: '/app',
     display: 'standalone',
     orientation: 'portrait',
