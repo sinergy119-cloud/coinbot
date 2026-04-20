@@ -1,20 +1,22 @@
+'use client'
+
 // 앱 로컬 키 저장 (IndexedDB)
 // design-security.md §1-1
 //
 // IndexedDB 스토어 구조:
-//   DB:  coinbot_secure_store
-//   - keys store: 거래소 API Key 암호문
-//   - meta store: salt, pinHash (PIN 검증용), 기타 설정
-
-'use client'
+//   DB:  coinbot_secure_store  (version 2)
+//   - keys       : 거래소 API Key 암호문 (PIN 기반 AES-GCM)
+//   - meta       : salt, pinHash, deviceKey(JWK) 등
+//   - auto_keys  : SW 자동 실행용 복사본 (device key 기반 AES-GCM, PIN 불필요)
 
 import { encryptData, decryptData, hashPin, constantTimeEqual, generateSalt, b64ToU8, u8ToB64 } from './crypto-client'
 import type { Exchange } from '@/types/database'
 
 const DB_NAME = 'coinbot_secure_store'
-const DB_VERSION = 1
+const DB_VERSION = 2
 const STORE_KEYS = 'keys'
 const STORE_META = 'meta'
+const STORE_AUTO = 'auto_keys'
 
 interface KeyRow {
   id: string              // 예: 'bithumb_main'
@@ -25,12 +27,21 @@ interface KeyRow {
   createdAt: string
 }
 
+interface AutoKeyRow {
+  id: string              // KeyRow.id 와 동일
+  exchange: Exchange
+  label: string
+  iv: string              // base64 (device key 암호화용 IV)
+  ciphertext: string      // base64 (device key로 암호화된 {accessKey, secretKey})
+}
+
 interface MetaRow {
   id: 'meta'
   salt: string            // base64
   pinHash: string         // base64
   failureCount: number
   lockedUntil: number | null   // epoch ms
+  deviceKey?: JsonWebKey  // SW 자동 실행용 기기 AES 키 (JWK)
 }
 
 function openDB(): Promise<IDBDatabase> {
@@ -40,6 +51,7 @@ function openDB(): Promise<IDBDatabase> {
       const db = req.result
       if (!db.objectStoreNames.contains(STORE_KEYS)) db.createObjectStore(STORE_KEYS, { keyPath: 'id' })
       if (!db.objectStoreNames.contains(STORE_META)) db.createObjectStore(STORE_META, { keyPath: 'id' })
+      if (!db.objectStoreNames.contains(STORE_AUTO)) db.createObjectStore(STORE_AUTO, { keyPath: 'id' })
     }
     req.onsuccess = () => resolve(req.result)
     req.onerror = () => reject(req.error)
@@ -106,6 +118,50 @@ export async function verifyPin(pin: string): Promise<{ ok: boolean; reason?: 'l
   return { ok: true }
 }
 
+// ─────────────────────────────────────────────────────────────
+// Device Key 관리 (SW 자동 실행용 — PIN 불필요)
+// ─────────────────────────────────────────────────────────────
+
+async function getOrCreateDeviceKey(): Promise<CryptoKey> {
+  const meta = await tx<MetaRow | undefined>(STORE_META, 'readonly', (s) => s.get('meta') as IDBRequest<MetaRow | undefined>)
+
+  if (meta?.deviceKey) {
+    return crypto.subtle.importKey('jwk', meta.deviceKey, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt'])
+  }
+
+  // 새 device key 생성
+  const key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt'])
+  const jwk = await crypto.subtle.exportKey('jwk', key)
+
+  const updatedMeta: MetaRow = meta
+    ? { ...meta, deviceKey: jwk }
+    : { id: 'meta', salt: '', pinHash: '', failureCount: 0, lockedUntil: null, deviceKey: jwk }
+  await tx<IDBValidKey>(STORE_META, 'readwrite', (s) => s.put(updatedMeta))
+
+  return key
+}
+
+// auto_keys 스토어에 복사본 저장 (fire-and-forget 용도 — 실패해도 무시)
+async function saveAutoKey(id: string, exchange: Exchange, label: string, accessKey: string, secretKey: string): Promise<void> {
+  const deviceKey = await getOrCreateDeviceKey()
+  const iv = new Uint8Array(12)
+  crypto.getRandomValues(iv)
+  const plaintext = new TextEncoder().encode(JSON.stringify({ accessKey, secretKey }))
+  const ciphertextBuf = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, deviceKey, plaintext)
+  const row: AutoKeyRow = {
+    id,
+    exchange,
+    label,
+    iv: u8ToB64(iv),
+    ciphertext: u8ToB64(new Uint8Array(ciphertextBuf)),
+  }
+  await tx<IDBValidKey>(STORE_AUTO, 'readwrite', (s) => s.put(row))
+}
+
+// ─────────────────────────────────────────────────────────────
+// Public API
+// ─────────────────────────────────────────────────────────────
+
 // 키 등록 (PIN 검증은 호출 측에서 사전 수행)
 export async function saveKey(pin: string, exchange: Exchange, label: string, accessKey: string, secretKey: string): Promise<string> {
   const meta = await tx<MetaRow | undefined>(STORE_META, 'readonly', (s) => s.get('meta') as IDBRequest<MetaRow | undefined>)
@@ -123,6 +179,10 @@ export async function saveKey(pin: string, exchange: Exchange, label: string, ac
     createdAt: new Date().toISOString(),
   }
   await tx<IDBValidKey>(STORE_KEYS, 'readwrite', (s) => s.put(row))
+
+  // SW 자동 실행용 device-key 암호화 복사본 저장 (PIN 불필요)
+  saveAutoKey(id, exchange, label, accessKey, secretKey).catch(() => {})
+
   return id
 }
 
@@ -157,21 +217,25 @@ export async function decryptKey(pin: string, id: string): Promise<{ exchange: E
 
 export async function deleteKey(id: string): Promise<void> {
   await tx<undefined>(STORE_KEYS, 'readwrite', (s) => s.delete(id))
+  // auto_keys 복사본도 함께 삭제
+  tx<undefined>(STORE_AUTO, 'readwrite', (s) => s.delete(id)).catch(() => {})
 }
 
 // 전체 초기화 (PIN 분실 시)
 export async function resetAll(): Promise<void> {
   const db = await openDB()
   return new Promise((resolve, reject) => {
-    const t = db.transaction([STORE_KEYS, STORE_META], 'readwrite')
+    const t = db.transaction([STORE_KEYS, STORE_META, STORE_AUTO], 'readwrite')
     t.objectStore(STORE_KEYS).clear()
     t.objectStore(STORE_META).clear()
+    t.objectStore(STORE_AUTO).clear()
     t.oncomplete = () => resolve()
     t.onerror = () => reject(t.error)
   })
 }
 
 // 모든 키를 특정 PIN으로 일괄 복호화 (실행 시)
+// 복호화 성공 시 auto_keys 복사본도 업서트 (기존 키 자동 마이그레이션)
 export async function decryptAllByIds(pin: string, ids: string[]): Promise<Array<{ id: string; exchange: Exchange; label: string; accessKey: string; secretKey: string }>> {
   const meta = await tx<MetaRow | undefined>(STORE_META, 'readonly', (s) => s.get('meta') as IDBRequest<MetaRow | undefined>)
   if (!meta) throw new Error('PIN이 설정되지 않았습니다.')
@@ -186,5 +250,13 @@ export async function decryptAllByIds(pin: string, ids: string[]): Promise<Array
       return { id: row.id, exchange: row.exchange, label: row.label, accessKey, secretKey }
     }),
   )
-  return results.filter((r): r is NonNullable<typeof r> => r !== null)
+
+  const valid = results.filter((r): r is NonNullable<typeof r> => r !== null)
+
+  // 기존 키도 auto_keys에 등록 (첫 PIN 사용 시 자동 마이그레이션, fire-and-forget)
+  Promise.all(
+    valid.map((r) => saveAutoKey(r.id, r.exchange, r.label, r.accessKey, r.secretKey))
+  ).catch(() => {})
+
+  return valid
 }

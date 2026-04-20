@@ -23,11 +23,171 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging()
 
-messaging.onBackgroundMessage((payload) => {
+// ─────────────────────────────────────────────────────────────
+// SW 자동 실행 헬퍼 (PIN 없이 device key로 복호화)
+// ─────────────────────────────────────────────────────────────
+
+function b64ToU8(b64) {
+  const s = atob(b64)
+  const u8 = new Uint8Array(s.length)
+  for (let i = 0; i < s.length; i++) u8[i] = s.charCodeAt(i)
+  return u8
+}
+
+function openSecureDB() {
+  return new Promise((resolve, reject) => {
+    // 버전 미지정 → 현재 버전 그대로 (auto_keys 스토어 존재 여부는 직접 확인)
+    const req = indexedDB.open('coinbot_secure_store')
+    req.onsuccess = () => resolve(req.result)
+    req.onerror = () => reject(req.error)
+    // onupgradeneeded 발생 = DB 없음 → reject로 처리
+    req.onupgradeneeded = () => { req.transaction && req.transaction.abort(); reject(new Error('db_not_initialized')) }
+  })
+}
+
+function idbGet(db, storeName, key) {
+  return new Promise((resolve) => {
+    if (!db.objectStoreNames.contains(storeName)) { resolve(null); return }
+    try {
+      const t = db.transaction(storeName, 'readonly')
+      const req = t.objectStore(storeName).get(key)
+      req.onsuccess = () => resolve(req.result || null)
+      req.onerror = () => resolve(null)
+    } catch { resolve(null) }
+  })
+}
+
+function idbGetAll(db, storeName) {
+  return new Promise((resolve) => {
+    if (!db.objectStoreNames.contains(storeName)) { resolve([]); return }
+    try {
+      const t = db.transaction(storeName, 'readonly')
+      const req = t.objectStore(storeName).getAll()
+      req.onsuccess = () => resolve(req.result || [])
+      req.onerror = () => resolve([])
+    } catch { resolve([]) }
+  })
+}
+
+async function autoExecuteSchedule(data) {
+  const { jobId, exchange, coin, tradeType, amountKrw, executionDate } = data
+
+  let db
+  try { db = await openSecureDB() } catch { return { ok: false, reason: 'db_not_ready' } }
+
+  // device key (JWK) 조회
+  const meta = await idbGet(db, 'meta', 'meta')
+  if (!meta || !meta.deviceKey) return { ok: false, reason: 'no_device_key' }
+
+  // auto_keys 에서 해당 거래소 키 조회
+  const allAutoKeys = await idbGetAll(db, 'auto_keys')
+  const matchingKeys = allAutoKeys.filter(k => k.exchange === exchange)
+  if (matchingKeys.length === 0) return { ok: false, reason: 'no_auto_keys' }
+
+  // device key import
+  let deviceKey
+  try {
+    deviceKey = await crypto.subtle.importKey('jwk', meta.deviceKey, { name: 'AES-GCM', length: 256 }, false, ['decrypt'])
+  } catch { return { ok: false, reason: 'key_import_failed' } }
+
+  // 키별 복호화
+  const decrypted = await Promise.all(matchingKeys.map(async (row) => {
+    try {
+      const iv = b64ToU8(row.iv)
+      const ciphertext = b64ToU8(row.ciphertext)
+      const plainBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, deviceKey, ciphertext)
+      const { accessKey, secretKey } = JSON.parse(new TextDecoder().decode(plainBuf))
+      return { exchange: row.exchange, label: row.label, accessKey, secretKey }
+    } catch { return null }
+  }))
+  const validKeys = decrypted.filter(Boolean)
+  if (validKeys.length === 0) return { ok: false, reason: 'decrypt_failed' }
+
+  // 거래 실행
+  let anyOk = false
+  let lastError = null
+  for (const key of validKeys) {
+    try {
+      const res = await fetch('/api/app/proxy/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          exchange: key.exchange,
+          coin,
+          tradeType,
+          amountKrw: Number(amountKrw) || 0,
+          accessKey: key.accessKey,
+          secretKey: key.secretKey,
+        }),
+      })
+      const json = await res.json()
+      if (json.ok) anyOk = true
+      else lastError = json.error || '실행 실패'
+    } catch (e) { lastError = String(e) }
+  }
+
+  // 실행 결과 서버 보고
+  try {
+    await fetch('/api/app/trade-jobs/' + jobId + '/report', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        executionDate: executionDate || new Date().toISOString().slice(0, 10),
+        result: anyOk ? 'success' : 'fail',
+        deviceEndpoint: null,
+        errorMessage: anyOk ? null : lastError,
+      }),
+    })
+  } catch {}
+
+  return { ok: anyOk, error: lastError }
+}
+
+// ─────────────────────────────────────────────────────────────
+// 백그라운드 메시지 처리
+// ─────────────────────────────────────────────────────────────
+
+messaging.onBackgroundMessage(async (payload) => {
   const data = payload.data || {}
   const notification = payload.notification || {}
   const type = data.type || 'notification_only'
 
+  // 스케줄 자동 실행 처리
+  if (type === 'execute_trade' && data.jobId) {
+    try {
+      const result = await autoExecuteSchedule(data)
+
+      if (result.ok) {
+        // 성공 알림
+        await self.registration.showNotification('✅ 자동 거래 완료', {
+          body: data.exchange + ' ' + data.coin + ' ' + data.tradeType,
+          icon: '/icon-192.png',
+          badge: '/icon-192.png',
+          tag: 'trade-' + data.jobId,
+          data: { deepLink: '/app/schedule', type: 'auto_executed' },
+        })
+        return
+      }
+
+      if (result.reason !== 'no_device_key' && result.reason !== 'no_auto_keys' && result.reason !== 'db_not_ready') {
+        // 키는 있지만 거래 실패 → 실패 알림
+        await self.registration.showNotification('❌ 자동 거래 실패', {
+          body: result.error || '거래 실행 실패. 스케줄 탭에서 확인해주세요.',
+          icon: '/icon-192.png',
+          badge: '/icon-192.png',
+          tag: 'trade-' + data.jobId,
+          data: { deepLink: '/app/schedule', type: 'auto_failed' },
+        })
+        return
+      }
+      // no_device_key / no_auto_keys / db_not_ready → 아래 탭 알림으로 fall-through
+    } catch (e) {
+      console.error('[SW] auto-execute error:', e)
+      // fall-through to tap notification
+    }
+  }
+
+  // 기본: 알림 표시 (탭 → PIN 입력 → 실행)
   const title = notification.title || data.title || 'MyCoinBot'
   const body = notification.body || data.body || ''
   const deepLink = data.deepLink || '/app'
@@ -36,7 +196,7 @@ messaging.onBackgroundMessage((payload) => {
     body,
     icon: '/icon-192.png',
     badge: '/icon-192.png',
-    tag: type === 'execute_trade' ? \`trade-\${data.jobId}\` : undefined,
+    tag: type === 'execute_trade' ? 'trade-' + data.jobId : undefined,
     data: { deepLink, type, ...data },
   })
 })
