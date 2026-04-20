@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { ChevronDown, ChevronUp } from 'lucide-react'
 
 interface Profile {
   userId: string
@@ -22,6 +23,7 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [settings, setSettings] = useState<Settings | null>(null)
   const [loading, setLoading] = useState(true)
+  const [notifOpen, setNotifOpen] = useState(false)
 
   useEffect(() => {
     (async () => {
@@ -105,17 +107,39 @@ export default function ProfilePage() {
       <section className="px-4">
         <h2 className="text-base font-bold text-gray-900 mb-2">알림 설정</h2>
         <div className="bg-white rounded-2xl overflow-hidden">
-          <SettingRow label="전체 알림" description="꺼짐 시 모든 알림이 오지 않습니다" value={settings?.masterEnabled} onChange={() => toggleSetting('masterEnabled')} />
+
+          {/* 전체 알림 — 항상 표시 */}
+          <SettingRow
+            label="전체 알림"
+            description="꺼짐 시 모든 알림이 오지 않습니다"
+            value={settings?.masterEnabled}
+            onChange={() => toggleSetting('masterEnabled')}
+          />
+
+          {/* 세부 설정 아코디언 헤더 */}
           <Divider />
-          <SettingRow label="거래 결과" description="스케줄·즉시 거래 체결 결과" value={settings?.tradeResultEnabled} onChange={() => toggleSetting('tradeResultEnabled')} disabled={!settings?.masterEnabled} />
-          <Divider />
-          <SettingRow label="신규 이벤트" description="새 에어드랍·N빵 공지" value={settings?.eventEnabled} onChange={() => toggleSetting('eventEnabled')} disabled={!settings?.masterEnabled} />
-          <Divider />
-          <SettingRow label="스케줄 변경" description="스케줄 등록·실행 알림" value={settings?.scheduleEnabled} onChange={() => toggleSetting('scheduleEnabled')} disabled={!settings?.masterEnabled} />
-          <Divider />
-          <SettingRow label="시스템 경고" description="연속 실패 등 중요 경고" value={settings?.systemEnabled} onChange={() => toggleSetting('systemEnabled')} disabled={!settings?.masterEnabled} />
-          <Divider />
-          <SettingRow label="공지·프로모션" description="운영 공지사항 (기본 꺼짐)" value={settings?.announcementEnabled} onChange={() => toggleSetting('announcementEnabled')} disabled={!settings?.masterEnabled} />
+          <NotifAccordionHeader
+            open={notifOpen}
+            disabled={!settings?.masterEnabled}
+            settings={settings}
+            onClick={() => setNotifOpen((v) => !v)}
+          />
+
+          {/* 세부 항목 — 펼쳐질 때만 표시 */}
+          {notifOpen && (
+            <>
+              <Divider />
+              <SettingRow label="거래 결과" description="스케줄·즉시 거래 체결 결과" value={settings?.tradeResultEnabled} onChange={() => toggleSetting('tradeResultEnabled')} disabled={!settings?.masterEnabled} indent />
+              <Divider />
+              <SettingRow label="신규 이벤트" description="새 에어드랍·N빵 공지" value={settings?.eventEnabled} onChange={() => toggleSetting('eventEnabled')} disabled={!settings?.masterEnabled} indent />
+              <Divider />
+              <SettingRow label="스케줄 변경" description="스케줄 등록·실행 알림" value={settings?.scheduleEnabled} onChange={() => toggleSetting('scheduleEnabled')} disabled={!settings?.masterEnabled} indent />
+              <Divider />
+              <SettingRow label="시스템 경고" description="연속 실패 등 중요 경고" value={settings?.systemEnabled} onChange={() => toggleSetting('systemEnabled')} disabled={!settings?.masterEnabled} indent />
+              <Divider />
+              <SettingRow label="공지·프로모션" description="운영 공지사항 (기본 꺼짐)" value={settings?.announcementEnabled} onChange={() => toggleSetting('announcementEnabled')} disabled={!settings?.masterEnabled} indent />
+            </>
+          )}
         </div>
       </section>
 
@@ -159,10 +183,51 @@ export default function ProfilePage() {
   )
 }
 
-function SettingRow({ label, description, value, onChange, disabled }: { label: string; description: string; value: boolean | undefined; onChange: () => void; disabled?: boolean }) {
+function NotifAccordionHeader({ open, disabled, settings, onClick }: {
+  open: boolean
+  disabled: boolean | undefined
+  settings: Settings | null
+  onClick: () => void
+}) {
+  const subKeys: (keyof Settings)[] = ['tradeResultEnabled', 'eventEnabled', 'scheduleEnabled', 'systemEnabled', 'announcementEnabled']
+  const enabledCount = settings ? subKeys.filter((k) => settings[k]).length : 0
+  const label = open
+    ? '세부 설정 접기'
+    : enabledCount > 0
+      ? `세부 설정 (${enabledCount}개 켜짐)`
+      : '세부 설정'
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`w-full flex items-center justify-between px-4 py-3.5 transition-colors active:bg-gray-50 ${disabled ? 'opacity-50 pointer-events-none' : ''}`}
+    >
+      <div className="break-keep">
+        <p className="text-sm font-semibold text-gray-900 text-left">{label}</p>
+        {!open && (
+          <p className="text-xs text-gray-600 mt-0.5 text-left">거래 결과, 이벤트 등 개별 설정</p>
+        )}
+      </div>
+      {open
+        ? <ChevronUp size={18} className="shrink-0 text-gray-500" />
+        : <ChevronDown size={18} className="shrink-0 text-gray-500" />
+      }
+    </button>
+  )
+}
+
+function SettingRow({ label, description, value, onChange, disabled, indent }: {
+  label: string
+  description: string
+  value: boolean | undefined
+  onChange: () => void
+  disabled?: boolean
+  indent?: boolean
+}) {
   const on = !!value
   return (
-    <div className={`flex items-center justify-between p-4 ${disabled ? 'opacity-50' : ''}`}>
+    <div className={`flex items-center justify-between px-4 py-3.5 ${indent ? 'pl-7 bg-gray-50/60' : ''} ${disabled ? 'opacity-40' : ''}`}>
       <div className="break-keep pr-3">
         <p className="text-sm font-semibold text-gray-900">{label}</p>
         <p className="text-xs text-gray-600 mt-0.5">{description}</p>

@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import PinPad from '../../_components/PinPad'
 import {
   isPinSet,
@@ -38,6 +38,8 @@ export default function ApiKeysPage() {
   const [pinError, setPinError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [keys, setKeys] = useState<KeySummary[]>([])
+  const [showResetModal, setShowResetModal] = useState(false)
+  const [resetConfirmText, setResetConfirmText] = useState('')
 
   useEffect(() => {
     (async () => {
@@ -101,9 +103,15 @@ export default function ApiKeysPage() {
     }
   }
 
-  async function handleResetAll() {
-    if (!confirm('정말 모든 API Key와 PIN을 초기화하시겠습니까?\n(분실 시에만 사용 — 되돌릴 수 없음)')) return
+  function handleResetAll() {
+    setResetConfirmText('')
+    setShowResetModal(true)
+  }
+
+  async function doResetAll() {
     await resetAll()
+    setShowResetModal(false)
+    setResetConfirmText('')
     setVerifiedPin(null)
     setFirstPin('')
     setPinError(null)
@@ -173,6 +181,15 @@ export default function ApiKeysPage() {
           onCancel={() => setPhase('unlocked')}
         />
       )}
+
+      {showResetModal && (
+        <ResetConfirmModal
+          confirmText={resetConfirmText}
+          onChangeText={setResetConfirmText}
+          onCancel={() => { setShowResetModal(false); setResetConfirmText('') }}
+          onConfirm={doResetAll}
+        />
+      )}
     </div>
   )
 }
@@ -238,6 +255,102 @@ function KeysList({ pin: _pin, keys, onChange, onReset, onAdd }: {
         </button>
       </section>
     </>
+  )
+}
+
+const RESET_CONFIRM_WORD = '전체 초기화'
+
+function ResetConfirmModal({ confirmText, onChangeText, onCancel, onConfirm }: {
+  confirmText: string
+  onChangeText: (v: string) => void
+  onCancel: () => void
+  onConfirm: () => void
+}) {
+  const matched = confirmText === RESET_CONFIRM_WORD
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    // 모달 열릴 때 키보드 자동 포커스
+    const t = setTimeout(() => inputRef.current?.focus(), 120)
+    return () => clearTimeout(t)
+  }, [])
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center"
+      style={{ background: 'rgba(0,0,0,0.55)' }}
+      onClick={(e) => { if (e.target === e.currentTarget) onCancel() }}
+    >
+      <div className="w-full max-w-sm bg-white rounded-t-3xl px-5 pt-6 pb-10 shadow-2xl">
+
+        {/* 경고 아이콘 + 제목 */}
+        <div className="flex flex-col items-center mb-5">
+          <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center mb-3">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
+                stroke="#DC2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+              />
+            </svg>
+          </div>
+          <h2 className="text-lg font-bold text-gray-900">전체 초기화</h2>
+          <p className="text-xs text-gray-600 mt-0.5">PIN 분실 시에만 사용하세요</p>
+        </div>
+
+        {/* 경고 내용 */}
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-5">
+          <ul className="space-y-1.5">
+            <li className="flex items-start gap-2 text-sm text-red-700">
+              <span className="mt-0.5 text-red-500 shrink-0">•</span>
+              <span className="break-keep">등록된 <strong>모든 API Key</strong>가 삭제됩니다.</span>
+            </li>
+            <li className="flex items-start gap-2 text-sm text-red-700">
+              <span className="mt-0.5 text-red-500 shrink-0">•</span>
+              <span className="break-keep"><strong>PIN</strong>이 초기화되어 재설정이 필요합니다.</span>
+            </li>
+            <li className="flex items-start gap-2 text-sm text-red-700">
+              <span className="mt-0.5 text-red-500 shrink-0">•</span>
+              <span className="break-keep font-semibold">이 작업은 되돌릴 수 없습니다.</span>
+            </li>
+          </ul>
+        </div>
+
+        {/* 인증 텍스트 입력 */}
+        <div className="mb-5">
+          <p className="text-sm text-gray-700 mb-2 break-keep">
+            계속하려면 아래에 <strong className="text-gray-900">&ldquo;전체 초기화&rdquo;</strong>를 입력하세요.
+          </p>
+          <input
+            ref={inputRef}
+            type="text"
+            value={confirmText}
+            onChange={(e) => onChangeText(e.target.value)}
+            placeholder="전체 초기화"
+            className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-sm font-medium text-gray-900 placeholder-gray-400 focus:outline-none focus:border-red-400 transition-colors"
+          />
+        </div>
+
+        {/* 버튼 */}
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="flex-1 py-3.5 rounded-2xl border border-gray-200 text-sm font-semibold text-gray-700 bg-white active:scale-95 transition-transform"
+          >
+            취소
+          </button>
+          <button
+            type="button"
+            disabled={!matched}
+            onClick={onConfirm}
+            className="flex-1 py-3.5 rounded-2xl text-sm font-semibold text-white active:scale-95 transition-all"
+            style={{ background: matched ? '#DC2626' : '#d1d5db', cursor: matched ? 'pointer' : 'not-allowed' }}
+          >
+            초기화 진행
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }
 
