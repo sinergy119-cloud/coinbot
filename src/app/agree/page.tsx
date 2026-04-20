@@ -5,16 +5,15 @@ import { useRouter } from 'next/navigation'
 import { ChevronDown, ChevronUp, CheckCircle2, Circle, Loader2 } from 'lucide-react'
 
 interface PendingInfo {
-  provider: 'naver' | 'google' | 'kakao'
+  provider: 'naver' | 'google'
   name: string
   email: string | null
 }
 
-const PROVIDER_LABEL: Record<string, string> = { naver: '네이버', google: '구글', kakao: '카카오' }
+const PROVIDER_LABEL: Record<string, string> = { naver: '네이버', google: '구글' }
 const PROVIDER_COLOR: Record<string, string> = {
   naver: 'bg-green-500',
   google: 'bg-blue-500',
-  kakao: 'bg-yellow-400',
 }
 
 const TERMS = [
@@ -112,7 +111,7 @@ export default function AgreePage() {
         setSubmitError(data.error ?? '가입 처리 중 오류가 발생했습니다.')
         return
       }
-      router.push(`/app?welcome=${data.provider}`)
+      router.push(`/?welcome=${data.provider}`)
     } catch {
       setSubmitError('네트워크 오류가 발생했습니다.')
     } finally {

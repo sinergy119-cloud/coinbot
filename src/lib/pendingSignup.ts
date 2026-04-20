@@ -13,7 +13,7 @@ import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
 export interface PendingSignup {
-  provider: 'naver' | 'google' | 'kakao'
+  provider: 'naver' | 'google'
   userId: string    // e.g., naver_xxxx
   name: string
   email: string | null
