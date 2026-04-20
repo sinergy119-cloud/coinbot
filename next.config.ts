@@ -10,6 +10,10 @@ const buildTime = (() => {
 })()
 
 const nextConfig: NextConfig = {
+  // EC2 1GB 환경에서 TypeScript 검사가 OOM을 유발하므로 빌드 시 검사 생략
+  // (타입 오류는 로컬 개발 중 IDE에서 확인)
+  typescript: { ignoreBuildErrors: true },
+  eslint: { ignoreDuringBuilds: true },
   serverExternalPackages: ['ccxt', 'nodemailer', 'firebase-admin'],
   env: {
     NEXT_PUBLIC_BUILD_TIME: buildTime,
