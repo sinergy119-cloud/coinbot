@@ -111,7 +111,7 @@ export default function AgreePage() {
         setSubmitError(data.error ?? '가입 처리 중 오류가 발생했습니다.')
         return
       }
-      router.push(`/?welcome=${data.provider}`)
+      router.push(`/app?welcome=${data.provider}`)
     } catch {
       setSubmitError('네트워크 오류가 발생했습니다.')
     } finally {

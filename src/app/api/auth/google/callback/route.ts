@@ -81,7 +81,8 @@ export async function GET(req: NextRequest) {
     } catch { /* 무시 */ }
 
     await createSession(existingUser.id, existingUser.user_id, true, existingUser.is_admin ?? false)
-    return Response.redirect(`${origin}/?welcome=google`)
+    const target = existingUser.is_admin ? '/' : '/app'
+    return Response.redirect(`${origin}${target}?welcome=google`)
   }
 
   // 4) 이메일로 기존 계정 검색 (소셜 계정 자동 연동)
@@ -102,7 +103,8 @@ export async function GET(req: NextRequest) {
         await db.from('login_history').insert({ user_id: emailUser.id, ip_address: ip, user_agent: req.headers.get('user-agent')?.slice(0, 200) ?? '' })
       } catch { /* 무시 */ }
       await createSession(emailUser.id, emailUser.user_id, true, emailUser.is_admin ?? false)
-      return Response.redirect(`${origin}/?welcome=google`)
+      const target = emailUser.is_admin ? '/' : '/app'
+      return Response.redirect(`${origin}${target}?welcome=google`)
     }
   }
 

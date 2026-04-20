@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { X } from 'lucide-react'
+import { X, ChevronDown, ChevronUp } from 'lucide-react'
 import ExchangeApiGuide from '@/components/ExchangeApiGuide'
 
 // ─── 섹션 아이콘/색상 매핑 ──────────────────────────
@@ -311,6 +311,60 @@ function PrivacyModal({ onClose }: { onClose: () => void }) {
   )
 }
 
+// 앱 설치 방법 접이식 섹션
+function InstallGuide() {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="rounded-2xl bg-white shadow-sm overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between px-4 py-3.5 text-sm font-semibold text-gray-700"
+      >
+        <span className="flex items-center gap-2">
+          <span>📱</span>
+          <span>앱 설치 방법</span>
+        </span>
+        {open ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
+      </button>
+      {open && (
+        <div className="border-t border-gray-100 px-4 pb-4 pt-3 space-y-4">
+          <div>
+            <p className="mb-2 text-xs font-semibold text-gray-700">🤖 안드로이드 (Chrome)</p>
+            <ol className="space-y-2">
+              {[
+                '주소창 오른쪽 메뉴(⋮) 탭',
+                <><b className="text-gray-900">&#39;홈 화면에 추가&#39;</b> 선택</>,
+                '앱 이름 확인 후 &ldquo;추가&rdquo; 탭',
+              ].map((step, i) => (
+                <li key={i} className="flex items-start gap-2.5">
+                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-800 text-[11px] font-bold text-white">{i + 1}</span>
+                  <p className="text-xs text-gray-700 break-keep">{step}</p>
+                </li>
+              ))}
+            </ol>
+          </div>
+          <div>
+            <p className="mb-2 text-xs font-semibold text-gray-700">🍎 iPhone (Safari)</p>
+            <ol className="space-y-2">
+              {[
+                '하단 공유 버튼(□↑) 탭',
+                <><b className="text-gray-900">&#39;홈 화면에 추가&#39;</b> 선택</>,
+                '오른쪽 상단 &ldquo;추가&rdquo; 탭',
+              ].map((step, i) => (
+                <li key={i} className="flex items-start gap-2.5">
+                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-800 text-[11px] font-bold text-white">{i + 1}</span>
+                  <p className="text-xs text-gray-700 break-keep">{step}</p>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function LoginPage() {
   const router = useRouter()
   const [checking, setChecking] = useState(true)
@@ -327,11 +381,21 @@ export default function LoginPage() {
         const errorMessages: Record<string, string> = {
           kakao_disabled: '카카오 로그인은 현재 준비 중입니다.',
           suspended: '이용이 정지된 계정입니다. 관리자에게 문의하세요.',
-          not_admin: '관리자 계정이 아닙니다. 일반 사용자는 앱을 이용해주세요.',
+          not_admin: '관리자 전용 로그인입니다. 일반 로그인은 네이버 또는 구글을 이용해주세요.',
+          naver_failed: '네이버 로그인에 실패했습니다. 다시 시도해주세요.',
+          naver_token: '네이버 인증에 실패했습니다. 다시 시도해주세요.',
+          naver_user: '네이버 사용자 정보를 가져올 수 없습니다.',
+          naver_config: '네이버 로그인 설정 오류입니다.',
+          naver_signup: '가입 처리 중 오류가 발생했습니다.',
+          google_failed: '구글 로그인에 실패했습니다. 다시 시도해주세요.',
+          google_token: '구글 인증에 실패했습니다. 다시 시도해주세요.',
+          google_user: '구글 사용자 정보를 가져올 수 없습니다.',
+          google_config: '구글 로그인 설정 오류입니다.',
+          google_signup: '가입 처리 중 오류가 발생했습니다.',
         }
         setOauthError(errorMessages[err] ?? `로그인 오류: ${err}`)
         window.history.replaceState({}, '', '/login')
-        setShowAdminLogin(true)
+        if (err === 'not_admin') setShowAdminLogin(true)
       }
     }
   }, [])
@@ -340,11 +404,27 @@ export default function LoginPage() {
     fetch('/api/auth/me')
       .then((r) => r.json())
       .then((d) => {
-        if (d.loginId) { router.push('/'); router.refresh(); return }
+        if (d.loginId) { router.push('/app'); router.refresh(); return }
         setChecking(false)
       })
       .catch(() => setChecking(false))
   }, [router])
+
+  function handleNaverLogin() {
+    const clientId = process.env.NEXT_PUBLIC_NAVER_CLIENT_ID
+    if (!clientId) { setOauthError('네이버 로그인 설정이 누락되었습니다.'); return }
+    const state = Math.random().toString(36).slice(2)
+    const redirectUri = `${window.location.origin}/api/auth/naver/callback`
+    window.location.href = `https://nid.naver.com/oauth2.0/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&state=${state}`
+  }
+
+  function handleGoogleLogin() {
+    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
+    if (!clientId) { setOauthError('구글 로그인 설정이 누락되었습니다.'); return }
+    const redirectUri = `${window.location.origin}/api/auth/google/callback`
+    const state = Math.random().toString(36).slice(2)
+    window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=openid email profile&state=${state}`
+  }
 
   if (checking) {
     return (
@@ -366,95 +446,80 @@ export default function LoginPage() {
           <p className="mt-1 text-sm text-gray-600 break-keep">코인 에어드랍 이벤트 자동 참여</p>
         </div>
 
+        {/* ── 오류 메시지 ── */}
+        {oauthError && (
+          <p className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600 text-center break-keep">{oauthError}</p>
+        )}
+
+        {/* ── 간편 로그인 (메인) ── */}
+        <div className="rounded-2xl bg-white p-5 shadow-sm">
+          <p className="mb-4 text-center text-xs font-semibold text-gray-500 tracking-wider">간편 로그인</p>
+
+          {/* 네이버 */}
+          <button
+            type="button"
+            onClick={handleNaverLogin}
+            className="relative flex w-full items-center justify-center rounded-xl bg-[#03C75A] py-3.5 text-sm font-semibold text-white hover:brightness-95 transition active:scale-[0.98] mb-3"
+          >
+            <span className="absolute left-4 flex items-center justify-center">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <path d="M13.547 12.836L10.204 8H8v8h2.453V12.164L13.796 17H16V9h-2.453z" fill="white"/>
+              </svg>
+            </span>
+            네이버로 시작하기
+          </button>
+
+          {/* 구글 */}
+          <button
+            type="button"
+            onClick={handleGoogleLogin}
+            className="relative flex w-full items-center justify-center rounded-xl border border-gray-200 bg-white py-3.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition active:scale-[0.98]"
+          >
+            <span className="absolute left-4 flex items-center justify-center">
+              <svg width="20" height="20" viewBox="0 0 24 24">
+                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+              </svg>
+            </span>
+            구글로 시작하기
+          </button>
+        </div>
+
         {/* ── 서비스 안내 ── */}
         <div className="rounded-2xl bg-white p-4 shadow-sm">
-          <p className="mb-3 text-xs font-semibold text-gray-700">📌 서비스 안내</p>
-          <div className="flex flex-col gap-2">
+          <p className="mb-3 text-xs font-semibold text-gray-500">📌 서비스 안내</p>
+          <div className="flex gap-2">
             <button
               type="button"
               onClick={() => setActiveModal('service')}
-              className="flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2.5 text-sm font-medium text-blue-700 transition hover:bg-blue-100"
+              className="flex-1 flex flex-col items-center gap-1 rounded-xl border border-blue-100 bg-blue-50 px-2 py-3 text-blue-700 transition hover:bg-blue-100"
             >
-              <span>📢</span>
-              <div className="text-left">
-                <p className="font-semibold text-sm">서비스 소개</p>
-                <p className="text-xs font-normal text-blue-500 break-keep">에어드랍 이벤트란? MyCoinBot 작동 원리</p>
-              </div>
+              <span className="text-lg">📢</span>
+              <p className="text-[11px] font-semibold">서비스 소개</p>
             </button>
             <button
               type="button"
               onClick={() => setActiveModal('signup')}
-              className="flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 px-3 py-2.5 text-sm font-medium text-green-700 transition hover:bg-green-100"
+              className="flex-1 flex flex-col items-center gap-1 rounded-xl border border-green-100 bg-green-50 px-2 py-3 text-green-700 transition hover:bg-green-100"
             >
-              <span>🏦</span>
-              <div className="text-left">
-                <p className="font-semibold text-sm">거래소 가입</p>
-                <p className="text-xs font-normal text-green-500">친구 추천 가입 링크</p>
-              </div>
+              <span className="text-lg">🏦</span>
+              <p className="text-[11px] font-semibold">거래소 가입</p>
             </button>
             <button
               type="button"
               onClick={() => setActiveModal('apikey')}
-              className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm font-medium text-amber-700 transition hover:bg-amber-100"
+              className="flex-1 flex flex-col items-center gap-1 rounded-xl border border-amber-100 bg-amber-50 px-2 py-3 text-amber-700 transition hover:bg-amber-100"
             >
-              <span>🔑</span>
-              <div className="text-left">
-                <p className="font-semibold text-sm">API Key 발급</p>
-                <p className="text-xs font-normal text-amber-500">거래소별 API Key 발급 방법</p>
-              </div>
+              <span className="text-lg">🔑</span>
+              <p className="text-[11px] font-semibold">API Key 발급</p>
             </button>
           </div>
         </div>
 
-        {/* ── PWA 설치 방법 ── */}
-        <div className="rounded-2xl bg-white p-5 shadow-sm">
-          <h2 className="mb-4 text-sm font-bold text-gray-900">📱 앱 설치 방법</h2>
-
-          {/* 안드로이드 */}
-          <div className="mb-4">
-            <p className="mb-2 text-xs font-semibold text-gray-700">🤖 안드로이드 (Chrome)</p>
-            <ol className="space-y-2">
-              {[
-                '주소창 오른쪽 메뉴(⋮) 탭',
-                <>
-                  <b className="text-gray-900">&#39;홈 화면에 추가&#39;</b> 선택
-                </>,
-                '앱 이름 확인 후 &ldquo;추가&rdquo; 탭',
-              ].map((step, i) => (
-                <li key={i} className="flex items-start gap-2.5">
-                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-800 text-[11px] font-bold text-white">{i + 1}</span>
-                  <p className="text-xs text-gray-700 break-keep">{step}</p>
-                </li>
-              ))}
-            </ol>
-          </div>
-
-          <div className="border-t border-gray-100 pt-4">
-            <p className="mb-2 text-xs font-semibold text-gray-700">🍎 iPhone (Safari)</p>
-            <ol className="space-y-2">
-              {[
-                '하단 공유 버튼(□↑) 탭',
-                <>
-                  <b className="text-gray-900">&#39;홈 화면에 추가&#39;</b> 선택
-                </>,
-                '오른쪽 상단 &ldquo;추가&rdquo; 탭',
-              ].map((step, i) => (
-                <li key={i} className="flex items-start gap-2.5">
-                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-800 text-[11px] font-bold text-white">{i + 1}</span>
-                  <p className="text-xs text-gray-700 break-keep">{step}</p>
-                </li>
-              ))}
-            </ol>
-          </div>
-        </div>
-
-        {/* ── 앱 열기 ── */}
-        <a
-          href="/app"
-          className="flex items-center justify-center gap-2 rounded-2xl bg-gray-900 py-3.5 text-sm font-semibold text-white transition active:scale-95"
-        >
-          앱 열기 →
-        </a>
+        {/* ── 앱 설치 방법 (접이식) ── */}
+        <InstallGuide />
 
         {/* ── 카카오톡 문의 ── */}
         <a
@@ -481,9 +546,6 @@ export default function LoginPage() {
         ) : (
           <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
             <p className="mb-3 text-center text-xs font-semibold text-gray-700">🔐 관리자 로그인</p>
-            {oauthError && (
-              <p className="mb-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-600 text-center break-keep">{oauthError}</p>
-            )}
             <button
               type="button"
               onClick={() => {
