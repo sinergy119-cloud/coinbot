@@ -40,17 +40,25 @@ export interface FCMPayload {
 }
 
 // 단일 토큰 발송
-export async function sendFCMToToken(token: string, payload: FCMPayload): Promise<{ ok: boolean; messageId?: string; error?: string; errorCode?: string }> {
+// dataOnly=true: notification 필드 제외 → SW onBackgroundMessage 반드시 호출됨
+//                (스케줄 자동 실행용 — SW가 직접 알림 표시)
+export async function sendFCMToToken(
+  token: string,
+  payload: FCMPayload,
+  dataOnly = false,
+): Promise<{ ok: boolean; messageId?: string; error?: string; errorCode?: string }> {
   try {
     initAdmin()
     const dataPayload: Record<string, string> = {
       ...(payload.data ?? {}),
       ...(payload.deepLink ? { deepLink: payload.deepLink } : {}),
       ...(payload.category ? { category: payload.category } : {}),
+      // data-only 모드일 때 SW에서 제목/본문 사용
+      ...(dataOnly ? { title: payload.title, body: payload.body } : {}),
     }
     const messageId = await admin.messaging().send({
       token,
-      notification: { title: payload.title, body: payload.body },
+      ...(dataOnly ? {} : { notification: { title: payload.title, body: payload.body } }),
       data: dataPayload,
       android: { priority: 'high' },
       webpush: { headers: { Urgency: 'high' } },
@@ -64,9 +72,9 @@ export async function sendFCMToToken(token: string, payload: FCMPayload): Promis
 }
 
 // 여러 토큰 동시 발송 (다기기 수신)
-export async function sendFCMToTokens(tokens: string[], payload: FCMPayload) {
+export async function sendFCMToTokens(tokens: string[], payload: FCMPayload, dataOnly = false) {
   if (tokens.length === 0) return { sent: 0, failed: 0, invalidTokens: [] as string[], errors: [] as string[] }
-  const results = await Promise.allSettled(tokens.map((t) => sendFCMToToken(t, payload)))
+  const results = await Promise.allSettled(tokens.map((t) => sendFCMToToken(t, payload, dataOnly)))
   const invalidTokens: string[] = []
   const errors: string[] = []
   let sent = 0

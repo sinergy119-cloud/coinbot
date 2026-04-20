@@ -9,6 +9,10 @@ const SW_CODE = `// Firebase Cloud Messaging Service Worker
 // respondWith 미호출 → 브라우저가 기본 네트워크 요청으로 처리 (캐싱 없음)
 self.addEventListener('fetch', () => {})
 
+// 새 SW 즉시 활성화 (대기 없이 교체)
+self.addEventListener('install', () => { self.skipWaiting() })
+self.addEventListener('activate', (event) => { event.waitUntil(self.clients.claim()) })
+
 importScripts('https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js')
 importScripts('https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-compat.js')
 

@@ -29,21 +29,25 @@ async function dispatchAppJob(
   }
 
   const deepLink = `/app/schedule/execute/${job.id}?date=${today}`
-  const result = await sendFCMToTokens(tokens, {
-    title: '자동 거래 실행',
-    body: `${job.exchange} ${job.coin} ${job.trade_type} — 탭해서 PIN 입력`,
-    category: 'schedule',
-    deepLink,
-    data: {
-      type: 'execute_trade',
-      jobId: job.id,
-      executionDate: today,
-      exchange: job.exchange,
-      coin: job.coin,
-      tradeType: job.trade_type,
-      amountKrw: String(job.amount_krw ?? 0),
+  const result = await sendFCMToTokens(
+    tokens,
+    {
+      title: '자동 거래 실행',
+      body: `${job.exchange} ${job.coin} ${job.trade_type}`,
+      category: 'schedule',
+      deepLink,
+      data: {
+        type: 'execute_trade',
+        jobId: job.id,
+        executionDate: today,
+        exchange: job.exchange,
+        coin: job.coin,
+        tradeType: job.trade_type,
+        amountKrw: String(job.amount_krw ?? 0),
+      },
     },
-  })
+    true, // dataOnly=true → SW onBackgroundMessage에서 자동 실행 처리
+  )
 
   // 만료 토큰 정리
   if (result.invalidTokens.length > 0) {
