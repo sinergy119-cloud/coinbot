@@ -16,6 +16,7 @@ const PUBLIC_PATHS = [
   '/api/cron',
   '/api/markets',
   '/api/guide',
+  '/api/debug/', // 임시: SW 디버그 로깅
   // PWA 필수 파일 — 브라우저가 설치 확인 시 로그인 전 fetch 가능해야 함
   '/manifest.webmanifest',
   '/firebase-messaging-sw.js',

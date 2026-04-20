@@ -13,6 +13,26 @@ self.addEventListener('fetch', () => {})
 self.addEventListener('install', () => { self.skipWaiting() })
 self.addEventListener('activate', (event) => { event.waitUntil(self.clients.claim()) })
 
+// ─── 진단용 로그 함수 (서버로 전송) ───
+function debugLog(event, payload) {
+  try {
+    fetch('/api/debug/sw-log?event=' + encodeURIComponent(event), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload || {}),
+      keepalive: true,
+    }).catch(() => {})
+  } catch {}
+}
+
+// ─── raw push 이벤트 로깅 (Firebase SDK보다 먼저 실행) ───
+self.addEventListener('push', (event) => {
+  let rawData = null
+  try { rawData = event.data ? event.data.text() : null } catch {}
+  debugLog('raw-push', { hasData: !!event.data, raw: rawData ? rawData.slice(0, 300) : null })
+  // Firebase SDK가 이 이벤트를 처리하도록 respondWith/waitUntil 호출 안 함
+})
+
 importScripts('https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js')
 importScripts('https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-compat.js')
 
@@ -152,6 +172,7 @@ async function autoExecuteSchedule(data) {
 // ─────────────────────────────────────────────────────────────
 
 messaging.onBackgroundMessage(async (payload) => {
+  debugLog('onBackgroundMessage', { hasNotif: !!payload.notification, data: payload.data, notification: payload.notification })
   const data = payload.data || {}
   const notification = payload.notification || {}
   const type = data.type || 'notification_only'
@@ -196,13 +217,14 @@ messaging.onBackgroundMessage(async (payload) => {
   const body = notification.body || data.body || ''
   const deepLink = data.deepLink || '/app'
 
+  debugLog('showNotification', { title, body })
   self.registration.showNotification(title, {
     body,
     icon: '/icon-192.png',
     badge: '/icon-192.png',
     tag: type === 'execute_trade' ? 'trade-' + data.jobId : undefined,
     data: { deepLink, type, ...data },
-  })
+  }).then(() => debugLog('showNotification-ok', { title })).catch(e => debugLog('showNotification-err', { err: String(e) }))
 })
 
 self.addEventListener('notificationclick', (event) => {
