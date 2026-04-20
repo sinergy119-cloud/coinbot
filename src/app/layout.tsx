@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -13,11 +13,14 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+export const viewport: Viewport = {
+  themeColor: '#111827',
+}
+
 export const metadata: Metadata = {
   metadataBase: new URL("https://mycoinbot.duckdns.org"),
   title: "MyCoinBot",
   description: "코인 에어드랍 이벤트용 · 스케줄 등록으로 자동 실행",
-  themeColor: "#111827",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
