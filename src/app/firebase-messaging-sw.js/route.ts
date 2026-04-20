@@ -34,8 +34,8 @@ messaging.onBackgroundMessage((payload) => {
 
   self.registration.showNotification(title, {
     body,
-    icon: '/intro.png',
-    badge: '/intro.png',
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
     tag: type === 'execute_trade' ? \`trade-\${data.jobId}\` : undefined,
     data: { deepLink, type, ...data },
   })
