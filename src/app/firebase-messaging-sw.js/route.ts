@@ -28,9 +28,34 @@ function debugLog(event, payload) {
 // ─── raw push 이벤트 로깅 (Firebase SDK보다 먼저 실행) ───
 self.addEventListener('push', (event) => {
   let rawData = null
+  let parsed = null
   try { rawData = event.data ? event.data.text() : null } catch {}
+  try { parsed = rawData ? JSON.parse(rawData) : null } catch {}
   debugLog('raw-push', { hasData: !!event.data, raw: rawData ? rawData.slice(0, 300) : null })
-  // Firebase SDK가 이 이벤트를 처리하도록 respondWith/waitUntil 호출 안 함
+
+  // [DIAG] raw push에서 직접 알림 강제 표시 — Firebase SDK 거치지 않고 테스트
+  const title = (parsed && parsed.notification && parsed.notification.title)
+    || (parsed && parsed.data && parsed.data.title)
+    || '[RAW-SW] 직접 표시 테스트'
+  const body = (parsed && parsed.notification && parsed.notification.body)
+    || (parsed && parsed.data && parsed.data.body)
+    || 'SW raw push 핸들러에서 표시'
+
+  event.waitUntil(
+    (async () => {
+      try {
+        await self.registration.showNotification('[RAW-SW] ' + title, {
+          body,
+          icon: '/icon-192.png',
+          badge: '/icon-192.png',
+          tag: 'raw-' + Date.now(),
+        })
+        debugLog('raw-show-ok', { title })
+      } catch (e) {
+        debugLog('raw-show-err', { err: String(e) })
+      }
+    })()
+  )
 })
 
 importScripts('https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js')
