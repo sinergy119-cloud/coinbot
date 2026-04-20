@@ -55,7 +55,7 @@ export default function PushBanner() {
   if (status === 'hidden') return null
 
   return (
-    <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-3 break-keep">
+    <div className="sticky top-0 z-40 bg-yellow-50 border-b border-yellow-200 px-4 py-3 break-keep">
       {status === 'idle' && (
         <div className="flex items-center justify-between gap-3 max-w-lg mx-auto">
           <div>
