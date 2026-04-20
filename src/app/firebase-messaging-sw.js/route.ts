@@ -34,18 +34,6 @@ try {
   // Firebase 초기화 실패해도 push 이벤트는 네이티브로 처리 가능
 }
 
-// ─── 디버그 로그 (서버로 전송) ───
-function debugLog(event, payload) {
-  try {
-    fetch('/api/debug/sw-log?event=' + encodeURIComponent(event), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload || {}),
-      keepalive: true,
-    }).catch(() => {})
-  } catch {}
-}
-
 // ─────────────────────────────────────────────────────────────
 // SW 자동 실행 헬퍼 (PIN 없이 device key로 복호화)
 // ─────────────────────────────────────────────────────────────
@@ -166,9 +154,7 @@ async function handlePush(event) {
   let payload = {}
   try { payload = event.data ? event.data.json() : {} } catch {}
 
-  debugLog('push', { hasData: !!payload.data, hasNotif: !!payload.notification })
-
-  const data = payload.data || {}
+const data = payload.data || {}
   const notification = payload.notification || {}
   const type = data.type || 'notification_only'
 
@@ -178,15 +164,13 @@ async function handlePush(event) {
   if (type === 'execute_trade' && data.jobId) {
     try {
       const result = await autoExecuteSchedule(data)
-      debugLog('auto-exec-result', { ok: result.ok, reason: result.reason, error: result.error })
-
       // 성공 또는 실제 실행 후 실패 → 서버가 /report 수신 시 알림 발송 → SW 종료
       if (result.ok) return
       if (result.reason !== 'no_device_key' && result.reason !== 'no_auto_keys' && result.reason !== 'db_not_ready') return
 
       // no_device_key / no_auto_keys / db_not_ready → 아래 fall-through (앱 진입 유도 알림)
-    } catch (e) {
-      debugLog('auto-exec-error', { err: String(e) })
+    } catch {
+      // 자동 실행 오류 → fall-through (앱 진입 유도 알림)
     }
   }
 
