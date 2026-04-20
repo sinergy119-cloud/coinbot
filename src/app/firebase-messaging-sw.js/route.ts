@@ -6,10 +6,8 @@ const SW_CODE = `// Firebase Cloud Messaging Service Worker
 // design-security.md §5-4
 
 // PWA 독립 앱 설치를 위한 fetch 핸들러 (Chrome installability 기준 충족)
-self.addEventListener('fetch', (event) => {
-  // 네트워크 우선 전략 — 오프라인 캐싱 없이 그냥 통과
-  event.respondWith(fetch(event.request))
-})
+// respondWith 미호출 → 브라우저가 기본 네트워크 요청으로 처리 (캐싱 없음)
+self.addEventListener('fetch', () => {})
 
 importScripts('https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js')
 importScripts('https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-compat.js')
