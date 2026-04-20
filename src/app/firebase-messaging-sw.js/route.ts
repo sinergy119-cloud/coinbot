@@ -7,6 +7,8 @@
 
 const SW_CODE = `// Firebase Cloud Messaging Service Worker (native push handler)
 // design-security.md §5-4
+// - Firebase SDK는 client getToken 호환성을 위해 로드만 하고 onBackgroundMessage 미사용
+// - push 이벤트는 네이티브 핸들러에서 직접 처리
 
 // PWA 독립 앱 설치를 위한 fetch 핸들러 (Chrome installability 기준 충족)
 self.addEventListener('fetch', () => {})
@@ -14,6 +16,23 @@ self.addEventListener('fetch', () => {})
 // 새 SW 즉시 활성화 (대기 없이 교체)
 self.addEventListener('install', () => { self.skipWaiting() })
 self.addEventListener('activate', (event) => { event.waitUntil(self.clients.claim()) })
+
+// Firebase SDK 로드 (client getToken 호환성용; onBackgroundMessage 미등록)
+try {
+  importScripts('https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js')
+  importScripts('https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-compat.js')
+  firebase.initializeApp({
+    apiKey: 'AIzaSyBzCtczwiDJwzGTw8v0lRRuoxI5Enlp7Zg',
+    authDomain: 'mycoinbot-app.firebaseapp.com',
+    projectId: 'mycoinbot-app',
+    storageBucket: 'mycoinbot-app.firebasestorage.app',
+    messagingSenderId: '201995976563',
+    appId: '1:201995976563:web:2af1925a084325bb5d4f06',
+  })
+  firebase.messaging()
+} catch (e) {
+  // Firebase 초기화 실패해도 push 이벤트는 네이티브로 처리 가능
+}
 
 // ─── 디버그 로그 (서버로 전송) ───
 function debugLog(event, payload) {
