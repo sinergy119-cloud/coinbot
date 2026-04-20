@@ -307,7 +307,7 @@ function InstantForm({ onDone }: { onDone: () => void }) {
 // ────────────────────────────────────────
 
 function ScheduleForm({ onDone }: { onDone: () => void }) {
-  const today = new Date()
+  const today = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul' }))
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
 
   const [exchange, setExchange] = useState<Exchange>('BITHUMB')

@@ -38,7 +38,7 @@ function formatRelative(iso: string): string {
   if (h < 24) return `${h}시간 전`
   const d = Math.floor(h / 24)
   if (d < 7) return `${d}일 전`
-  const dt = new Date(iso)
+  const dt = new Date(new Date(iso).toLocaleString('en-US', { timeZone: 'Asia/Seoul' }))
   return `${dt.getMonth() + 1}/${dt.getDate()}`
 }
 
