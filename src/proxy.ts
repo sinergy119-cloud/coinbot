@@ -20,6 +20,7 @@ const PUBLIC_PATHS = [
   // PWA 필수 파일 — 브라우저가 설치 확인 시 로그인 전 fetch 가능해야 함
   '/manifest.webmanifest',
   '/firebase-messaging-sw.js',
+  '/.well-known/', // Google Play Digital Asset Links (assetlinks.json)
 ]
 
 export default async function proxy(request: NextRequest) {

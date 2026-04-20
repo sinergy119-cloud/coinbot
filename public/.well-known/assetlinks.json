@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.mycoinbot.app",
+        "sha256_cert_fingerprints": ["D1:E1:80:43:3A:55:E1:66:9E:9E:E5:6E:72:D4:3A:FC:BD:C6:44:AB:19:D2:FB:15:49:D0:9E:B1:E2:1F:E6:5C"]
+      }
+    }]
