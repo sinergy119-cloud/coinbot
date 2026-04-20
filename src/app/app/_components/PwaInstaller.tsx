@@ -11,7 +11,22 @@ export default function PwaInstaller() {
         .catch((err) => console.warn('[SW] 등록 실패:', err))
     }
 
-    // 2. PWA 설치 완료 시 토스트 알림 표시
+    // 2. ChunkLoadError 자동 새로고침
+    //    배포 후 구 JS 청크가 캐시에 남아 404 나는 경우 한 번만 강제 새로고침
+    const handleError = (event: ErrorEvent) => {
+      const msg = event.message || ''
+      if (msg.includes('Failed to load chunk') || msg.includes('ChunkLoadError') || msg.includes('Loading chunk')) {
+        const key = 'chunk_reload_ts'
+        const last = Number(sessionStorage.getItem(key) || 0)
+        if (Date.now() - last > 30_000) {
+          sessionStorage.setItem(key, String(Date.now()))
+          window.location.reload()
+        }
+      }
+    }
+    window.addEventListener('error', handleError)
+
+    // 3. PWA 설치 완료 시 토스트 알림 표시
     const handleInstalled = () => {
       const toast = document.createElement('div')
       toast.textContent = '✅ MyCoinBot 설치 완료! 홈 화면에서 실행하세요.'
@@ -40,7 +55,11 @@ export default function PwaInstaller() {
     }
 
     window.addEventListener('appinstalled', handleInstalled)
-    return () => window.removeEventListener('appinstalled', handleInstalled)
+
+    return () => {
+      window.removeEventListener('error', handleError)
+      window.removeEventListener('appinstalled', handleInstalled)
+    }
   }, [])
 
   return null

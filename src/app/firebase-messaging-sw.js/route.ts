@@ -198,7 +198,7 @@ async function handlePush(event) {
   await self.registration.showNotification(title, {
     body,
     icon: '/icon-192.png',
-    badge: '/icon-192.png',
+    badge: '/icon-badge.png',
     tag: type === 'execute_trade' ? 'trade-' + data.jobId : undefined,
     data: { deepLink, type, ...data },
   })
