@@ -5,15 +5,16 @@ import { useRouter } from 'next/navigation'
 import { ChevronDown, ChevronUp, CheckCircle2, Circle, Loader2 } from 'lucide-react'
 
 interface PendingInfo {
-  provider: 'naver' | 'google'
+  provider: 'naver' | 'google' | 'kakao'
   name: string
   email: string | null
 }
 
-const PROVIDER_LABEL: Record<string, string> = { naver: '네이버', google: '구글' }
+const PROVIDER_LABEL: Record<string, string> = { naver: '네이버', google: '구글', kakao: '카카오' }
 const PROVIDER_COLOR: Record<string, string> = {
   naver: 'bg-green-500',
   google: 'bg-blue-500',
+  kakao: 'bg-yellow-400',
 }
 
 const TERMS = [

@@ -368,7 +368,6 @@ function InstallGuide() {
 export default function LoginPage() {
   const router = useRouter()
   const [checking, setChecking] = useState(true)
-  const [showAdminLogin, setShowAdminLogin] = useState(false)
   const [oauthError, setOauthError] = useState('')
   const [activeModal, setActiveModal] = useState<'service' | 'signup' | 'apikey' | 'apikey-detail' | 'privacy' | null>(null)
   const [guideExchange, setGuideExchange] = useState('BITHUMB')
@@ -380,8 +379,11 @@ export default function LoginPage() {
       if (err) {
         const errorMessages: Record<string, string> = {
           kakao_disabled: '카카오 로그인은 현재 준비 중입니다.',
+          kakao_failed: '카카오 로그인에 실패했습니다. 다시 시도해주세요.',
+          kakao_token: '카카오 인증에 실패했습니다. 다시 시도해주세요.',
+          kakao_signup: '가입 처리 중 오류가 발생했습니다.',
           suspended: '이용이 정지된 계정입니다. 관리자에게 문의하세요.',
-          not_admin: '관리자 전용 로그인입니다. 일반 로그인은 네이버 또는 구글을 이용해주세요.',
+          not_admin: '관리자 전용 로그인입니다.',
           naver_failed: '네이버 로그인에 실패했습니다. 다시 시도해주세요.',
           naver_token: '네이버 인증에 실패했습니다. 다시 시도해주세요.',
           naver_user: '네이버 사용자 정보를 가져올 수 없습니다.',
@@ -395,7 +397,6 @@ export default function LoginPage() {
         }
         setOauthError(errorMessages[err] ?? `로그인 오류: ${err}`)
         window.history.replaceState({}, '', '/login')
-        if (err === 'not_admin') setShowAdminLogin(true)
       }
     }
   }, [])
@@ -409,6 +410,15 @@ export default function LoginPage() {
       })
       .catch(() => setChecking(false))
   }, [router])
+
+  function handleKakaoLogin() {
+    const clientId = process.env.NEXT_PUBLIC_KAKAO_REST_API_KEY
+    if (!clientId) { setOauthError('카카오 로그인 설정이 누락되었습니다.'); return }
+    const redirectUri = `${window.location.origin}/api/auth/kakao/callback`
+    const state = Math.random().toString(36).slice(2)
+    sessionStorage.setItem('oauth_state', state)
+    window.location.href = `https://kauth.kakao.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&state=${state}`
+  }
 
   function handleNaverLogin() {
     const clientId = process.env.NEXT_PUBLIC_NAVER_CLIENT_ID
@@ -454,6 +464,24 @@ export default function LoginPage() {
         {/* ── 간편 로그인 (메인) ── */}
         <div className="rounded-2xl bg-white p-5 shadow-sm">
           <p className="mb-4 text-center text-xs font-semibold text-gray-500 tracking-wider">간편 로그인</p>
+
+          {/* 카카오 */}
+          <button
+            type="button"
+            onClick={handleKakaoLogin}
+            className="relative flex w-full items-center justify-center rounded-xl bg-[#FEE500] py-3.5 text-sm font-semibold text-[#3C1E1E] hover:brightness-95 transition active:scale-[0.98] mb-3"
+          >
+            <span className="absolute left-4 flex items-center justify-center">
+              <svg width="22" height="22" viewBox="0 0 40 40">
+                <ellipse cx="20" cy="19" rx="17" ry="15" fill="#3C1E1E"/>
+                <circle cx="13" cy="19" r="2.5" fill="#FEE500"/>
+                <circle cx="20" cy="19" r="2.5" fill="#FEE500"/>
+                <circle cx="27" cy="19" r="2.5" fill="#FEE500"/>
+                <polygon points="14,26 17,32 23,26" fill="#FEE500"/>
+              </svg>
+            </span>
+            카카오로 시작하기
+          </button>
 
           {/* 네이버 */}
           <button
@@ -532,51 +560,6 @@ export default function LoginPage() {
           <span>궁금한 점이 있으신가요? <span className="text-yellow-700 font-semibold">카카오톡 1:1 문의</span></span>
         </a>
 
-        {/* ── 관리자 로그인 (숨겨진) ── */}
-        {!showAdminLogin ? (
-          <div className="text-center">
-            <button
-              type="button"
-              onClick={() => setShowAdminLogin(true)}
-              className="text-xs text-gray-400 hover:text-gray-600 transition underline-offset-2 hover:underline"
-            >
-              관리자 로그인
-            </button>
-          </div>
-        ) : (
-          <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-            <p className="mb-3 text-center text-xs font-semibold text-gray-700">🔐 관리자 로그인</p>
-            <button
-              type="button"
-              onClick={() => {
-                const clientId = process.env.NEXT_PUBLIC_KAKAO_REST_API_KEY
-                const redirectUri = `${window.location.origin}/api/auth/kakao/callback`
-                const state = Math.random().toString(36).slice(2)
-                sessionStorage.setItem('oauth_state', state)
-                window.location.href = `https://kauth.kakao.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&state=${state}`
-              }}
-              className="relative flex w-full items-center justify-center rounded-xl bg-[#FEE500] py-3 text-sm font-semibold text-[#3C1E1E] hover:brightness-95 transition"
-            >
-              <span className="absolute left-3.5 flex items-center justify-center">
-                <svg width="22" height="22" viewBox="0 0 40 40">
-                  <ellipse cx="20" cy="19" rx="17" ry="15" fill="#3C1E1E"/>
-                  <circle cx="13" cy="19" r="2.5" fill="#FEE500"/>
-                  <circle cx="20" cy="19" r="2.5" fill="#FEE500"/>
-                  <circle cx="27" cy="19" r="2.5" fill="#FEE500"/>
-                  <polygon points="14,26 17,32 23,26" fill="#FEE500"/>
-                </svg>
-              </span>
-              카카오로 시작하기
-            </button>
-            <button
-              type="button"
-              onClick={() => { setShowAdminLogin(false); setOauthError('') }}
-              className="mt-2 w-full text-center text-xs text-gray-400 hover:text-gray-600"
-            >
-              닫기
-            </button>
-          </div>
-        )}
 
         {/* ── 푸터 ── */}
         <div className="flex items-center justify-between text-xs text-gray-500 pb-4">

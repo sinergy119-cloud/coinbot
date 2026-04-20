@@ -1,6 +1,7 @@
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase'
 import { createSession } from '@/lib/session'
+import { setPendingSignupOnResponse } from '@/lib/pendingSignup'
 
 // 프록시 뒤에서 origin이 localhost로 잡히므로 실제 origin 복원
 function getOrigin(req: NextRequest) {
@@ -10,12 +11,10 @@ function getOrigin(req: NextRequest) {
 }
 
 // GET /api/auth/kakao/callback?code=xxx → 카카오 로그인 콜백
-// 주의: 현재 카카오 로그인은 비활성화 상태입니다 (비즈앱 전환 전).
-// 재활성화 시 반드시 state 파라미터 + PKCE 구현 필요.
 export async function GET(req: NextRequest) {
   const origin = getOrigin(req)
 
-  // 카카오 로그인 비활성화 플래그 — 비즈앱 전환 전까지 콜백 차단
+  // 카카오 로그인 비활성화 플래그
   if (process.env.KAKAO_LOGIN_ENABLED !== 'true') {
     return Response.redirect(`${origin}/login?error=kakao_disabled`)
   }
@@ -69,24 +68,19 @@ export async function GET(req: NextRequest) {
     .single()
 
   if (existingUser) {
-    // 기존 사용자 → 로그인
     if (existingUser.status === 'suspended') {
       return Response.redirect(`${origin}/login?error=suspended`)
     }
-    // 관리자가 아니면 웹 로그인 차단 (일반 사용자는 앱만 사용)
-    if (!existingUser.is_admin) {
-      return Response.redirect(`${origin}/login?error=not_admin`)
-    }
     await db.from('users').update({ last_login_at: new Date().toISOString() }).eq('id', existingUser.id)
 
-    // 로그인 이력
     try {
       const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown'
       await db.from('login_history').insert({ user_id: existingUser.id, ip_address: ip, user_agent: req.headers.get('user-agent')?.slice(0, 200) ?? '' })
     } catch { /* 무시 */ }
 
-    await createSession(existingUser.id, existingUser.user_id, true, existingUser.is_admin)
-    return Response.redirect(`${origin}/?welcome=kakao`)
+    await createSession(existingUser.id, existingUser.user_id, true, existingUser.is_admin ?? false)
+    const target = existingUser.is_admin ? '/' : '/app'
+    return Response.redirect(`${origin}${target}?welcome=kakao`)
   }
 
   // 4) 이메일로 기존 계정 검색 (소셜 계정 자동 연동)
@@ -101,20 +95,23 @@ export async function GET(req: NextRequest) {
       if (emailUser.status === 'suspended') {
         return Response.redirect(`${origin}/login?error=suspended`)
       }
-      if (!emailUser.is_admin) {
-        return Response.redirect(`${origin}/login?error=not_admin`)
-      }
       await db.from('users').update({ last_login_at: new Date().toISOString() }).eq('id', emailUser.id)
       try {
         const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown'
         await db.from('login_history').insert({ user_id: emailUser.id, ip_address: ip, user_agent: req.headers.get('user-agent')?.slice(0, 200) ?? '' })
       } catch { /* 무시 */ }
-      await createSession(emailUser.id, emailUser.user_id, true, emailUser.is_admin)
-      return Response.redirect(`${origin}/?welcome=kakao`)
+      await createSession(emailUser.id, emailUser.user_id, true, emailUser.is_admin ?? false)
+      const target = emailUser.is_admin ? '/' : '/app'
+      return Response.redirect(`${origin}${target}?welcome=kakao`)
     }
   }
 
-  // 5) 신규 사용자 → 웹은 관리자 전용이므로 자동 가입 차단
-  // (신규 사용자는 is_admin = false → 로그인 불가)
-  return Response.redirect(`${origin}/login?error=not_admin`)
+  // 5) 신규 사용자 → 약관 동의 페이지로 이동
+  try {
+    const res = NextResponse.redirect(`${origin}/agree`)
+    return await setPendingSignupOnResponse(res, { provider: 'kakao' as 'naver', userId: kakaoUserId, name: nickname, email })
+  } catch (err) {
+    console.error('[kakao callback] setPendingSignup error:', err)
+    return Response.redirect(`${origin}/login?error=kakao_signup`)
+  }
 }
