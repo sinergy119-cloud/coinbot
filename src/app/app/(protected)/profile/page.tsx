@@ -20,7 +20,6 @@ interface Settings {
   announcementEnabled: boolean
 }
 
-/* ── 소셜 제공자 파싱 ── */
 type Provider = 'kakao' | 'naver' | 'google' | 'unknown'
 
 function getProvider(userId: string): Provider {
@@ -30,57 +29,79 @@ function getProvider(userId: string): Provider {
   return 'unknown'
 }
 
-/* ── 로고 컴포넌트 ── */
-function KakaoLogo() {
+/* ── 소셜 로고 원형 아이콘 ── */
+function ProviderIcon({ provider }: { provider: Provider }) {
+  if (provider === 'kakao') return (
+    <div className="w-12 h-12 rounded-full flex items-center justify-center shrink-0"
+      style={{ background: '#FEE500', boxShadow: '0 4px 12px rgba(254,229,0,0.45)' }}>
+      <svg width="24" height="24" viewBox="0 0 20 20" fill="none">
+        <path d="M10 4C6.686 4 4 6.09 4 8.667c0 1.62 1.02 3.046 2.567 3.872l-.656 2.44a.2.2 0 0 0 .306.216l2.85-1.895A7.4 7.4 0 0 0 10 13.333c3.314 0 6-2.09 6-4.666C16 6.09 13.314 4 10 4z" fill="#3C1E1E"/>
+      </svg>
+    </div>
+  )
+  if (provider === 'naver') return (
+    <div className="w-12 h-12 rounded-full flex items-center justify-center shrink-0"
+      style={{ background: '#03C75A', boxShadow: '0 4px 12px rgba(3,199,90,0.40)' }}>
+      <svg width="22" height="22" viewBox="0 0 20 20" fill="none">
+        <path d="M11.386 10.22L8.46 5.5H5.5v9h3.114V9.78L11.54 14.5H14.5V5.5h-3.114v4.72z" fill="white"/>
+      </svg>
+    </div>
+  )
+  if (provider === 'google') return (
+    <div className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 bg-white"
+      style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.12)' }}>
+      <svg width="22" height="22" viewBox="0 0 20 20" fill="none">
+        <path d="M17.6 10.2c0-.57-.05-1.12-.14-1.64H10v3.1h4.26a3.65 3.65 0 0 1-1.58 2.4v2h2.55c1.5-1.38 2.37-3.4 2.37-5.86z" fill="#4285F4"/>
+        <path d="M10 18c2.14 0 3.93-.71 5.24-1.92l-2.55-2a5.4 5.4 0 0 1-2.69.74c-2.07 0-3.82-1.4-4.45-3.27H2.9v2.06A7.99 7.99 0 0 0 10 18z" fill="#34A853"/>
+        <path d="M5.55 11.55A4.8 4.8 0 0 1 5.3 10c0-.54.09-1.07.25-1.55V6.39H2.9A7.99 7.99 0 0 0 2 10c0 1.29.31 2.51.9 3.61l2.65-2.06z" fill="#FBBC05"/>
+        <path d="M10 5.18c1.17 0 2.22.4 3.04 1.2l2.28-2.28A7.94 7.94 0 0 0 10 2 7.99 7.99 0 0 0 2.9 6.39l2.65 2.06C6.18 6.58 7.93 5.18 10 5.18z" fill="#EA4335"/>
+      </svg>
+    </div>
+  )
   return (
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-      <rect width="20" height="20" rx="5" fill="#FEE500"/>
-      <path
-        d="M10 4C6.686 4 4 6.09 4 8.667c0 1.62 1.02 3.046 2.567 3.872l-.656 2.44a.2.2 0 0 0 .306.216l2.85-1.895A7.4 7.4 0 0 0 10 13.333c3.314 0 6-2.09 6-4.666C16 6.09 13.314 4 10 4z"
-        fill="#3C1E1E"
-      />
-    </svg>
+    <div className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 bg-gray-200">
+      <span className="text-lg font-bold text-gray-500">?</span>
+    </div>
   )
 }
 
-function NaverLogo() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-      <rect width="20" height="20" rx="5" fill="#03C75A"/>
-      <path
-        d="M11.386 10.22L8.46 5.5H5.5v9h3.114V9.78L11.54 14.5H14.5V5.5h-3.114v4.72z"
-        fill="white"
-      />
-    </svg>
-  )
+const PROVIDER_LABEL: Record<Provider, string> = {
+  kakao: '카카오',
+  naver: '네이버',
+  google: '구글',
+  unknown: '소셜',
 }
 
-function GoogleLogo() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-      <rect width="20" height="20" rx="5" fill="white" stroke="#E5E7EB"/>
-      <path d="M17.6 10.2c0-.57-.05-1.12-.14-1.64H10v3.1h4.26a3.65 3.65 0 0 1-1.58 2.4v2h2.55c1.5-1.38 2.37-3.4 2.37-5.86z" fill="#4285F4"/>
-      <path d="M10 18c2.14 0 3.93-.71 5.24-1.92l-2.55-2a5.4 5.4 0 0 1-2.69.74c-2.07 0-3.82-1.4-4.45-3.27H2.9v2.06A7.99 7.99 0 0 0 10 18z" fill="#34A853"/>
-      <path d="M5.55 11.55A4.8 4.8 0 0 1 5.3 10c0-.54.09-1.07.25-1.55V6.39H2.9A7.99 7.99 0 0 0 2 10c0 1.29.31 2.51.9 3.61l2.65-2.06z" fill="#FBBC05"/>
-      <path d="M10 5.18c1.17 0 2.22.4 3.04 1.2l2.28-2.28A7.94 7.94 0 0 0 10 2 7.99 7.99 0 0 0 2.9 6.39l2.65 2.06C6.18 6.58 7.93 5.18 10 5.18z" fill="#EA4335"/>
-    </svg>
-  )
-}
+/* ── 프로필 카드 (디자인 C) ── */
+function ProfileCard({ profile }: { profile: Profile }) {
+  const provider = getProvider(profile.userId)
+  const label = PROVIDER_LABEL[provider]
 
-function ProviderBadge({ userId }: { userId: string }) {
-  const provider = getProvider(userId)
-  const map: Record<Provider, { logo: React.ReactNode; label: string; bg: string; text: string }> = {
-    kakao:   { logo: <KakaoLogo />,  label: '카카오',  bg: 'bg-yellow-50',  text: 'text-yellow-800' },
-    naver:   { logo: <NaverLogo />,  label: '네이버',  bg: 'bg-green-50',   text: 'text-green-800'  },
-    google:  { logo: <GoogleLogo />, label: '구글',    bg: 'bg-blue-50',    text: 'text-blue-800'   },
-    unknown: { logo: null,           label: '소셜',    bg: 'bg-gray-100',   text: 'text-gray-700'   },
-  }
-  const { logo, label, bg, text } = map[provider]
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${bg} ${text}`}>
-      {logo}
-      {label} 로그인
-    </span>
+    <div className="bg-white rounded-2xl p-4 flex items-center gap-3">
+      <ProviderIcon provider={provider} />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <p className="text-base font-bold text-gray-900 truncate">
+            {profile.name ?? '(이름 없음)'}
+          </p>
+          <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full"
+            style={
+              provider === 'kakao' ? { background: '#FFF9C4', color: '#7A6000' } :
+              provider === 'naver' ? { background: '#E6FBF0', color: '#0A7A3C' } :
+              provider === 'google' ? { background: '#EEF2FF', color: '#3B4FC4' } :
+              { background: '#F3F4F6', color: '#374151' }
+            }>
+            {label}
+          </span>
+        </div>
+        {profile.email ? (
+          <p className="text-xs text-gray-500 mt-0.5 truncate">{profile.email}</p>
+        ) : (
+          <p className="text-xs text-gray-400 mt-0.5">이메일 미등록</p>
+        )}
+      </div>
+    </div>
   )
 }
 
@@ -104,9 +125,9 @@ export default function ProfilePage() {
         if (pJson && (pJson.user_id || pJson.userId)) {
           setProfile({
             userId: pJson.user_id ?? pJson.userId,
-            name: pJson.name ?? null,
-            email: pJson.email ?? null,
-            phone: pJson.phone ?? null,
+            name: pJson.name || null,
+            email: pJson.email || null,
+            phone: pJson.phone || null,
           })
         }
         if (sJson.ok) setSettings(sJson.data)
@@ -145,53 +166,27 @@ export default function ProfilePage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <header className="px-4 pt-6 pb-2 break-keep">
+      <header className="px-4 pt-6 pb-2">
         <h1 className="text-2xl font-bold text-gray-900">내 정보</h1>
       </header>
 
       {/* 프로필 카드 */}
-      <section className="px-4">
-        <div className="bg-white rounded-2xl p-5 break-keep space-y-3">
-
-          {/* 로그인 방식 */}
-          {profile?.userId && (
-            <div>
-              <p className="text-xs text-gray-600 mb-1">로그인 방식</p>
-              <ProviderBadge userId={profile.userId} />
-            </div>
-          )}
-
-          {/* 닉네임 */}
-          {profile?.name && (
-            <div>
-              <p className="text-xs text-gray-600">닉네임</p>
-              <p className="text-sm font-semibold text-gray-900 mt-0.5">{profile.name}</p>
-            </div>
-          )}
-
-          {/* 이메일 */}
-          {profile?.email && (
-            <div>
-              <p className="text-xs text-gray-600">이메일</p>
-              <p className="text-sm text-gray-900 mt-0.5">{profile.email}</p>
-            </div>
-          )}
-
-        </div>
-      </section>
+      {profile && (
+        <section className="px-4">
+          <ProfileCard profile={profile} />
+        </section>
+      )}
 
       {/* 알림 설정 */}
       <section className="px-4">
         <h2 className="text-base font-bold text-gray-900 mb-2">알림 설정</h2>
         <div className="bg-white rounded-2xl overflow-hidden">
-
           <SettingRow
             label="전체 알림"
             description="꺼짐 시 모든 알림이 오지 않습니다"
             value={settings?.masterEnabled}
             onChange={() => toggleSetting('masterEnabled')}
           />
-
           <Divider />
           <NotifAccordionHeader
             open={notifOpen}
@@ -199,7 +194,6 @@ export default function ProfilePage() {
             settings={settings}
             onClick={() => setNotifOpen((v) => !v)}
           />
-
           {notifOpen && (
             <>
               <Divider />
@@ -221,12 +215,12 @@ export default function ProfilePage() {
       <section className="px-4">
         <h2 className="text-base font-bold text-gray-900 mb-2">보안</h2>
         <div className="bg-white rounded-2xl overflow-hidden">
-          <a href="/app/profile/api-keys" className="flex items-center justify-between p-4 active:bg-gray-100">
+          <a href="/app/profile/api-keys" className="flex items-center justify-between p-4 active:bg-gray-50">
             <div className="break-keep pr-3">
               <p className="text-sm font-semibold text-gray-900">거래소 API Key</p>
               <p className="text-xs text-gray-600 mt-0.5">기기에만 저장 · PIN 잠금</p>
             </div>
-            <span className="text-gray-400">→</span>
+            <span className="text-gray-400 text-sm">→</span>
           </a>
         </div>
       </section>
@@ -234,28 +228,22 @@ export default function ProfilePage() {
       {/* 기타 */}
       <section className="px-4">
         <div className="bg-white rounded-2xl overflow-hidden">
-          <button
-            type="button"
-            onClick={logout}
-            className="w-full flex items-center justify-between p-4 active:bg-gray-100 text-left"
-          >
-            <span className="text-sm text-red-600 font-semibold">로그아웃</span>
-            <span className="text-gray-400">→</span>
+          <button type="button" onClick={logout}
+            className="w-full flex items-center justify-between p-4 active:bg-gray-50 text-left">
+            <span className="text-sm font-semibold text-red-500">로그아웃</span>
+            <span className="text-gray-400 text-sm">→</span>
           </button>
-          <div className="h-px bg-gray-100 mx-4" />
-          <button
-            type="button"
-            onClick={() => setWithdrawOpen(true)}
-            className="w-full flex items-center justify-between p-4 active:bg-gray-100 text-left"
-          >
-            <span className="text-sm text-gray-600">회원탈퇴</span>
-            <span className="text-gray-400">→</span>
+          <Divider />
+          <button type="button" onClick={() => setWithdrawOpen(true)}
+            className="w-full flex items-center justify-between p-4 active:bg-gray-50 text-left">
+            <span className="text-sm text-gray-500">회원탈퇴</span>
+            <span className="text-gray-400 text-sm">→</span>
           </button>
         </div>
       </section>
 
       <div className="px-4 py-4 text-center">
-        <p className="text-[10px] text-gray-600">MyCoinBot v1.0.0</p>
+        <p className="text-[10px] text-gray-400">MyCoinBot v1.0.0</p>
       </div>
 
       {withdrawOpen && (
@@ -278,56 +266,34 @@ function NotifAccordionHeader({ open, disabled, settings, onClick }: {
 }) {
   const subKeys: (keyof Settings)[] = ['tradeResultEnabled', 'eventEnabled', 'scheduleEnabled', 'systemEnabled', 'announcementEnabled']
   const enabledCount = settings ? subKeys.filter((k) => settings[k]).length : 0
-  const label = open
-    ? '세부 설정 접기'
-    : enabledCount > 0
-      ? `세부 설정 (${enabledCount}개 켜짐)`
-      : '세부 설정'
+  const label = open ? '세부 설정 접기' : enabledCount > 0 ? `세부 설정 (${enabledCount}개 켜짐)` : '세부 설정'
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`w-full flex items-center justify-between px-4 py-3.5 transition-colors active:bg-gray-50 ${disabled ? 'opacity-50 pointer-events-none' : ''}`}
-    >
+    <button type="button" onClick={onClick}
+      className={`w-full flex items-center justify-between px-4 py-3.5 active:bg-gray-50 ${disabled ? 'opacity-50 pointer-events-none' : ''}`}>
       <div className="break-keep">
         <p className="text-sm font-semibold text-gray-900 text-left">{label}</p>
-        {!open && (
-          <p className="text-xs text-gray-600 mt-0.5 text-left">거래 결과, 이벤트 등 개별 설정</p>
-        )}
+        {!open && <p className="text-xs text-gray-600 mt-0.5 text-left">거래 결과, 이벤트 등 개별 설정</p>}
       </div>
-      {open
-        ? <ChevronUp size={18} className="shrink-0 text-gray-500" />
-        : <ChevronDown size={18} className="shrink-0 text-gray-500" />
-      }
+      {open ? <ChevronUp size={18} className="shrink-0 text-gray-400" /> : <ChevronDown size={18} className="shrink-0 text-gray-400" />}
     </button>
   )
 }
 
 function SettingRow({ label, description, value, onChange, disabled, indent }: {
-  label: string
-  description: string
-  value: boolean | undefined
-  onChange: () => void
-  disabled?: boolean
-  indent?: boolean
+  label: string; description: string; value: boolean | undefined
+  onChange: () => void; disabled?: boolean; indent?: boolean
 }) {
   const on = !!value
   return (
-    <div className={`flex items-center justify-between px-4 py-3.5 ${indent ? 'pl-7 bg-gray-50/60' : ''} ${disabled ? 'opacity-40' : ''}`}>
+    <div className={`flex items-center justify-between px-4 py-3.5 ${indent ? 'pl-7 bg-gray-50/50' : ''} ${disabled ? 'opacity-40' : ''}`}>
       <div className="break-keep pr-3">
         <p className="text-sm font-semibold text-gray-900">{label}</p>
         <p className="text-xs text-gray-600 mt-0.5">{description}</p>
       </div>
-      <button
-        type="button"
-        onClick={onChange}
-        disabled={disabled}
-        className={`shrink-0 w-12 h-7 rounded-full transition-colors ${on ? 'bg-gray-900' : 'bg-gray-300'} disabled:cursor-not-allowed`}
-      >
-        <span
-          className={`block w-5 h-5 bg-white rounded-full shadow transform transition-transform ${on ? 'translate-x-6' : 'translate-x-1'}`}
-        />
+      <button type="button" onClick={onChange} disabled={disabled}
+        className={`shrink-0 w-12 h-7 rounded-full transition-colors duration-200 ${on ? 'bg-gray-900' : 'bg-gray-200'} disabled:cursor-not-allowed`}>
+        <span className={`block w-5 h-5 bg-white rounded-full shadow-sm transform transition-transform duration-200 ${on ? 'translate-x-6' : 'translate-x-1'}`} />
       </button>
     </div>
   )
