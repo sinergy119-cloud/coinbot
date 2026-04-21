@@ -79,7 +79,10 @@ export async function GET(req: NextRequest) {
       const errDest = existingUser.is_admin && !fromApp ? '/login' : '/app/login'
       return Response.redirect(`${origin}${errDest}?error=suspended`)
     }
-    await db.from('users').update({ last_login_at: new Date().toISOString() }).eq('id', existingUser.id)
+    const profileUpdate: Record<string, string> = { last_login_at: new Date().toISOString() }
+    if (email) profileUpdate.email = email
+    if (nickname) profileUpdate.name = nickname
+    await db.from('users').update(profileUpdate).eq('id', existingUser.id)
     try {
       const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown'
       await db.from('login_history').insert({ user_id: existingUser.id, ip_address: ip, user_agent: req.headers.get('user-agent')?.slice(0, 200) ?? '' })
