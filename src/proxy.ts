@@ -11,6 +11,7 @@ function getSecret() {
 
 const PUBLIC_PATHS = [
   '/login',
+  '/app/login',
   '/agree',
   '/api/auth/',
   '/api/cron',

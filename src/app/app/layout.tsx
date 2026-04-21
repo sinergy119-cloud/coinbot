@@ -6,7 +6,7 @@ import PwaInstaller from './_components/PwaInstaller'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession()
-  if (!session) redirect('/login?next=/app')
+  if (!session) redirect('/app/login')
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">

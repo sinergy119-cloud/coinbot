@@ -78,7 +78,7 @@ export async function POST() {
           year: 'numeric', month: '2-digit', day: '2-digit',
           hour: '2-digit', minute: '2-digit', hour12: false,
         })
-        const providerLabel = pending.provider === 'naver' ? '네이버' : '구글'
+        const providerLabel = pending.provider === 'kakao' ? '카카오' : pending.provider === 'naver' ? '네이버' : '구글'
         await sendTelegramMessage(admin.telegram_chat_id, [
           `🎉 <b>MyCoinBot 신규 가입 (${providerLabel})</b>`,
           ``,

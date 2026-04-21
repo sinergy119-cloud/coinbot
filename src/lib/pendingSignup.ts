@@ -13,7 +13,7 @@ import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
 export interface PendingSignup {
-  provider: 'naver' | 'google'
+  provider: 'kakao' | 'naver' | 'google'
   userId: string    // e.g., naver_xxxx
   name: string
   email: string | null
@@ -64,7 +64,7 @@ export async function getPendingSignup(): Promise<PendingSignup | null> {
   try {
     const { payload } = await jwtVerify(token, getSecret())
     return {
-      provider: payload.provider as 'naver' | 'google',
+      provider: payload.provider as 'kakao' | 'naver' | 'google',
       userId: payload.userId as string,
       name: payload.name as string,
       email: (payload.email as string | null) ?? null,

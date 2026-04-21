@@ -5,13 +5,14 @@ import { useRouter } from 'next/navigation'
 import { ChevronDown, ChevronUp, CheckCircle2, Circle, Loader2 } from 'lucide-react'
 
 interface PendingInfo {
-  provider: 'naver' | 'google'
+  provider: 'kakao' | 'naver' | 'google'
   name: string
   email: string | null
 }
 
-const PROVIDER_LABEL: Record<string, string> = { naver: '네이버', google: '구글' }
+const PROVIDER_LABEL: Record<string, string> = { kakao: '카카오', naver: '네이버', google: '구글' }
 const PROVIDER_COLOR: Record<string, string> = {
+  kakao: 'bg-yellow-400',
   naver: 'bg-green-500',
   google: 'bg-blue-500',
 }
@@ -111,7 +112,7 @@ export default function AgreePage() {
         setSubmitError(data.error ?? '가입 처리 중 오류가 발생했습니다.')
         return
       }
-      router.push(`/?welcome=${data.provider}`)
+      router.push(`/app?welcome=${data.provider}`)
     } catch {
       setSubmitError('네트워크 오류가 발생했습니다.')
     } finally {
@@ -135,7 +136,7 @@ export default function AgreePage() {
         <div className="text-center space-y-3">
           <p className="text-sm text-red-600 break-keep">{loadError}</p>
           <button
-            onClick={() => router.push('/login')}
+            onClick={() => router.push('/app/login')}
             className="text-sm text-blue-600 underline"
           >
             로그인 페이지로 이동
@@ -236,7 +237,7 @@ export default function AgreePage() {
         )}
 
         <p className="text-center text-xs text-gray-500">
-          <button onClick={() => router.push('/login')} className="underline hover:text-gray-700">
+          <button onClick={() => router.push('/app/login')} className="underline hover:text-gray-700">
             로그인으로 돌아가기
           </button>
         </p>

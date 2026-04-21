@@ -72,7 +72,8 @@ export async function GET(req: NextRequest) {
 
   if (existingUser) {
     if (existingUser.status === 'suspended') {
-      return Response.redirect(`${origin}/login?error=suspended`)
+      const errDest = existingUser.is_admin ? '/login' : '/app/login'
+      return Response.redirect(`${origin}${errDest}?error=suspended`)
     }
     await db.from('users').update({ last_login_at: new Date().toISOString() }).eq('id', existingUser.id)
     try {
@@ -81,7 +82,8 @@ export async function GET(req: NextRequest) {
     } catch { /* 무시 */ }
 
     await createSession(existingUser.id, existingUser.user_id, true, existingUser.is_admin ?? false)
-    return Response.redirect(`${origin}/?welcome=naver`)
+    const dest = existingUser.is_admin ? '/?welcome=naver' : '/app?welcome=naver'
+    return Response.redirect(`${origin}${dest}`)
   }
 
   // 4) 이메일로 기존 계정 검색 (소셜 계정 자동 연동)
@@ -94,7 +96,8 @@ export async function GET(req: NextRequest) {
 
     if (emailUser) {
       if (emailUser.status === 'suspended') {
-        return Response.redirect(`${origin}/login?error=suspended`)
+        const errDest = emailUser.is_admin ? '/login' : '/app/login'
+        return Response.redirect(`${origin}${errDest}?error=suspended`)
       }
       await db.from('users').update({ last_login_at: new Date().toISOString() }).eq('id', emailUser.id)
       try {
@@ -102,7 +105,8 @@ export async function GET(req: NextRequest) {
         await db.from('login_history').insert({ user_id: emailUser.id, ip_address: ip, user_agent: req.headers.get('user-agent')?.slice(0, 200) ?? '' })
       } catch { /* 무시 */ }
       await createSession(emailUser.id, emailUser.user_id, true, emailUser.is_admin ?? false)
-      return Response.redirect(`${origin}/?welcome=naver`)
+      const dest = emailUser.is_admin ? '/?welcome=naver' : '/app?welcome=naver'
+      return Response.redirect(`${origin}${dest}`)
     }
   }
 

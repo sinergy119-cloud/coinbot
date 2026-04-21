@@ -70,7 +70,7 @@ export default function ProfilePage() {
   async function logout() {
     if (!confirm('로그아웃 하시겠습니까?')) return
     await fetch('/api/auth/logout', { method: 'POST' })
-    window.location.href = '/login'
+    window.location.href = '/app/login'
   }
 
   if (loading) {
@@ -160,11 +160,6 @@ export default function ProfilePage() {
       {/* 기타 */}
       <section className="px-4">
         <div className="bg-white rounded-2xl overflow-hidden">
-          <a href="/" className="flex items-center justify-between p-4 active:bg-gray-100">
-            <span className="text-sm text-gray-900 break-keep">웹으로 이동</span>
-            <span className="text-gray-400">→</span>
-          </a>
-          <Divider />
           <button
             type="button"
             onClick={logout}
