@@ -20,6 +20,7 @@ const PUBLIC_PATHS = [
   // PWA 필수 파일 — 브라우저가 설치 확인 시 로그인 전 fetch 가능해야 함
   '/manifest.webmanifest',
   '/firebase-messaging-sw.js',
+  '/privacy',      // 개인정보처리방침 — 비로그인 접근 허용
   '/.well-known/', // Google Play Digital Asset Links (assetlinks.json)
 ]
 
