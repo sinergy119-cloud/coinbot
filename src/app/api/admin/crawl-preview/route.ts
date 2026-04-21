@@ -443,12 +443,42 @@ function extractDateRange(text: string): { startDate: string | null; endDate: st
     if (isNaN(dt.getTime()) || dt.getFullYear() < 2020 || dt.getFullYear() > 2030) return null
     return `${y}-${mo}-${d}`
   }
+
+  // ① "이벤트 기간" 키워드 + 종료일이 월/일만 있는 형태
+  //    예: 이벤트 기간 2026년 04월 21일 ~ 05월 04일
+  const eventKwPat = /(?:이벤트|참여|진행)\s*기간[^0-9]{0,40}(\d{4})\s*년\s*(\d{1,2})\s*월\s*(\d{1,2})\s*일[^~～\d]{0,60}[~～]\s*(\d{1,2})\s*월\s*(\d{1,2})\s*일/
+  const ekm = text.match(eventKwPat)
+  if (ekm) {
+    const y = ekm[1]
+    const s = `${y}-${ekm[2].padStart(2,'0')}-${ekm[3].padStart(2,'0')}`
+    const e = `${y}-${ekm[4].padStart(2,'0')}-${ekm[5].padStart(2,'0')}`
+    const sd = new Date(s), ed = new Date(e)
+    if (!isNaN(sd.getTime()) && !isNaN(ed.getTime())) return { startDate: s, endDate: e }
+  }
+
+  // ② 양쪽 모두 YYYY년 MM월 DD일 형태의 완전한 범위
   const dateToken = /\d{4}\s*[.년]\s*\d{1,2}\s*[.월]\s*\d{1,2}(?:\s*\([월화수목금토일]\))?(?:\s+\d{1,2}:\d{2})?/
   const rangePat = new RegExp(`(${dateToken.source})\\s*[~～]\\s*(${dateToken.source})`, 'g')
   for (const m of text.matchAll(rangePat)) {
     const s = toISODate(m[1]), e = toISODate(m[2])
     if (s && e) return { startDate: s, endDate: e }
   }
+
+  // ③ 독립 날짜들 → 이벤트 기간 관련 날짜만 추려서 범위 추정
+  //    "이벤트 기간" 문단 근처 날짜를 우선 사용
+  const eventPeriodIdx = text.search(/(?:이벤트|참여)\s*기간/)
+  if (eventPeriodIdx >= 0) {
+    const snippet = text.slice(eventPeriodIdx, eventPeriodIdx + 200)
+    const snippetDates: string[] = []
+    for (const m of snippet.matchAll(/\d{4}\s*[.년]\s*\d{1,2}\s*[.월]\s*\d{1,2}/g)) {
+      const d = toISODate(m[0]); if (d) snippetDates.push(d)
+    }
+    const uq = [...new Set(snippetDates)].sort()
+    if (uq.length >= 2) return { startDate: uq[0], endDate: uq[uq.length - 1] }
+    if (uq.length === 1) return { startDate: uq[0], endDate: uq[0] }
+  }
+
+  // ④ 폴백: 전체 텍스트 날짜 (이벤트 범위와 무관한 날짜 제외)
   const dates: string[] = []
   for (const m of text.matchAll(/\d{4}\s*[.년]\s*\d{1,2}\s*[.월]\s*\d{1,2}/g)) {
     const d = toISODate(m[0]); if (d) dates.push(d)
@@ -456,7 +486,13 @@ function extractDateRange(text: string): { startDate: string | null; endDate: st
   const unique = [...new Set(dates)].sort()
   if (unique.length === 0) return { startDate: null, endDate: null }
   if (unique.length === 1) return { startDate: unique[0], endDate: unique[0] }
-  return { startDate: unique[0], endDate: unique[unique.length - 1] }
+  // 극단값(약관·저작권 연도 등)은 제외: 가장 빈번히 등장하는 연도 기준으로 필터
+  const yearCount: Record<string, number> = {}
+  for (const d of unique) yearCount[d.slice(0,4)] = (yearCount[d.slice(0,4)] ?? 0) + 1
+  const mainYear = Object.entries(yearCount).sort((a,b)=>b[1]-a[1])[0]?.[0]
+  const filtered = mainYear ? unique.filter(d => d.startsWith(mainYear)) : unique
+  if (filtered.length === 0) return { startDate: unique[0], endDate: unique[unique.length-1] }
+  return { startDate: filtered[0], endDate: filtered[filtered.length - 1] }
 }
 
 function extractRequireApply(text: string): boolean {
