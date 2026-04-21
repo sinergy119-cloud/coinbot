@@ -20,6 +20,71 @@ interface Settings {
   announcementEnabled: boolean
 }
 
+/* ── 소셜 제공자 파싱 ── */
+type Provider = 'kakao' | 'naver' | 'google' | 'unknown'
+
+function getProvider(userId: string): Provider {
+  if (userId.startsWith('kakao_')) return 'kakao'
+  if (userId.startsWith('naver_')) return 'naver'
+  if (userId.startsWith('google_')) return 'google'
+  return 'unknown'
+}
+
+/* ── 로고 컴포넌트 ── */
+function KakaoLogo() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <rect width="20" height="20" rx="5" fill="#FEE500"/>
+      <path
+        d="M10 4C6.686 4 4 6.09 4 8.667c0 1.62 1.02 3.046 2.567 3.872l-.656 2.44a.2.2 0 0 0 .306.216l2.85-1.895A7.4 7.4 0 0 0 10 13.333c3.314 0 6-2.09 6-4.666C16 6.09 13.314 4 10 4z"
+        fill="#3C1E1E"
+      />
+    </svg>
+  )
+}
+
+function NaverLogo() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <rect width="20" height="20" rx="5" fill="#03C75A"/>
+      <path
+        d="M11.386 10.22L8.46 5.5H5.5v9h3.114V9.78L11.54 14.5H14.5V5.5h-3.114v4.72z"
+        fill="white"
+      />
+    </svg>
+  )
+}
+
+function GoogleLogo() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <rect width="20" height="20" rx="5" fill="white" stroke="#E5E7EB"/>
+      <path d="M17.6 10.2c0-.57-.05-1.12-.14-1.64H10v3.1h4.26a3.65 3.65 0 0 1-1.58 2.4v2h2.55c1.5-1.38 2.37-3.4 2.37-5.86z" fill="#4285F4"/>
+      <path d="M10 18c2.14 0 3.93-.71 5.24-1.92l-2.55-2a5.4 5.4 0 0 1-2.69.74c-2.07 0-3.82-1.4-4.45-3.27H2.9v2.06A7.99 7.99 0 0 0 10 18z" fill="#34A853"/>
+      <path d="M5.55 11.55A4.8 4.8 0 0 1 5.3 10c0-.54.09-1.07.25-1.55V6.39H2.9A7.99 7.99 0 0 0 2 10c0 1.29.31 2.51.9 3.61l2.65-2.06z" fill="#FBBC05"/>
+      <path d="M10 5.18c1.17 0 2.22.4 3.04 1.2l2.28-2.28A7.94 7.94 0 0 0 10 2 7.99 7.99 0 0 0 2.9 6.39l2.65 2.06C6.18 6.58 7.93 5.18 10 5.18z" fill="#EA4335"/>
+    </svg>
+  )
+}
+
+function ProviderBadge({ userId }: { userId: string }) {
+  const provider = getProvider(userId)
+  const map: Record<Provider, { logo: React.ReactNode; label: string; bg: string; text: string }> = {
+    kakao:   { logo: <KakaoLogo />,  label: '카카오',  bg: 'bg-yellow-50',  text: 'text-yellow-800' },
+    naver:   { logo: <NaverLogo />,  label: '네이버',  bg: 'bg-green-50',   text: 'text-green-800'  },
+    google:  { logo: <GoogleLogo />, label: '구글',    bg: 'bg-blue-50',    text: 'text-blue-800'   },
+    unknown: { logo: null,           label: '소셜',    bg: 'bg-gray-100',   text: 'text-gray-700'   },
+  }
+  const { logo, label, bg, text } = map[provider]
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${bg} ${text}`}>
+      {logo}
+      {label} 로그인
+    </span>
+  )
+}
+
+/* ── 메인 페이지 ── */
 export default function ProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [settings, setSettings] = useState<Settings | null>(null)
@@ -54,7 +119,7 @@ export default function ProfilePage() {
   async function toggleSetting(key: keyof Settings) {
     if (!settings) return
     const next = { ...settings, [key]: !settings[key] }
-    setSettings(next) // optimistic
+    setSettings(next)
     try {
       const res = await fetch('/api/app/notification-settings', {
         method: 'PATCH',
@@ -64,7 +129,6 @@ export default function ProfilePage() {
       const json = await res.json()
       if (json.ok) setSettings(json.data)
     } catch {
-      // 롤백
       setSettings(settings)
     }
   }
@@ -87,21 +151,32 @@ export default function ProfilePage() {
 
       {/* 프로필 카드 */}
       <section className="px-4">
-        <div className="bg-white rounded-2xl p-5 break-keep">
-          <p className="text-xs text-gray-600">아이디</p>
-          <p className="text-base font-semibold text-gray-900 mt-0.5">{profile?.userId ?? '-'}</p>
+        <div className="bg-white rounded-2xl p-5 break-keep space-y-3">
+
+          {/* 로그인 방식 */}
+          {profile?.userId && (
+            <div>
+              <p className="text-xs text-gray-600 mb-1">로그인 방식</p>
+              <ProviderBadge userId={profile.userId} />
+            </div>
+          )}
+
+          {/* 닉네임 */}
           {profile?.name && (
-            <>
-              <p className="text-xs text-gray-600 mt-3">이름</p>
-              <p className="text-sm text-gray-900 mt-0.5">{profile.name}</p>
-            </>
+            <div>
+              <p className="text-xs text-gray-600">닉네임</p>
+              <p className="text-sm font-semibold text-gray-900 mt-0.5">{profile.name}</p>
+            </div>
           )}
+
+          {/* 이메일 */}
           {profile?.email && (
-            <>
-              <p className="text-xs text-gray-600 mt-3">이메일</p>
+            <div>
+              <p className="text-xs text-gray-600">이메일</p>
               <p className="text-sm text-gray-900 mt-0.5">{profile.email}</p>
-            </>
+            </div>
           )}
+
         </div>
       </section>
 
@@ -110,7 +185,6 @@ export default function ProfilePage() {
         <h2 className="text-base font-bold text-gray-900 mb-2">알림 설정</h2>
         <div className="bg-white rounded-2xl overflow-hidden">
 
-          {/* 전체 알림 — 항상 표시 */}
           <SettingRow
             label="전체 알림"
             description="꺼짐 시 모든 알림이 오지 않습니다"
@@ -118,7 +192,6 @@ export default function ProfilePage() {
             onChange={() => toggleSetting('masterEnabled')}
           />
 
-          {/* 세부 설정 아코디언 헤더 */}
           <Divider />
           <NotifAccordionHeader
             open={notifOpen}
@@ -127,7 +200,6 @@ export default function ProfilePage() {
             onClick={() => setNotifOpen((v) => !v)}
           />
 
-          {/* 세부 항목 — 펼쳐질 때만 표시 */}
           {notifOpen && (
             <>
               <Divider />
@@ -186,7 +258,6 @@ export default function ProfilePage() {
         <p className="text-[10px] text-gray-600">MyCoinBot v1.0.0</p>
       </div>
 
-      {/* 회원탈퇴 모달 */}
       {withdrawOpen && (
         <WithdrawModal
           onClose={() => setWithdrawOpen(false)}
