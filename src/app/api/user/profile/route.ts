@@ -13,11 +13,12 @@ export async function GET() {
   const db = createServerClient()
   const { data } = await db
     .from('users')
-    .select('name, phone, email, pending_email, telegram_chat_id, delegated, delegate_pending')
+    .select('user_id, name, phone, email, pending_email, telegram_chat_id, delegated, delegate_pending')
     .eq('id', session.userId)
     .single()
 
   return Response.json({
+    user_id: data?.user_id ?? '',
     name: data?.name ?? '',
     phone: data?.phone ?? '',
     email: data?.email ?? '',
