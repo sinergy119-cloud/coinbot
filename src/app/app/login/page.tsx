@@ -415,7 +415,7 @@ export default function LoginPage() {
     const clientId = process.env.NEXT_PUBLIC_KAKAO_REST_API_KEY
     if (!clientId) { setOauthError('카카오 로그인 설정이 누락되었습니다.'); return }
     const redirectUri = `${window.location.origin}/api/auth/kakao/callback`
-    const state = Math.random().toString(36).slice(2)
+    const state = 'app_' + Math.random().toString(36).slice(2)
     sessionStorage.setItem('oauth_state', state)
     window.location.href = `https://kauth.kakao.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&state=${state}`
   }
@@ -423,7 +423,7 @@ export default function LoginPage() {
   function handleNaverLogin() {
     const clientId = process.env.NEXT_PUBLIC_NAVER_CLIENT_ID
     if (!clientId) { setOauthError('네이버 로그인 설정이 누락되었습니다.'); return }
-    const state = Math.random().toString(36).slice(2)
+    const state = 'app_' + Math.random().toString(36).slice(2)
     const redirectUri = `${window.location.origin}/api/auth/naver/callback`
     window.location.href = `https://nid.naver.com/oauth2.0/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&state=${state}`
   }
@@ -432,7 +432,7 @@ export default function LoginPage() {
     const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
     if (!clientId) { setOauthError('구글 로그인 설정이 누락되었습니다.'); return }
     const redirectUri = `${window.location.origin}/api/auth/google/callback`
-    const state = Math.random().toString(36).slice(2)
+    const state = 'app_' + Math.random().toString(36).slice(2)
     window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=openid email profile&state=${state}`
   }
 

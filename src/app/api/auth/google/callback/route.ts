@@ -70,9 +70,13 @@ export async function GET(req: NextRequest) {
     .eq('user_id', googleUserId)
     .single()
 
+  // state에 'app_' 접두사가 있으면 /app/login에서 시작한 로그인
+  const state = searchParams.get('state') ?? ''
+  const fromApp = state.startsWith('app_')
+
   if (existingUser) {
     if (existingUser.status === 'suspended') {
-      const errDest = existingUser.is_admin ? '/login' : '/app/login'
+      const errDest = existingUser.is_admin && !fromApp ? '/login' : '/app/login'
       return Response.redirect(`${origin}${errDest}?error=suspended`)
     }
     await db.from('users').update({ last_login_at: new Date().toISOString() }).eq('id', existingUser.id)
@@ -82,7 +86,7 @@ export async function GET(req: NextRequest) {
     } catch { /* 무시 */ }
 
     await createSession(existingUser.id, existingUser.user_id, true, existingUser.is_admin ?? false)
-    const dest = existingUser.is_admin ? '/?welcome=google' : '/app?welcome=google'
+    const dest = (existingUser.is_admin && !fromApp) ? '/?welcome=google' : '/app?welcome=google'
     return Response.redirect(`${origin}${dest}`)
   }
 
@@ -96,7 +100,7 @@ export async function GET(req: NextRequest) {
 
     if (emailUser) {
       if (emailUser.status === 'suspended') {
-        const errDest = emailUser.is_admin ? '/login' : '/app/login'
+        const errDest = emailUser.is_admin && !fromApp ? '/login' : '/app/login'
         return Response.redirect(`${origin}${errDest}?error=suspended`)
       }
       await db.from('users').update({ last_login_at: new Date().toISOString() }).eq('id', emailUser.id)
@@ -105,7 +109,7 @@ export async function GET(req: NextRequest) {
         await db.from('login_history').insert({ user_id: emailUser.id, ip_address: ip, user_agent: req.headers.get('user-agent')?.slice(0, 200) ?? '' })
       } catch { /* 무시 */ }
       await createSession(emailUser.id, emailUser.user_id, true, emailUser.is_admin ?? false)
-      const dest = emailUser.is_admin ? '/?welcome=google' : '/app?welcome=google'
+      const dest = (emailUser.is_admin && !fromApp) ? '/?welcome=google' : '/app?welcome=google'
       return Response.redirect(`${origin}${dest}`)
     }
   }
