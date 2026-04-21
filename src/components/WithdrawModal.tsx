@@ -6,9 +6,20 @@ import { X, AlertTriangle, Loader2, CalendarClock } from 'lucide-react'
 
 interface Props {
   onClose: () => void
+  /** 탈퇴 완료 후 이동할 로그인 경로 (기본: /login) */
+  loginPath?: string
+  /** 스케줄이 있을 때 이동할 경로 (기본: /?tab=schedule) */
+  schedulePath?: string
+  /** 스케줄 목록 조회 API 경로 (기본: /api/trade-jobs) */
+  tradeJobsApiPath?: string
 }
 
-export default function WithdrawModal({ onClose }: Props) {
+export default function WithdrawModal({
+  onClose,
+  loginPath = '/login',
+  schedulePath = '/?tab=schedule',
+  tradeJobsApiPath = '/api/trade-jobs',
+}: Props) {
   const router = useRouter()
   const [step, setStep] = useState<'warning' | 'confirm'>('warning')
   const [inputText, setInputText] = useState('')
@@ -24,7 +35,7 @@ export default function WithdrawModal({ onClose }: Props) {
     setChecking(true)
     setError('')
     try {
-      const res = await fetch('/api/trade-jobs')
+      const res = await fetch(tradeJobsApiPath)
       if (res.ok) {
         const jobs = await res.json()
         if (Array.isArray(jobs) && jobs.length > 0) {
@@ -54,7 +65,7 @@ export default function WithdrawModal({ onClose }: Props) {
       }
 
       // 탈퇴 완료 → 로그인 페이지로
-      router.push('/login?withdrawn=1')
+      router.push(`${loginPath}?withdrawn=1`)
       router.refresh()
     } catch {
       setError('네트워크 오류가 발생했습니다.')
@@ -180,7 +191,7 @@ export default function WithdrawModal({ onClose }: Props) {
                 onClick={() => {
                   setShowScheduleAlert(false)
                   onClose()
-                  router.push('/?tab=schedule')
+                  router.push(schedulePath)
                 }}
                 className="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-medium text-white hover:bg-blue-700"
               >

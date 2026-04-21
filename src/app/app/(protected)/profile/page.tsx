@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
+import WithdrawModal from '@/components/WithdrawModal'
 
 interface Profile {
   userId: string
@@ -24,6 +25,7 @@ export default function ProfilePage() {
   const [settings, setSettings] = useState<Settings | null>(null)
   const [loading, setLoading] = useState(true)
   const [notifOpen, setNotifOpen] = useState(false)
+  const [withdrawOpen, setWithdrawOpen] = useState(false)
 
   useEffect(() => {
     (async () => {
@@ -168,12 +170,31 @@ export default function ProfilePage() {
             <span className="text-sm text-red-600 font-semibold">로그아웃</span>
             <span className="text-gray-400">→</span>
           </button>
+          <div className="h-px bg-gray-100 mx-4" />
+          <button
+            type="button"
+            onClick={() => setWithdrawOpen(true)}
+            className="w-full flex items-center justify-between p-4 active:bg-gray-100 text-left"
+          >
+            <span className="text-sm text-gray-600">회원탈퇴</span>
+            <span className="text-gray-400">→</span>
+          </button>
         </div>
       </section>
 
       <div className="px-4 py-4 text-center">
         <p className="text-[10px] text-gray-600">MyCoinBot v1.0.0</p>
       </div>
+
+      {/* 회원탈퇴 모달 */}
+      {withdrawOpen && (
+        <WithdrawModal
+          onClose={() => setWithdrawOpen(false)}
+          loginPath="/app/login"
+          schedulePath="/app/schedule"
+          tradeJobsApiPath="/api/app/trade-jobs"
+        />
+      )}
     </div>
   )
 }
