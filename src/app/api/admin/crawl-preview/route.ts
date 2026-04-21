@@ -70,7 +70,7 @@ export async function GET(req: NextRequest) {
 
   // 2. 텍스트 정규식 기반 추출 (베이스라인)
   const regexCoin = extractCoinFromTitle(title)
-  const regexAmount = extractAmount(bodyText)
+  const regexAmount = extractAmount(bodyText, title)
   const regexDates = extractDateRange(bodyText)
   const regexRewardDate = extractRewardDate(bodyText)
   const regexRequireApply = extractRequireApply(bodyText)
@@ -101,7 +101,7 @@ export async function GET(req: NextRequest) {
 // ═══════════════════════════════════════════════════════════════
 
 async function fetchBodyTextAndDates(url: URL): Promise<FetchResult> {
-  // GOPAX: REST API 직접 호출 (이미지 없음)
+  // GOPAX: REST API 직접 호출
   if (url.hostname.includes('gopax.co.kr')) {
     const m = url.pathname.match(/\/notice\/(\d+)/)
     if (m) {
@@ -110,8 +110,53 @@ async function fetchBodyTextAndDates(url: URL): Promise<FetchResult> {
     }
   }
 
+  // KORBIT: Contentful API 직접 호출 (CSR 페이지라 HTML fetch 불가)
+  if (url.hostname.includes('korbit.co.kr')) {
+    const noticeId = url.searchParams.get('noticeId')
+    if (noticeId) {
+      const text = await fetchKorbitNotice(noticeId)
+      if (text) return { bodyText: text, rscDates: null, imageUrls: [] }
+    }
+  }
+
   // 기타: HTML 페치
   return fetchHtmlTextAndDates(url.toString())
+}
+
+async function fetchKorbitNotice(noticeId: string): Promise<string> {
+  try {
+    const res = await fetch(
+      `https://portal-prod.korbit.co.kr/api/korbit/v2/contentful?content_type=notice&sys.id=${encodeURIComponent(noticeId)}&limit=1`,
+      {
+        headers: {
+          'User-Agent': 'MyCoinBot-Crawler/1.0',
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'platform-identifier': 'witcher_ios',
+          'korbit_platform_id': '21',
+        },
+        signal: AbortSignal.timeout(10_000),
+      },
+    )
+    if (!res.ok) return ''
+    const data = await res.json()
+    const item = data?.items?.[0]
+    if (!item) return ''
+    // fields.contents는 Contentful rich text — 텍스트 노드만 추출
+    const title = item.fields?.title ?? ''
+    const richText = item.fields?.contents
+    const richTexts: string[] = []
+    function extractRichText(node: unknown): void {
+      if (!node || typeof node !== 'object') return
+      const n = node as Record<string, unknown>
+      if (n.nodeType === 'text' && typeof n.value === 'string') richTexts.push(n.value)
+      if (Array.isArray(n.content)) n.content.forEach(extractRichText)
+    }
+    if (richText) extractRichText(richText)
+    return `${title} ${richTexts.join(' ')}`.trim()
+  } catch {
+    return ''
+  }
 }
 
 async function fetchGopaxNotice(noticeId: string): Promise<string> {
@@ -336,11 +381,37 @@ function flattenJsonToText(value: unknown): string {
 // ═══════════════════════════════════════════════════════════════
 
 function extractCoinFromTitle(title: string): string | null {
-  const matches = [...title.matchAll(/\(([A-Z]{2,10})\)/g)]
-  return matches.length > 0 ? matches[0][1] : null
+  // 패턴 1: 괄호 안 코인 코드 — 비트코인(BTC)
+  const parenMatch = title.match(/\(([A-Z]{2,10})\)/)
+  if (parenMatch) return parenMatch[1]
+
+  // 패턴 2: 수량 뒤 코인 코드 — 4,200,000 SPACE
+  const amountCoin = title.match(/[\d,]+\s+([A-Z]{2,10})(?:\s|$)/)
+  if (amountCoin) return amountCoin[1]
+
+  // 패턴 3: 이벤트 키워드 앞 코인 코드 — SPACE 에어드랍, BTC 스테이킹
+  const eventCoin = title.match(/([A-Z]{2,10})\s+(?:에어드랍|이벤트|스테이킹|런치패드|거래지원|입출금|거래소)/)
+  if (eventCoin) return eventCoin[1]
+
+  // 패턴 4: 숫자 없이 단독 대문자 토큰 — "[SPACE] 이벤트" 형태
+  const bracketCoin = title.match(/\[([A-Z]{2,10})\]/)
+  if (bracketCoin) return bracketCoin[1]
+
+  return null
 }
 
-function extractAmount(text: string): string | null {
+function extractAmount(text: string, title?: string): string | null {
+  // 우선: 제목에서 코인 수량 추출 — "총 4,200,000 SPACE" 형태
+  if (title) {
+    const coinQty = title.match(/(?:총\s*)?([\d,]+(?:\.\d+)?)\s+([A-Z]{2,10})(?:\s|$)/)
+    if (coinQty) return `${coinQty[1]} ${coinQty[2]}`
+  }
+
+  // 본문에서도 코인 수량 탐색 — "N,NNN TICKER 에어드랍"
+  const bodyQty = text.match(/([\d,]{4,})\s+([A-Z]{2,10})\s+(?:에어드랍|지급|보상|리워드)/)
+  if (bodyQty) return `${bodyQty[1]} ${bodyQty[2]}`
+
+  // KRW 금액 추출 (기존 로직)
   let maxAmount = 0
   for (const m of text.matchAll(/(\d+)\s*만\s*원/g))
     maxAmount = Math.max(maxAmount, parseInt(m[1]) * 10000)
