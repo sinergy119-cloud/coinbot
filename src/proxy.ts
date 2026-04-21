@@ -41,17 +41,20 @@ export default async function proxy(request: NextRequest) {
     return NextResponse.next()
   }
 
+  // /app/* 경로는 앱 로그인으로, 나머지는 웹 로그인으로 리다이렉트
+  const loginPath = pathname.startsWith('/app') ? '/app/login' : '/login'
+
   // 세션 쿠키 확인
   const token = request.cookies.get('session')?.value
   if (!token) {
-    return NextResponse.redirect(new URL('/login', request.url))
+    return NextResponse.redirect(new URL(loginPath, request.url))
   }
 
   try {
     await jwtVerify(token, getSecret())
     return NextResponse.next()
   } catch {
-    return NextResponse.redirect(new URL('/login', request.url))
+    return NextResponse.redirect(new URL(loginPath, request.url))
   }
 }
 
