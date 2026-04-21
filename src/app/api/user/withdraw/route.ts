@@ -84,6 +84,12 @@ export async function DELETE() {
     await db.from('exchange_accounts').delete().eq('user_id', session.userId)
   }
 
+  // notification_settings (users FK 참조)
+  await db.from('notification_settings').delete().eq('user_id', session.userId)
+
+  // notifications
+  await db.from('notifications').delete().eq('user_id', session.userId)
+
   // login_history
   await db.from('login_history').delete().eq('user_id', session.userId)
 
