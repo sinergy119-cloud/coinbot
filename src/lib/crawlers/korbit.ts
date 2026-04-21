@@ -1,16 +1,26 @@
 /**
- * 코빗 공지사항 크롤러 (HTML 파싱)
- * 대상 URL: https://www.korbit.co.kr/support/notices
+ * 코빗 공지사항 크롤러 (Contentful CMS API)
+ * 대상 URL: https://portal-prod.korbit.co.kr/api/korbit/v2/contentful
  *
- * ⚠️ 코빗은 공식 API가 없어 HTML을 파싱합니다.
- *    사이트 구조 변경 시 정규식/선택자를 수정하세요.
+ * 코빗은 Contentful CMS를 사용하며, 내부 프록시 API를 통해 공지를 제공합니다.
+ * 요청 시 platform-identifier / korbit_platform_id 헤더가 필요합니다.
  */
 
 import { matchesKeyword, Keywords } from './keywords'
 import { withRetry } from './retry'
 
-const NOTICE_URL = 'https://www.korbit.co.kr/support/notices'
+const PORTAL_API = 'https://portal-prod.korbit.co.kr'
+const NOTICE_API = `${PORTAL_API}/api/korbit/v2/contentful`
 const BASE_URL = 'https://www.korbit.co.kr'
+
+/** Contentful API 요청에 필요한 헤더 */
+const KORBIT_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (compatible; MyCoinBot-Crawler/1.0)',
+  'Accept': 'application/json',
+  'Content-Type': 'application/json',
+  'platform-identifier': 'witcher_ios',
+  'korbit_platform_id': '21',
+}
 
 export interface CrawledItem {
   exchange: string
@@ -19,80 +29,78 @@ export interface CrawledItem {
   url: string | null
 }
 
+interface ContentfulItem {
+  sys: {
+    id: string
+    createdAt: string
+    updatedAt: string
+    contentType?: { sys: { id: string } }
+  }
+  fields: {
+    title?: string
+    category?: string
+    isPinned?: boolean
+    isServed?: string
+  }
+}
+
+interface ContentfulResponse {
+  sys?: { type: string }
+  total?: number
+  skip?: number
+  limit?: number
+  items?: ContentfulItem[]
+}
+
 export async function crawlKorbit(keywords: Keywords, since: Date, until?: Date): Promise<CrawledItem[]> {
+  // 서버사이드 날짜 필터 적용 (since - 1시간 여유)
+  const sinceWithBuffer = new Date(since.getTime() - 60 * 60 * 1000)
+  const params = new URLSearchParams({
+    content_type: 'notice',
+    limit: '100',
+    order: '-sys.createdAt',
+    'sys.createdAt[gte]': sinceWithBuffer.toISOString(),
+  })
+
   const res = await withRetry(
     () =>
-      fetch(NOTICE_URL, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; MyCoinBot-Crawler/1.0)',
-          'Accept': 'text/html',
-        },
+      fetch(`${NOTICE_API}?${params}`, {
+        headers: KORBIT_HEADERS,
         signal: AbortSignal.timeout(15_000),
       }).then((r) => {
-        if (!r.ok) throw new Error(`코빗 공지 페이지 오류: ${r.status}`)
+        if (!r.ok) throw new Error(`코빗 공지 API 오류: ${r.status}`)
         return r
       }),
     { label: 'KORBIT' },
   )
 
-  const html = await res.text()
-  const results: CrawledItem[] = []
+  const data: ContentfulResponse = await res.json()
 
-  // 방법 1: __NEXT_DATA__ 파싱
-  const nextDataMatch = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/)
-  if (nextDataMatch) {
-    try {
-      const nextData = JSON.parse(nextDataMatch[1])
-      const notices =
-        nextData?.props?.pageProps?.notices ??
-        nextData?.props?.pageProps?.data ??
-        nextData?.props?.pageProps?.list ??
-        []
-      if (Array.isArray(notices) && notices.length > 0) {
-        return notices
-          .filter((n: { title?: string; subject?: string; created_at?: string; createdAt?: string; regDate?: string }) => {
-            const dateStr = n.created_at ?? n.createdAt ?? n.regDate
-            if (dateStr) {
-              const posted = new Date(dateStr)
-              if (!isNaN(posted.getTime())) {
-                if (posted < since) return false
-                if (until && posted >= until) return false
-              }
-            }
-            return matchesKeyword(n.title ?? n.subject ?? '', keywords)
-          })
-          .map((n: { id?: string | number; title?: string; subject?: string; slug?: string }) => {
-            const title = String(n.title ?? n.subject ?? '')
-            const id = String(n.id ?? n.slug ?? '')
-            return {
-              exchange: 'KORBIT',
-              sourceId: id,
-              title,
-              url: id ? `${BASE_URL}/support/notices/${id}` : null,
-            }
-          })
+  if (!data?.items || !Array.isArray(data.items)) {
+    return []
+  }
+
+  return data.items
+    .filter((item) => {
+      const createdAt = item?.sys?.createdAt
+      if (createdAt) {
+        const posted = new Date(createdAt)
+        if (!isNaN(posted.getTime())) {
+          if (posted < since) return false
+          if (until && posted >= until) return false
+        }
       }
-    } catch {
-      // 폴백
-    }
-  }
-
-  // 방법 2: HTML 정규식
-  const linkPattern = /href="(\/support\/notices\/(\d+)[^"]*)">([^<]+)</g
-  let match
-  while ((match = linkPattern.exec(html)) !== null) {
-    const path = match[1]
-    const id = match[2]
-    const title = match[3].trim()
-    if (!title || !matchesKeyword(title, keywords)) continue
-    if (results.some((r) => r.sourceId === id)) continue
-    results.push({
-      exchange: 'KORBIT',
-      sourceId: id,
-      title,
-      url: `${BASE_URL}${path}`,
+      const title = item?.fields?.title ?? ''
+      return matchesKeyword(title, keywords)
     })
-  }
-
-  return results
+    .map((item) => {
+      const id = item?.sys?.id ?? ''
+      const title = String(item?.fields?.title ?? '')
+      return {
+        exchange: 'KORBIT',
+        sourceId: id,
+        title,
+        url: id ? `${BASE_URL}/notice/detail/?noticeId=${id}` : null,
+      }
+    })
 }
