@@ -12,8 +12,8 @@
 
 import { Suspense, useEffect, useState } from 'react'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
-import PinPad from '../../../_components/PinPad'
-import KeySelector from '../../../_components/KeySelector'
+import PinPad from '../../../../_components/PinPad'
+import KeySelector from '../../../../_components/KeySelector'
 import { verifyPin, decryptAllByIds } from '@/lib/app/key-store'
 import { EXCHANGE_LABELS, TRADE_TYPE_LABELS, type Exchange, type TradeType } from '@/types/database'
 

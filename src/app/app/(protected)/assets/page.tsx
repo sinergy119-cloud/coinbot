@@ -5,7 +5,7 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import PinPad from '../_components/PinPad'
+import PinPad from '../../_components/PinPad'
 import { isPinSet, verifyPin, listKeys, decryptAllByIds } from '@/lib/app/key-store'
 import { EXCHANGE_LABELS, type Exchange } from '@/types/database'
 

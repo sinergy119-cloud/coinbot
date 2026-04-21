@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
-import PinPad from '../../_components/PinPad'
+import PinPad from '../../../_components/PinPad'
 import {
   isPinSet,
   setupPin,
