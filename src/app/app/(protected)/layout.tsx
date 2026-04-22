@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/session'
-import BottomNav from '../_components/BottomNav'
+import AppShell from '../_components/AppShell'
 import PushBanner from '../_components/PushBanner'
 import PwaInstaller from '../_components/PwaInstaller'
 import BatteryOptBanner from '../_components/BatteryOptBanner'
@@ -16,10 +16,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <PushBanner />
       {/* Android 배터리 최적화 해제 안내 */}
       <BatteryOptBanner />
-      <main className="flex-1 pb-20 max-w-lg mx-auto w-full">
-        {children}
-      </main>
-      <BottomNav />
+      {/* 상단 바 + 좌측 드로어 + 하단 탭 (클라이언트 상태 관리) */}
+      <AppShell>{children}</AppShell>
     </div>
   )
 }
