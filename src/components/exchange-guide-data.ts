@@ -16,6 +16,7 @@ export interface ExchangeGuideData {
   color: string
   emoji: string
   url: string
+  registrationUrl: string
   steps: GuideStep[]
 }
 
@@ -25,6 +26,7 @@ export const EXCHANGE_GUIDES: Record<string, ExchangeGuideData> = {
     color: '#E06B00',
     emoji: '🟠',
     url: 'bithumb.com',
+    registrationUrl: 'https://www.bithumb.com/react/api-support/management-api',
     steps: [
       {
         title: '거래소 로그인',
@@ -73,6 +75,7 @@ export const EXCHANGE_GUIDES: Record<string, ExchangeGuideData> = {
     color: '#0D2562',
     emoji: '🔵',
     url: 'upbit.com',
+    registrationUrl: 'https://upbit.com/mypage/open_api_management',
     steps: [
       {
         title: '거래소 로그인',
@@ -121,6 +124,7 @@ export const EXCHANGE_GUIDES: Record<string, ExchangeGuideData> = {
     color: '#0046FF',
     emoji: '🟢',
     url: 'coinone.co.kr',
+    registrationUrl: 'https://coinone.co.kr/mypage/open-api',
     steps: [
       {
         title: '거래소 로그인',
@@ -168,6 +172,7 @@ export const EXCHANGE_GUIDES: Record<string, ExchangeGuideData> = {
     color: '#111111',
     emoji: '🟣',
     url: 'korbit.co.kr',
+    registrationUrl: 'https://developers.korbit.co.kr/',
     steps: [
       {
         title: '거래소 로그인',
@@ -216,6 +221,7 @@ export const EXCHANGE_GUIDES: Record<string, ExchangeGuideData> = {
     color: '#F5A623',
     emoji: '🟡',
     url: 'gopax.co.kr',
+    registrationUrl: 'https://www.gopax.co.kr/account',
     steps: [
       {
         title: '거래소 로그인',

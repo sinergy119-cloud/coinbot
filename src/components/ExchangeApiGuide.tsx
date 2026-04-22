@@ -308,6 +308,30 @@ export default function ExchangeApiGuide({ exchange, onClose }: { exchange: stri
 
         {/* 단계 내용 (스크롤 영역) */}
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+          {/* ── 퀵 액세스 바: 등록 페이지 링크 + IP 복사 ── */}
+          <div className="rounded-xl border border-gray-200 bg-gray-50 divide-y divide-gray-200">
+            {/* API 등록 페이지 바로가기 */}
+            <a
+              href={guide.registrationUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-3 py-2.5 hover:bg-gray-100 transition rounded-t-xl"
+            >
+              <span className="flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold text-white shrink-0" style={{ backgroundColor: guide.color }}>
+                🔗
+              </span>
+              <span className="flex-1 text-xs font-semibold text-gray-700">{guide.name} API 등록 페이지 바로가기</span>
+              <span className="text-xs text-gray-400">↗</span>
+            </a>
+            {/* 서버 IP 복사 */}
+            <div className="flex items-center gap-2 px-3 py-2.5 rounded-b-xl">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-xs shrink-0">📋</span>
+              <span className="text-xs text-gray-600">서버 IP</span>
+              <span className="flex-1 font-mono text-xs font-bold text-blue-700">{SERVER_IP}</span>
+              <IpCopyButton />
+            </div>
+          </div>
+
           {/* 제목 + 행동 */}
           <div>
             <h3 className="text-sm font-bold text-gray-900 mb-1">

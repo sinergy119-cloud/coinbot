@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import PinPad from '../../../_components/PinPad'
 import {
   isPinSet,
@@ -13,6 +13,34 @@ import {
   resetAll,
 } from '@/lib/app/key-store'
 import { EXCHANGE_LABELS, type Exchange } from '@/types/database'
+import ExchangeApiGuide from '@/components/ExchangeApiGuide'
+import { X } from 'lucide-react'
+
+// ── 가이드 모달 (거래소 가입 / API Key 발급) ──────────────────
+function GuideApiModal({ apiUrl, onClose, footer }: { apiUrl: string; onClose: () => void; footer?: ReactNode }) {
+  const [content, setContent] = useState<string | null>(null)
+  useEffect(() => {
+    fetch(apiUrl).then((r) => r.json()).then((d) => setContent(d.content ?? '')).catch(() => setContent('내용을 불러올 수 없습니다.'))
+  }, [apiUrl])
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
+      <div className="relative max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl">
+        <button onClick={onClose} className="absolute right-3 top-3 rounded-full p-1 text-gray-400 hover:bg-gray-100" aria-label="닫기"><X size={20} /></button>
+        {content === null ? (
+          <div className="flex items-center justify-center py-12"><p className="text-sm text-gray-500 animate-pulse">로딩 중...</p></div>
+        ) : (
+          <>
+            <div className="prose prose-sm max-w-none text-sm text-gray-700 leading-relaxed whitespace-pre-wrap break-keep">{content}</div>
+            {footer}
+            <div className="mt-5 border-t border-gray-100 pt-4">
+              <button onClick={onClose} className="w-full rounded-lg bg-gray-800 py-2.5 text-sm font-medium text-white">닫기</button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
 
 type Phase =
   | 'loading'
@@ -362,6 +390,8 @@ function AddKeyForm({ pin, onDone, onCancel }: { pin: string; onDone: () => void
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [guideOpen, setGuideOpen] = useState(false)
+  const [guideModal, setGuideModal] = useState<'signup' | 'apikey' | 'apikey-detail' | null>(null)
+  const [guideExchange, setGuideExchange] = useState('BITHUMB')
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
@@ -398,30 +428,28 @@ function AddKeyForm({ pin, onDone, onCancel }: { pin: string; onDone: () => void
         </button>
         {guideOpen && (
           <div className="border-t border-gray-200 px-3 py-3 flex flex-col gap-2">
-            <a
-              href="https://mycoinbot.duckdns.org/login"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-xs font-medium text-green-700"
+            <button
+              type="button"
+              onClick={() => setGuideModal('signup')}
+              className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-xs font-medium text-green-700 text-left"
             >
               <span>🏦</span>
               <div>
                 <p className="font-semibold">거래소 가입</p>
                 <p className="font-normal text-green-600 break-keep">친구 추천 가입 링크 확인</p>
               </div>
-            </a>
-            <a
-              href="https://mycoinbot.duckdns.org/login"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700"
+            </button>
+            <button
+              type="button"
+              onClick={() => setGuideModal('apikey')}
+              className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700 text-left"
             >
               <span>🔑</span>
               <div>
                 <p className="font-semibold">API Key 발급 가이드</p>
                 <p className="font-normal text-amber-600 break-keep">거래소별 발급 방법 확인</p>
               </div>
-            </a>
+            </button>
           </div>
         )}
       </div>
@@ -494,6 +522,43 @@ function AddKeyForm({ pin, onDone, onCancel }: { pin: string; onDone: () => void
           {submitting ? '저장 중...' : '저장'}
         </button>
       </div>
+
+      {/* 가이드 모달 */}
+      {guideModal === 'signup' && (
+        <GuideApiModal apiUrl="/api/guide-signup" onClose={() => setGuideModal(null)} />
+      )}
+      {guideModal === 'apikey' && (
+        <GuideApiModal
+          apiUrl="/api/guide-apikey"
+          onClose={() => setGuideModal(null)}
+          footer={
+            <div className="mt-4 rounded-lg border border-purple-200 bg-purple-50 p-3">
+              <p className="mb-2 text-xs font-bold text-purple-800">📖 거래소별 상세 발급 가이드</p>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { key: 'BITHUMB', label: '🟠 빗썸' },
+                  { key: 'UPBIT', label: '🔵 업비트' },
+                  { key: 'COINONE', label: '🟢 코인원' },
+                  { key: 'KORBIT', label: '🟣 코빗' },
+                  { key: 'GOPAX', label: '🟡 고팍스' },
+                ].map((ex) => (
+                  <button
+                    key={ex.key}
+                    type="button"
+                    onClick={() => { setGuideExchange(ex.key); setGuideModal('apikey-detail') }}
+                    className="rounded-full bg-purple-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-purple-700"
+                  >
+                    {ex.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          }
+        />
+      )}
+      {guideModal === 'apikey-detail' && (
+        <ExchangeApiGuide exchange={guideExchange} onClose={() => setGuideModal('apikey')} />
+      )}
     </form>
   )
 }

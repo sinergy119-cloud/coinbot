@@ -371,6 +371,13 @@ export default function LoginPage() {
   const [oauthError, setOauthError] = useState('')
   const [activeModal, setActiveModal] = useState<'service' | 'signup' | 'apikey' | 'apikey-detail' | 'privacy' | null>(null)
   const [guideExchange, setGuideExchange] = useState('BITHUMB')
+  const [lastProvider, setLastProvider] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setLastProvider(localStorage.getItem('lastLoginProvider'))
+    }
+  }, [])
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -414,6 +421,7 @@ export default function LoginPage() {
   function handleKakaoLogin() {
     const clientId = process.env.NEXT_PUBLIC_KAKAO_REST_API_KEY
     if (!clientId) { setOauthError('카카오 로그인 설정이 누락되었습니다.'); return }
+    localStorage.setItem('lastLoginProvider', 'kakao')
     const redirectUri = `${window.location.origin}/api/auth/kakao/callback`
     const state = 'app_' + Math.random().toString(36).slice(2)
     sessionStorage.setItem('oauth_state', state)
@@ -423,6 +431,7 @@ export default function LoginPage() {
   function handleNaverLogin() {
     const clientId = process.env.NEXT_PUBLIC_NAVER_CLIENT_ID
     if (!clientId) { setOauthError('네이버 로그인 설정이 누락되었습니다.'); return }
+    localStorage.setItem('lastLoginProvider', 'naver')
     const state = 'app_' + Math.random().toString(36).slice(2)
     const redirectUri = `${window.location.origin}/api/auth/naver/callback`
     window.location.href = `https://nid.naver.com/oauth2.0/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&state=${state}`
@@ -431,6 +440,7 @@ export default function LoginPage() {
   function handleGoogleLogin() {
     const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
     if (!clientId) { setOauthError('구글 로그인 설정이 누락되었습니다.'); return }
+    localStorage.setItem('lastLoginProvider', 'google')
     const redirectUri = `${window.location.origin}/api/auth/google/callback`
     const state = 'app_' + Math.random().toString(36).slice(2)
     window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=openid email profile&state=${state}`
@@ -481,6 +491,11 @@ export default function LoginPage() {
               </svg>
             </span>
             카카오로 시작하기
+            {lastProvider === 'kakao' && (
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-[#3C1E1E]/15 px-2 py-0.5 text-[10px] font-semibold text-[#3C1E1E]">
+                최근 로그인
+              </span>
+            )}
           </button>
 
           {/* 네이버 */}
@@ -495,6 +510,11 @@ export default function LoginPage() {
               </svg>
             </span>
             네이버로 시작하기
+            {lastProvider === 'naver' && (
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/25 px-2 py-0.5 text-[10px] font-semibold text-white">
+                최근 로그인
+              </span>
+            )}
           </button>
 
           {/* 구글 */}
@@ -512,6 +532,11 @@ export default function LoginPage() {
               </svg>
             </span>
             구글로 시작하기
+            {lastProvider === 'google' && (
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-blue-50 border border-blue-200 px-2 py-0.5 text-[10px] font-semibold text-blue-600">
+                최근 로그인
+              </span>
+            )}
           </button>
         </div>
 
