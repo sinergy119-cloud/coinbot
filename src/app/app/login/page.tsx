@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { X, ChevronDown, ChevronUp } from 'lucide-react'
-import ExchangeApiGuide from '@/components/ExchangeApiGuide'
+import { X } from 'lucide-react'
+import { SignupGuideModal, ApiKeyGuideModal } from '@/components/GuideModals'
 
 // ─── 섹션 아이콘/색상 매핑 ──────────────────────────
 const SECTION_STYLES: Record<string, { icon: string; color: string }> = {
@@ -311,66 +311,11 @@ function PrivacyModal({ onClose }: { onClose: () => void }) {
   )
 }
 
-// 앱 설치 방법 접이식 섹션
-function InstallGuide() {
-  const [open, setOpen] = useState(false)
-  return (
-    <div className="rounded-2xl bg-white shadow-sm overflow-hidden">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between px-4 py-3.5 text-sm font-semibold text-gray-700"
-      >
-        <span className="flex items-center gap-2">
-          <span>📱</span>
-          <span>앱 설치 방법</span>
-        </span>
-        {open ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
-      </button>
-      {open && (
-        <div className="border-t border-gray-100 px-4 pb-4 pt-3 space-y-4">
-          <div>
-            <p className="mb-2 text-xs font-semibold text-gray-700">🤖 안드로이드 (Chrome)</p>
-            <ol className="space-y-2">
-              {[
-                '주소창 오른쪽 메뉴(⋮) 탭',
-                <><b className="text-gray-900">&#39;홈 화면에 추가&#39;</b> 선택</>,
-                '앱 이름 확인 후 &ldquo;추가&rdquo; 탭',
-              ].map((step, i) => (
-                <li key={i} className="flex items-start gap-2.5">
-                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-800 text-[11px] font-bold text-white">{i + 1}</span>
-                  <p className="text-xs text-gray-700 break-keep">{step}</p>
-                </li>
-              ))}
-            </ol>
-          </div>
-          <div>
-            <p className="mb-2 text-xs font-semibold text-gray-700">🍎 iPhone (Safari)</p>
-            <ol className="space-y-2">
-              {[
-                '하단 공유 버튼(□↑) 탭',
-                <><b className="text-gray-900">&#39;홈 화면에 추가&#39;</b> 선택</>,
-                '오른쪽 상단 &ldquo;추가&rdquo; 탭',
-              ].map((step, i) => (
-                <li key={i} className="flex items-start gap-2.5">
-                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-800 text-[11px] font-bold text-white">{i + 1}</span>
-                  <p className="text-xs text-gray-700 break-keep">{step}</p>
-                </li>
-              ))}
-            </ol>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
 export default function LoginPage() {
   const router = useRouter()
   const [checking, setChecking] = useState(true)
   const [oauthError, setOauthError] = useState('')
-  const [activeModal, setActiveModal] = useState<'service' | 'signup' | 'apikey' | 'apikey-detail' | 'privacy' | null>(null)
-  const [guideExchange, setGuideExchange] = useState('BITHUMB')
+  const [activeModal, setActiveModal] = useState<'service' | 'signup' | 'apikey' | 'privacy' | null>(null)
   const [lastProvider, setLastProvider] = useState<string | null>(null)
 
   useEffect(() => {
@@ -571,9 +516,6 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* ── 앱 설치 방법 (접이식) ── */}
-        <InstallGuide />
-
         {/* ── 카카오톡 문의 ── */}
         <a
           href="https://open.kakao.com/o/sUAoiJpi"
@@ -597,34 +539,8 @@ export default function LoginPage() {
 
       {/* ── 모달 ── */}
       {activeModal === 'service' && <GuideModal apiUrl="/api/guide" onClose={() => setActiveModal(null)} />}
-      {activeModal === 'signup' && <GuideModal apiUrl="/api/guide-signup" onClose={() => setActiveModal(null)} />}
-      {activeModal === 'apikey' && (
-        <GuideModal apiUrl="/api/guide-apikey" onClose={() => setActiveModal(null)} footer={
-          <div className="mt-4 rounded-lg border border-purple-200 bg-purple-50 p-3">
-            <p className="mb-2 text-xs font-bold text-purple-800">📖 거래소별 상세 발급 가이드</p>
-            <div className="flex flex-wrap gap-2">
-              {[
-                { key: 'BITHUMB', label: '🟠 빗썸' },
-                { key: 'UPBIT', label: '🔵 업비트' },
-                { key: 'COINONE', label: '🟢 코인원' },
-                { key: 'KORBIT', label: '🟣 코빗' },
-                { key: 'GOPAX', label: '🟡 고팍스' },
-              ].map((ex) => (
-                <button
-                  key={ex.key}
-                  onClick={() => { setGuideExchange(ex.key); setActiveModal('apikey-detail') }}
-                  className="rounded-full bg-purple-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-purple-700"
-                >
-                  {ex.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        } />
-      )}
-      {activeModal === 'apikey-detail' && (
-        <ExchangeApiGuide exchange={guideExchange} onClose={() => setActiveModal('apikey')} />
-      )}
+      {activeModal === 'signup' && <SignupGuideModal onClose={() => setActiveModal(null)} />}
+      {activeModal === 'apikey' && <ApiKeyGuideModal onClose={() => setActiveModal(null)} />}
       {activeModal === 'privacy' && <PrivacyModal onClose={() => setActiveModal(null)} />}
     </div>
   )
