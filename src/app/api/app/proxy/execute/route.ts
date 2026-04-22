@@ -38,8 +38,9 @@ async function logTrade(userId: string, fields: {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await getSession()
-  if (!session) return unauthorized()
+  const sessionNullable = await getSession()
+  if (!sessionNullable) return unauthorized()
+  const session = sessionNullable
 
   // rate limit: 분당 30회
   const rl = userRateLimit(session.userId, 'proxy:execute', 30)
@@ -52,22 +53,50 @@ export async function POST(req: NextRequest) {
     return fail('잘못된 요청 형식입니다.')
   }
 
-  const { exchange, coin, tradeType, amountKrw, source, accountLabel, jobId, executionDate } = body
+  const { exchange, coin, tradeType, amountKrw, source, accountLabel, jobId, executionDate, deviceEndpoint } = body
   // eslint-disable-next-line prefer-const
   let { accessKey, secretKey } = body
 
-  // H-3: 스케줄 자동 실행 중복 방지 — jobId 전달 시 job_executions 선점 체크
+  // H-3: 스케줄 자동 실행 중복 방지 — 원자적 선점 INSERT (check-then-insert 레이스 제거)
+  // 거래 실행 전에 job_executions 행을 선점 INSERT. PK=(job_id, user_id, execution_date) 유니크 제약으로
+  // 동시에 두 기기가 FCM을 수신해도 먼저 INSERT 성공한 쪽만 거래 진행. 나머지는 23505 → 409 반환.
+  // 실행 완료 후 /report(UPSERT)가 이 행의 result를 실제 값으로 UPDATE.
+  let preemptInserted = false
   if (typeof jobId === 'string' && typeof executionDate === 'string') {
     const db = createServerClient()
-    const { data: existing } = await db
-      .from('job_executions')
-      .select('job_id')
-      .eq('job_id', jobId)
-      .eq('execution_date', executionDate)
-      .maybeSingle()
-    if (existing) {
-      return fail('이미 다른 기기에서 실행되었습니다.', 409)
+    const { error: preemptError } = await db.from('job_executions').insert({
+      job_id: jobId,
+      user_id: session.userId,
+      executed_by_device: typeof deviceEndpoint === 'string' ? deviceEndpoint.slice(0, 500) : null,
+      execution_date: executionDate,
+      result: 'skip',                  // 플레이스홀더 — /report 또는 하단 finally에서 UPDATE
+      error_message: '__preempt__',    // 선점 표식 (이후 UPDATE 시 덮어쓰임)
+    })
+    if (preemptError) {
+      if (preemptError.code === '23505') {
+        return fail('이미 다른 기기에서 실행 중입니다.', 409)
+      }
+      console.error('[proxy/execute] 선점 INSERT 실패:', preemptError.message)
+      return fail('실행 락 획득 실패', 500)
     }
+    preemptInserted = true
+  }
+
+  // 선점 행의 result를 최종 값으로 갱신
+  async function finalizePreempt(success: boolean, reason?: string) {
+    if (!preemptInserted) return
+    try {
+      const db = createServerClient()
+      await db
+        .from('job_executions')
+        .update({
+          result: success ? 'success' : 'fail',
+          error_message: reason?.slice(0, 500) ?? null,
+        })
+        .eq('job_id', jobId as string)
+        .eq('user_id', session.userId)
+        .eq('execution_date', executionDate as string)
+    } catch { /* 무시 */ }
   }
 
   if (!isValidExchange(exchange)) return fail('유효하지 않은 거래소입니다.')
@@ -116,6 +145,7 @@ export async function POST(req: NextRequest) {
         balance = Math.floor(bb.krw)
       } catch { /* 무시 */ }
       await logTrade(session.userId, { ...logBase, success: result.success, reason: result.success ? undefined : result.reason, balance_before: balanceBefore, balance })
+      await finalizePreempt(result.success, result.success ? undefined : result.reason)
       if (!result.success) return fail(`FAIL (${result.reason})`, 400)
       return ok({
         exchange,
@@ -133,6 +163,7 @@ export async function POST(req: NextRequest) {
       const coinQty = await getCoinBalance(exchange as Exchange, encAccess, encSecret, coin as string)
       if (coinQty <= 0) {
         await logTrade(session.userId, { ...logBase, success: false, reason: `보유 ${upperCoin} 없음`, balance_before: balanceBefore, balance: 0 })
+        await finalizePreempt(false, `보유 ${upperCoin} 없음`)
         return fail(`보유 ${upperCoin} 없음`, 400)
       }
       const result = await placeMarketOrderByCoinQty(exchange as Exchange, encAccess, encSecret, coin as string, coinQty)
@@ -142,6 +173,7 @@ export async function POST(req: NextRequest) {
         balance = Math.floor(bb.krw)
       } catch { /* 무시 */ }
       await logTrade(session.userId, { ...logBase, success: result.success, reason: result.success ? undefined : result.reason, balance_before: balanceBefore, balance })
+      await finalizePreempt(result.success, result.success ? undefined : result.reason)
       if (!result.success) return fail(`FAIL (${result.reason})`, 400)
       return ok({
         exchange,
@@ -162,6 +194,7 @@ export async function POST(req: NextRequest) {
     } catch { /* 무시 */ }
 
     await logTrade(session.userId, { ...logBase, success: result.success, reason: result.success ? undefined : result.reason, balance_before: balanceBefore, balance })
+    await finalizePreempt(result.success, result.success ? undefined : result.reason)
     if (!result.success) return fail(`FAIL (${result.reason})`, 400)
     return ok({
       exchange,
@@ -176,6 +209,7 @@ export async function POST(req: NextRequest) {
     const msg = err instanceof Error ? err.message : '알 수 없는 오류'
     console.error('[proxy/execute] error:', msg.slice(0, 200))
     await logTrade(session.userId, { ...logBase, success: false, reason: msg.slice(0, 100), balance_before: 0, balance: 0 })
+    await finalizePreempt(false, msg.slice(0, 200))
     return fail(`실행 중 오류: ${msg.slice(0, 100)}`, 500)
   }
 }

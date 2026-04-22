@@ -7,14 +7,17 @@
  */
 
 import { NextRequest } from 'next/server'
-import { getSession } from '@/lib/session'
+import { requireAdmin } from '@/lib/session'
+import { logAdminAudit, adminRateLimit } from '@/lib/admin-audit'
 import { createServerClient } from '@/lib/supabase'
 
 export async function PATCH(req: NextRequest) {
-  const session = await getSession()
-  if (!session || !session.isAdmin) {
+  const session = await requireAdmin()
+  if (!session) {
     return Response.json({ error: '관리자만 접근 가능합니다.' }, { status: 403 })
   }
+  const rl = adminRateLimit(session.userId, 'delegate:patch')
+  if (!rl.ok) return Response.json({ error: `요청이 너무 많습니다. ${rl.resetInSec}초 후 다시 시도하세요.` }, { status: 429 })
 
   const body = await req.json()
   const { action, userId } = body
@@ -34,6 +37,12 @@ export async function PATCH(req: NextRequest) {
 
   const { error } = await db.from('users').update(updates).eq('id', userId)
   if (error) return Response.json({ error: error.message }, { status: 500 })
+
+  await logAdminAudit(db, {
+    adminId: session.userId,
+    action: action === 'approve' ? 'delegate.approve' : 'delegate.reject',
+    targetUserId: userId,
+  })
 
   return Response.json({ ok: true })
 }

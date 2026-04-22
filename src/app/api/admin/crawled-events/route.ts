@@ -6,13 +6,14 @@
  */
 
 import { NextRequest } from 'next/server'
-import { getSession } from '@/lib/session'
+import { requireAdmin } from '@/lib/session'
+import { logAdminAudit, adminRateLimit } from '@/lib/admin-audit'
 import { createServerClient } from '@/lib/supabase'
 
 // GET /api/admin/crawled-events
 export async function GET(req: NextRequest) {
-  const session = await getSession()
-  if (!session || !session.isAdmin) {
+  const session = await requireAdmin()
+  if (!session) {
     return Response.json({ error: '관리자만 접근 가능합니다.' }, { status: 403 })
   }
 
@@ -35,10 +36,12 @@ export async function GET(req: NextRequest) {
 
 // POST /api/admin/crawled-events
 export async function POST(req: NextRequest) {
-  const session = await getSession()
-  if (!session || !session.isAdmin) {
+  const session = await requireAdmin()
+  if (!session) {
     return Response.json({ error: '관리자만 접근 가능합니다.' }, { status: 403 })
   }
+  const rl = adminRateLimit(session.userId, 'crawled-events:post')
+  if (!rl.ok) return Response.json({ error: `요청이 너무 많습니다. ${rl.resetInSec}초 후 다시 시도하세요.` }, { status: 429 })
 
   const body = await req.json()
   const { action, id, eventData } = body
@@ -58,6 +61,7 @@ export async function POST(req: NextRequest) {
       .eq('id', id)
 
     if (error) return Response.json({ error: error.message }, { status: 500 })
+    await logAdminAudit(db, { adminId: session.userId, action: 'crawled.reject', payload: { crawledEventId: id } })
     return Response.json({ ok: true })
   }
 
@@ -120,6 +124,12 @@ export async function POST(req: NextRequest) {
       })
       .eq('id', id)
 
+    await logAdminAudit(db, {
+      adminId: session.userId,
+      action: 'crawled.approve',
+      payload: { crawledEventId: id, announcementId: announcement.id, exchange, coin: String(coin).toUpperCase() },
+    })
+
     return Response.json({ ok: true, announcementId: announcement.id })
   }
 
@@ -137,6 +147,11 @@ export async function POST(req: NextRequest) {
       .eq('id', id)
 
     if (error) return Response.json({ error: error.message }, { status: 500 })
+    await logAdminAudit(db, {
+      adminId: session.userId,
+      action: 'crawled.mark-approved',
+      payload: { crawledEventId: id, announcementId: announcementId ?? null },
+    })
     return Response.json({ ok: true })
   }
 

@@ -60,3 +60,24 @@ export async function deleteSession() {
   const cookieStore = await cookies()
   cookieStore.delete('session')
 }
+
+// 관리자 확인 — JWT의 isAdmin 플래그에 의존하지 않고 DB를 매 요청 재조회
+// 권한 박탈(users.is_admin=false) 즉시 반영되도록 보장
+// 반환: 세션(관리자 확인됨) | null(비로그인·비관리자)
+import { createServerClient } from '@/lib/supabase'
+export async function requireAdmin(): Promise<SessionPayload | null> {
+  const session = await getSession()
+  if (!session) return null
+  try {
+    const db = createServerClient()
+    const { data } = await db
+      .from('users')
+      .select('is_admin')
+      .eq('id', session.userId)
+      .single()
+    if (!data?.is_admin) return null
+    return { ...session, isAdmin: true }
+  } catch {
+    return null
+  }
+}

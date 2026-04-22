@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { getSession } from '@/lib/session'
+import { requireAdmin } from '@/lib/session'
 import { createServerClient } from '@/lib/supabase'
 import { getFullBalance, getCurrentPrice } from '@/lib/exchange'
 import type { Exchange } from '@/types/database'
@@ -7,8 +7,8 @@ import type { Exchange } from '@/types/database'
 // GET /api/admin/user-assets?userId=xxx&exchange=BITHUMB
 // 관리자가 특정 회원의 거래소별 자산 조회
 export async function GET(req: NextRequest) {
-  const session = await getSession()
-  if (!session || !session.isAdmin) {
+  const session = await requireAdmin()
+  if (!session) {
     return Response.json({ error: '관리자만 접근 가능합니다.' }, { status: 403 })
   }
 

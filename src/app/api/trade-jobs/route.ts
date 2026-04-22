@@ -76,6 +76,36 @@ export async function POST(req: NextRequest) {
   if (!isValidUuidArray(accountIds)) {
     return Response.json({ error: '계정을 선택해주세요.' }, { status: 400 })
   }
+
+  // 계정 소유권 검증 — 본인 계정 또는 (관리자라면) 위임받은 계정만 허용
+  {
+    const dbCheck = createServerClient()
+    const { data: ownAccs } = await dbCheck
+      .from('exchange_accounts')
+      .select('id')
+      .in('id', accountIds)
+      .eq('user_id', session.userId)
+    const allowed = new Set((ownAccs ?? []).map((a) => a.id))
+    if (session.isAdmin) {
+      const { data: delegators } = await dbCheck
+        .from('users')
+        .select('id')
+        .eq('delegated', true)
+      const delegatorIds = (delegators ?? []).map((u) => u.id)
+      if (delegatorIds.length > 0) {
+        const { data: delAccs } = await dbCheck
+          .from('exchange_accounts')
+          .select('id')
+          .in('id', accountIds)
+          .in('user_id', delegatorIds)
+        for (const a of delAccs ?? []) allowed.add(a.id)
+      }
+    }
+    if ((accountIds as string[]).some((id) => !allowed.has(id))) {
+      return Response.json({ error: '권한이 없는 계정이 포함되어 있습니다.' }, { status: 403 })
+    }
+  }
+
   const parsedAmount = parseAmountKrw(amountKrw)
   if (tradeType !== 'SELL' && (parsedAmount === null || parsedAmount < 5100)) {
     return Response.json({ error: '최소 거래 금액은 5,100원입니다.' }, { status: 400 })

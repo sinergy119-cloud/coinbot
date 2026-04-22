@@ -208,10 +208,13 @@ export async function POST(req: NextRequest) {
     }),
   )
 
-  // 거래 실행 로그 저장
+  // 거래 실행 로그 저장 — user_id는 실제 계정 소유자(관리자가 위임 실행한 경우 피위임자)
   try {
+    const accOwnerMap = new Map<string, string>()
+    for (const acc of accounts) accOwnerMap.set(acc.id, acc.user_id)
+
     const logs = results.map((r) => ({
-      user_id: session.userId,
+      user_id: accOwnerMap.get(r.accountId) ?? session.userId,
       exchange,
       coin,
       trade_type: tradeType,

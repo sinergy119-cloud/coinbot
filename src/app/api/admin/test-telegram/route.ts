@@ -5,15 +5,18 @@
  * 관리자 전용. 텔레그램 봇 설정이 올바른지 확인용 메시지를 발송합니다.
  */
 
-import { getSession } from '@/lib/session'
+import { requireAdmin } from '@/lib/session'
 import { sendTelegramMessage } from '@/lib/telegram'
+import { adminRateLimit } from '@/lib/admin-audit'
 
 export async function POST() {
-  // 관리자 세션 확인
-  const session = await getSession()
-  if (!session || !session.isAdmin) {
+  // 관리자 세션 확인 (DB 재조회)
+  const session = await requireAdmin()
+  if (!session) {
     return Response.json({ error: '권한이 없습니다.' }, { status: 403 })
   }
+  const rl = adminRateLimit(session.userId, 'test-telegram:post')
+  if (!rl.ok) return Response.json({ error: `요청이 너무 많습니다. ${rl.resetInSec}초 후 다시 시도하세요.` }, { status: 429 })
 
   const chatId = process.env.TELEGRAM_CHAT_ID?.trim()
   const botToken = process.env.TELEGRAM_BOT_TOKEN?.trim()

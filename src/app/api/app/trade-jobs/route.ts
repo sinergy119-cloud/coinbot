@@ -89,6 +89,35 @@ export async function POST(req: NextRequest) {
   }
 
   const db = createServerClient()
+
+  // accountIds가 비어있지 않으면 소유권 검증 — 본인 계정 또는 (관리자라면) 위임받은 계정만 허용
+  if (accIds.length > 0) {
+    const { data: ownAccs } = await db
+      .from('exchange_accounts')
+      .select('id')
+      .in('id', accIds)
+      .eq('user_id', session.userId)
+    const allowed = new Set((ownAccs ?? []).map((a) => a.id))
+    if (session.isAdmin) {
+      const { data: delegators } = await db
+        .from('users')
+        .select('id')
+        .eq('delegated', true)
+      const delegatorIds = (delegators ?? []).map((u) => u.id)
+      if (delegatorIds.length > 0) {
+        const { data: delAccs } = await db
+          .from('exchange_accounts')
+          .select('id')
+          .in('id', accIds)
+          .in('user_id', delegatorIds)
+        for (const a of delAccs ?? []) allowed.add(a.id)
+      }
+    }
+    if (accIds.some((id) => !allowed.has(id))) {
+      return fail('권한이 없는 계정이 포함되어 있습니다.', 403)
+    }
+  }
+
   const { data, error } = await db
     .from('trade_jobs')
     .insert({

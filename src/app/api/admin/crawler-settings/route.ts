@@ -8,15 +8,16 @@
  */
 
 import { NextRequest } from 'next/server'
-import { getSession } from '@/lib/session'
+import { requireAdmin } from '@/lib/session'
+import { logAdminAudit, adminRateLimit } from '@/lib/admin-audit'
 import { createServerClient } from '@/lib/supabase'
 import { getNextScheduledTime } from '@/lib/crawlers/execute'
 
 const VALID_INTERVALS = [6, 12, 24]
 
 export async function GET() {
-  const session = await getSession()
-  if (!session || !session.isAdmin) {
+  const session = await requireAdmin()
+  if (!session) {
     return Response.json({ error: '관리자만 접근 가능합니다.' }, { status: 403 })
   }
 
@@ -38,10 +39,12 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await getSession()
-  if (!session || !session.isAdmin) {
+  const session = await requireAdmin()
+  if (!session) {
     return Response.json({ error: '관리자만 접근 가능합니다.' }, { status: 403 })
   }
+  const rl = adminRateLimit(session.userId, 'crawler-settings:post')
+  if (!rl.ok) return Response.json({ error: `요청이 너무 많습니다. ${rl.resetInSec}초 후 다시 시도하세요.` }, { status: 429 })
 
   const body = await req.json()
   const intervalHours = parseInt(body?.crawl_interval_hours)
@@ -62,6 +65,12 @@ export async function POST(req: NextRequest) {
     { key: 'crawl_interval_hours', value: String(intervalHours) },
     { key: 'next_crawl_at', value: nextCrawlAt },
   ])
+
+  await logAdminAudit(db, {
+    adminId: session.userId,
+    action: 'crawler.settings-update',
+    payload: { crawl_interval_hours: intervalHours, next_crawl_at: nextCrawlAt },
+  })
 
   return Response.json({
     crawl_interval_hours: intervalHours,

@@ -124,14 +124,15 @@ export async function POST(req: NextRequest) {
     .lte('schedule_from', today)
     .gte('schedule_to', today)
 
-  // 스케줄 시간 이후 2분 이내에만 실행 (10:00 설정 → 10:00~10:02 사이 실행)
+  // 스케줄 시간 이후 59초 이내에만 실행 (10:00 설정 → 10:00:00~10:00:59 사이 실행)
+  // 크론이 매 분 호출되므로 60초 이하로 제한해야 동일 스케줄이 같은 분 안에서 1회만 트리거됨
   const kstMs = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Seoul' })).getTime()
   const jobs = (allActiveJobs ?? []).filter((job: TradeJobRow) => {
     const [hh, mm] = (job.schedule_time as string).split(':').map(Number)
     const jobMs = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Seoul' }))
     jobMs.setHours(hh, mm, 0, 0)
     const diff = kstMs - jobMs.getTime()
-    return diff >= 0 && diff <= 120_000  // 0초~2분 이내
+    return diff >= 0 && diff < 60_000  // 0초~59.999초 이내
   })
 
   if (jobs.length === 0) {
@@ -280,12 +281,33 @@ export async function POST(req: NextRequest) {
       await db.from('trade_jobs').update({ last_executed_at: now.toISOString() }).eq('id', job.id)
     }
 
+    // 중복 실행 방지를 위해 job_executions 기록 (앱 FCM 경로는 report API가 기록)
+    // PK=(job_id, user_id, execution_date) UNIQUE 제약으로 같은 날 두 번째 실행은 자동 차단
+    try {
+      const successCount = orderResults.filter((r: { success: boolean }) => r.success).length
+      const result: 'success' | 'partial' | 'failed' =
+        successCount === orderResults.length ? 'success'
+          : successCount > 0 ? 'partial' : 'failed'
+      const firstFail = orderResults.find((r: { success: boolean; reason?: string }) => !r.success)
+      await db.from('job_executions').insert({
+        job_id: job.id,
+        user_id: job.user_id,
+        executed_at: new Date().toISOString(),
+        execution_date: today,
+        result,
+        error_message: firstFail?.reason?.slice(0, 200) ?? null,
+      })
+    } catch { /* 중복(23505) 등은 무시 */ }
+
     results.push({ jobId: job.id, status: 'DONE', orderResults })
 
-    // 거래 실행 로그 저장
+    // 거래 실행 로그 저장 — user_id는 실제 계정 소유자(스케줄 등록자 ≠ 계정 소유자인 경우 대행)
     try {
+      const accOwnerMap = new Map<string, string>()
+      for (const acc of accounts ?? []) accOwnerMap.set(acc.id, acc.user_id)
+
       const logs = orderResults.map((r: { accountId?: string; accountName: string; success: boolean; reason?: string }) => ({
-        user_id: job.user_id,
+        user_id: (r.accountId && accOwnerMap.get(r.accountId)) || job.user_id,
         trade_job_id: job.id,
         exchange: job.exchange,
         coin: job.coin,

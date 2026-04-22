@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
-import { getSession } from '@/lib/session'
+import { requireAdmin } from '@/lib/session'
+import { logAdminAudit, adminRateLimit } from '@/lib/admin-audit'
 import { createServerClient } from '@/lib/supabase'
 import { sendTelegramMessage } from '@/lib/telegram'
 import { escapeHtml } from '@/lib/html'
@@ -14,10 +15,12 @@ const CATEGORY_LABEL: Record<string, string> = {
 
 // PATCH /api/admin/inquiries/[id] → 관리자 답변 등록/수정
 export async function PATCH(req: NextRequest, { params }: { params: Params }) {
-  const session = await getSession()
-  if (!session || !session.isAdmin) {
+  const session = await requireAdmin()
+  if (!session) {
     return Response.json({ error: '관리자만 접근 가능합니다.' }, { status: 403 })
   }
+  const rl = adminRateLimit(session.userId, 'inquiries:patch')
+  if (!rl.ok) return Response.json({ error: `요청이 너무 많습니다. ${rl.resetInSec}초 후 다시 시도하세요.` }, { status: 429 })
 
   const { id } = await params
   const { adminReply } = await req.json()
@@ -48,6 +51,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
     return Response.json({ error: '답변 저장에 실패했습니다.' }, { status: 500 })
   }
 
+  await logAdminAudit(db, {
+    adminId: session.userId,
+    action: 'inquiry.reply',
+    targetUserId: updated.user_id,
+    payload: { inquiryId: id, category: updated.category },
+  })
+
   // 회원 텔레그램 알림
   try {
     const { data: member } = await db
@@ -76,10 +86,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
 
 // DELETE /api/admin/inquiries/[id] → 문의 삭제
 export async function DELETE(_req: NextRequest, { params }: { params: Params }) {
-  const session = await getSession()
-  if (!session || !session.isAdmin) {
+  const session = await requireAdmin()
+  if (!session) {
     return Response.json({ error: '관리자만 접근 가능합니다.' }, { status: 403 })
   }
+  const rl = adminRateLimit(session.userId, 'inquiries:delete')
+  if (!rl.ok) return Response.json({ error: `요청이 너무 많습니다. ${rl.resetInSec}초 후 다시 시도하세요.` }, { status: 429 })
 
   const { id } = await params
   const db = createServerClient()
@@ -89,6 +101,8 @@ export async function DELETE(_req: NextRequest, { params }: { params: Params }) 
     console.error('[admin/inquiries] delete error:', error)
     return Response.json({ error: '삭제에 실패했습니다.' }, { status: 500 })
   }
+
+  await logAdminAudit(db, { adminId: session.userId, action: 'inquiry.delete', payload: { inquiryId: id } })
 
   return Response.json({ ok: true })
 }

@@ -16,7 +16,7 @@
  */
 
 import { NextRequest } from 'next/server'
-import { getSession } from '@/lib/session'
+import { requireAdmin } from '@/lib/session'
 
 // ═══════════════════════════════════════════════════════════════
 // 타입 정의
@@ -43,8 +43,8 @@ interface FetchResult {
 // ═══════════════════════════════════════════════════════════════
 
 export async function GET(req: NextRequest) {
-  const session = await getSession()
-  if (!session || !session.isAdmin) {
+  const session = await requireAdmin()
+  if (!session) {
     return Response.json({ error: '관리자만 접근 가능합니다.' }, { status: 403 })
   }
 

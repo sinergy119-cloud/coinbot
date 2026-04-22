@@ -1,10 +1,10 @@
-import { getSession } from '@/lib/session'
+import { requireAdmin } from '@/lib/session'
 import { createServerClient } from '@/lib/supabase'
 
 // GET /api/admin/inquiries → 전체 문의 목록 (관리자)
 export async function GET() {
-  const session = await getSession()
-  if (!session || !session.isAdmin) {
+  const session = await requireAdmin()
+  if (!session) {
     return Response.json({ error: '관리자만 접근 가능합니다.' }, { status: 403 })
   }
 

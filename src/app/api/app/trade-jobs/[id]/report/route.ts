@@ -71,22 +71,23 @@ export async function POST(
   if (!job) return notFound('스케줄')
   if (job.user_id !== session.userId) return fail('본인의 스케줄만 보고할 수 있습니다.', 403)
 
-  // 중복 실행 락 (job_id, user_id, execution_date PK)
-  const { error: insertError } = await db.from('job_executions').insert({
-    job_id: jobId,
-    user_id: session.userId,
-    executed_by_device: typeof deviceEndpoint === 'string' ? deviceEndpoint.slice(0, 500) : null,
-    execution_date: executionDate,
-    result,
-    error_message: typeof errorMessage === 'string' ? errorMessage.slice(0, 500) : null,
-  })
+  // 중복 실행 락 + 결과 기록 (job_id, user_id, execution_date PK)
+  // /proxy/execute가 선점 INSERT(result='skip', error_message='__preempt__')를 남기므로
+  // UPSERT로 실제 결과를 덮어씀. /proxy/execute 미호출 경로(앱이 로컬 키로 직접 실행)에선 신규 INSERT.
+  const { error: upsertError } = await db.from('job_executions').upsert(
+    {
+      job_id: jobId,
+      user_id: session.userId,
+      executed_by_device: typeof deviceEndpoint === 'string' ? deviceEndpoint.slice(0, 500) : null,
+      execution_date: executionDate,
+      result,
+      error_message: typeof errorMessage === 'string' ? errorMessage.slice(0, 500) : null,
+    },
+    { onConflict: 'job_id,user_id,execution_date' },
+  )
 
-  if (insertError) {
-    // 23505 = unique violation → 다른 기기가 먼저 실행
-    if (insertError.code === '23505') {
-      return fail('already_executed_by_other_device', 409)
-    }
-    console.error('[app/trade-jobs/report] insert error:', insertError)
+  if (upsertError) {
+    console.error('[app/trade-jobs/report] upsert error:', upsertError)
     return fail('보고 기록에 실패했습니다.', 500)
   }
 

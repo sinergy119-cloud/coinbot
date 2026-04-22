@@ -1,14 +1,15 @@
 import { NextRequest } from 'next/server'
-import { getSession } from '@/lib/session'
+import { requireAdmin } from '@/lib/session'
 import { createServerClient } from '@/lib/supabase'
 import { encrypt } from '@/lib/crypto'
 import { getBalance } from '@/lib/exchange'
+import { logAdminAudit, adminRateLimit } from '@/lib/admin-audit'
 import type { Exchange } from '@/types/database'
 
 // GET /api/admin/accounts → 전체 사용자의 모든 거래소 계정
 export async function GET() {
-  const session = await getSession()
-  if (!session || !session.isAdmin) {
+  const session = await requireAdmin()
+  if (!session) {
     return Response.json({ error: '관리자만 접근 가능합니다.' }, { status: 403 })
   }
 
@@ -40,10 +41,12 @@ export async function GET() {
 
 // POST /api/admin/accounts → 특정 사용자에게 계정 대리 등록
 export async function POST(req: NextRequest) {
-  const session = await getSession()
-  if (!session || !session.isAdmin) {
+  const session = await requireAdmin()
+  if (!session) {
     return Response.json({ error: '관리자만 접근 가능합니다.' }, { status: 403 })
   }
+  const rl = adminRateLimit(session.userId, 'accounts:post')
+  if (!rl.ok) return Response.json({ error: `요청이 너무 많습니다. ${rl.resetInSec}초 후 다시 시도하세요.` }, { status: 429 })
 
   const { targetUserId, exchange, accountName, accessKey, secretKey } = await req.json()
 
@@ -102,6 +105,14 @@ export async function POST(req: NextRequest) {
     console.error('Admin account insert error:', error)
     return Response.json({ error: `등록 실패: ${error?.message ?? 'unknown'}` }, { status: 500 })
   }
+
+  // 감사 로그
+  await logAdminAudit(db, {
+    adminId: session.userId,
+    action: 'account.register',
+    targetUserId,
+    payload: { exchange, accountName: accountName.trim(), accountId: newAccount.id },
+  })
 
   return Response.json(newAccount, { status: 201 })
 }
