@@ -11,6 +11,11 @@ import {
   listKeys,
   deleteKey,
   resetAll,
+  isBiometricAvailable,
+  isBiometricRegistered,
+  registerBiometric,
+  authenticateWithBiometric,
+  removeBiometric,
 } from '@/lib/app/key-store'
 import { EXCHANGE_LABELS, type Exchange } from '@/types/database'
 import { SignupGuideModal, ApiKeyGuideModal } from '@/components/GuideModals'
@@ -33,6 +38,177 @@ interface KeySummary {
 
 const EXCHANGES: Exchange[] = ['BITHUMB', 'UPBIT', 'COINONE', 'KORBIT', 'GOPAX']
 
+// ── 지문 아이콘 ──────────────────────────────────────────────
+function FingerprintIcon({ size = 40, className = '' }: { size?: number; className?: string }) {
+  return (
+    <svg
+      width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+      className={className}
+    >
+      <path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4" />
+      <path d="M14 13.12c0 2.38 0 6.38-1 8.88" />
+      <path d="M17.29 21.02c.12-.6.43-2.3.5-3.02" />
+      <path d="M2 12a10 10 0 0 1 18-6" />
+      <path d="M2 16h.01" />
+      <path d="M21.8 16c.2-2 .131-5.354 0-6" />
+      <path d="M5 19.5C5.5 18 6 15 6 12a6 6 0 0 1 .34-2" />
+      <path d="M8.65 22c.21-.66.45-1.32.57-2" />
+      <path d="M9 6.8a6 6 0 0 1 9 5.2v2" />
+    </svg>
+  )
+}
+
+// ── 생체 인증 잠금 해제 화면 ────────────────────────────────
+function BiometricUnlockScreen({
+  onSuccess,
+  onUsePinInstead,
+  submitting,
+}: {
+  onSuccess: (pin: string) => Promise<void>
+  onUsePinInstead: () => void
+  submitting: boolean
+}) {
+  const [trying, setTrying] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [failCount, setFailCount] = useState(0)
+  const mountedRef = useRef(true)
+
+  useEffect(() => {
+    mountedRef.current = true
+    // 화면 진입 시 자동으로 생체 인증 프롬프트 표시
+    ;(async () => {
+      try {
+        const pin = await authenticateWithBiometric()
+        if (mountedRef.current) await onSuccess(pin)
+      } catch {
+        // 자동 시도 실패는 조용히 무시 — 사용자가 수동으로 탭 가능
+      }
+    })()
+    return () => { mountedRef.current = false }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function handleTap() {
+    if (trying || submitting) return
+    setTrying(true)
+    setError(null)
+    try {
+      const pin = await authenticateWithBiometric()
+      await onSuccess(pin)
+    } catch (err) {
+      const next = failCount + 1
+      setFailCount(next)
+      if (next >= 3) {
+        onUsePinInstead()
+        return
+      }
+      setError('인증에 실패했습니다. 다시 시도해주세요.')
+    } finally {
+      if (mountedRef.current) setTrying(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-center px-4 py-10 gap-6 break-keep">
+      <div className="text-center">
+        <h2 className="text-lg font-bold text-gray-900">지문 인증</h2>
+        <p className="text-sm text-gray-700 mt-1">지문을 인식하여 잠금을 해제하세요</p>
+      </div>
+
+      {/* 지문 아이콘 버튼 */}
+      <button
+        type="button"
+        onClick={handleTap}
+        disabled={trying || submitting}
+        className="w-24 h-24 rounded-full bg-gray-900 flex items-center justify-center text-white active:scale-95 transition-transform disabled:opacity-60 shadow-lg"
+      >
+        {trying ? (
+          <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
+        ) : (
+          <FingerprintIcon size={44} />
+        )}
+      </button>
+
+      {error && <p className="text-xs text-red-600 text-center">{error}</p>}
+
+      <button
+        type="button"
+        onClick={onUsePinInstead}
+        disabled={submitting}
+        className="text-sm font-semibold text-gray-600 underline"
+      >
+        PIN으로 인증하기
+      </button>
+    </div>
+  )
+}
+
+// ── 생체 인증 등록 권유 모달 (PIN 설정 직후) ─────────────────
+function BiometricSetupModal({
+  pin,
+  onDone,
+}: {
+  pin: string
+  onDone: (registered: boolean) => void
+}) {
+  const [registering, setRegistering] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleRegister() {
+    setRegistering(true)
+    setError(null)
+    try {
+      await registerBiometric(pin)
+      onDone(true)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '등록에 실패했습니다.')
+      setRegistering(false)
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center"
+      style={{ background: 'rgba(0,0,0,0.55)' }}
+    >
+      <div className="w-full max-w-sm bg-white rounded-t-3xl px-5 pt-6 pb-10 shadow-2xl">
+        {/* 아이콘 + 제목 */}
+        <div className="flex flex-col items-center mb-5">
+          <div className="w-16 h-16 rounded-full bg-gray-900 flex items-center justify-center mb-3 shadow-md">
+            <FingerprintIcon size={40} className="text-white" />
+          </div>
+          <h2 className="text-lg font-bold text-gray-900">지문 인증 등록</h2>
+          <p className="text-xs text-gray-600 mt-1 text-center break-keep">
+            다음부터 지문만으로 빠르게 잠금을 해제할 수 있습니다
+          </p>
+        </div>
+
+        {error && <p className="text-xs text-red-600 text-center mb-4 break-keep">{error}</p>}
+
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={() => onDone(false)}
+            disabled={registering}
+            className="flex-1 py-3.5 rounded-2xl border border-gray-200 text-sm font-semibold text-gray-700 bg-white active:scale-95 transition-transform"
+          >
+            나중에
+          </button>
+          <button
+            type="button"
+            onClick={handleRegister}
+            disabled={registering}
+            className="flex-[2] py-3.5 rounded-2xl bg-gray-900 text-sm font-semibold text-white disabled:opacity-50 active:scale-95 transition-transform"
+          >
+            {registering ? '등록 중...' : '지문 등록하기'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── 메인 컴포넌트 ────────────────────────────────────────────
 export default function ApiKeysPage() {
   const [phase, setPhase] = useState<Phase>('loading')
   const [firstPin, setFirstPin] = useState<string>('')
@@ -43,9 +219,18 @@ export default function ApiKeysPage() {
   const [showResetModal, setShowResetModal] = useState(false)
   const [resetConfirmText, setResetConfirmText] = useState('')
 
+  // 생체 인증 상태
+  const [bioAvailable, setBioAvailable] = useState(false)
+  const [bioRegistered, setBioRegistered] = useState(false)
+  const [showBioSetup, setShowBioSetup] = useState(false) // PIN 설정 직후 등록 권유
+  const [usePinInstead, setUsePinInstead] = useState(false) // 생체 실패 → PIN으로 전환
+
   useEffect(() => {
     (async () => {
-      const has = await isPinSet()
+      const [has, bioAvail] = await Promise.all([isPinSet(), isBiometricAvailable()])
+      const bioReg = has ? await isBiometricRegistered() : false
+      setBioAvailable(bioAvail)
+      setBioRegistered(bioReg)
       setPhase(has ? 'locked' : 'no_pin')
     })()
   }, [])
@@ -74,6 +259,10 @@ export default function ApiKeysPage() {
       setVerifiedPin(pin)
       await refreshKeys()
       setPhase('unlocked')
+      // 생체 인증 지원 기기면 등록 권유
+      if (bioAvailable) {
+        setShowBioSetup(true)
+      }
     } catch (err) {
       setPinError(err instanceof Error ? err.message : '오류가 발생했습니다.')
       setPhase('no_pin')
@@ -105,6 +294,23 @@ export default function ApiKeysPage() {
     }
   }
 
+  async function handleBiometricSuccess(pin: string) {
+    setSubmitting(true)
+    try {
+      const r = await verifyPin(pin)
+      if (!r.ok) {
+        // 등록된 PIN과 불일치 (극히 드문 케이스)
+        setUsePinInstead(true)
+        return
+      }
+      setVerifiedPin(pin)
+      await refreshKeys()
+      setPhase('unlocked')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   function handleResetAll() {
     setResetConfirmText('')
     setShowResetModal(true)
@@ -118,12 +324,17 @@ export default function ApiKeysPage() {
     setFirstPin('')
     setPinError(null)
     setKeys([])
+    setBioRegistered(false)
+    setUsePinInstead(false)
     setPhase('no_pin')
   }
 
   if (phase === 'loading') {
     return <div className="p-8 text-center text-sm text-gray-600">불러오는 중...</div>
   }
+
+  // 잠금 화면 — 생체 인증 or PIN
+  const showBioUnlock = phase === 'locked' && bioRegistered && !usePinInstead
 
   return (
     <div className="flex flex-col">
@@ -156,7 +367,15 @@ export default function ApiKeysPage() {
         />
       )}
 
-      {phase === 'locked' && (
+      {showBioUnlock && (
+        <BiometricUnlockScreen
+          onSuccess={handleBiometricSuccess}
+          onUsePinInstead={() => setUsePinInstead(true)}
+          submitting={submitting}
+        />
+      )}
+
+      {phase === 'locked' && !showBioUnlock && (
         <PinPad
           title="PIN 입력"
           description="API Key를 관리하려면 PIN을 입력해주세요."
@@ -170,6 +389,10 @@ export default function ApiKeysPage() {
         <KeysList
           pin={verifiedPin}
           keys={keys}
+          bioAvailable={bioAvailable}
+          bioRegistered={bioRegistered}
+          onBioRegistered={() => setBioRegistered(true)}
+          onBioRemoved={() => setBioRegistered(false)}
           onChange={refreshKeys}
           onReset={handleResetAll}
           onAdd={() => setPhase('adding')}
@@ -181,6 +404,17 @@ export default function ApiKeysPage() {
           pin={verifiedPin}
           onDone={async () => { await refreshKeys(); setPhase('unlocked') }}
           onCancel={() => setPhase('unlocked')}
+        />
+      )}
+
+      {/* PIN 설정 직후 생체 인증 등록 권유 모달 */}
+      {showBioSetup && verifiedPin && (
+        <BiometricSetupModal
+          pin={verifiedPin}
+          onDone={(registered) => {
+            if (registered) setBioRegistered(true)
+            setShowBioSetup(false)
+          }}
         />
       )}
 
@@ -196,18 +430,43 @@ export default function ApiKeysPage() {
   )
 }
 
-function KeysList({ pin: _pin, keys, onChange, onReset, onAdd }: {
+function KeysList({ pin: _pin, keys, bioAvailable, bioRegistered, onBioRegistered, onBioRemoved, onChange, onReset, onAdd }: {
   pin: string
   keys: KeySummary[]
+  bioAvailable: boolean
+  bioRegistered: boolean
+  onBioRegistered: () => void
+  onBioRemoved: () => void
   onChange: () => Promise<void>
   onReset: () => void
   onAdd: () => void
 }) {
   void _pin
+  const [bioSubmitting, setBioSubmitting] = useState(false)
+
   async function handleDelete(id: string, label: string) {
     if (!confirm(`"${label}" 키를 삭제하시겠습니까?`)) return
     await deleteKey(id)
     await onChange()
+  }
+
+  async function handleToggleBio() {
+    if (bioRegistered) {
+      if (!confirm('지문 인증을 해제하시겠습니까?')) return
+      await removeBiometric()
+      onBioRemoved()
+    } else {
+      // 지문 등록은 BiometricSetupModal로 처리 — 여기선 직접 등록
+      setBioSubmitting(true)
+      try {
+        await registerBiometric(_pin)
+        onBioRegistered()
+      } catch (err) {
+        alert(err instanceof Error ? err.message : '지문 등록에 실패했습니다.')
+      } finally {
+        setBioSubmitting(false)
+      }
+    }
   }
 
   return (
@@ -221,6 +480,41 @@ function KeysList({ pin: _pin, keys, onChange, onReset, onAdd }: {
           + 새 API Key 등록
         </button>
       </section>
+
+      {/* 생체 인증 설정 */}
+      {bioAvailable && (
+        <section className="px-4 mt-1">
+          <div className="bg-white rounded-2xl px-4 py-3.5 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${bioRegistered ? 'bg-gray-900' : 'bg-gray-100'}`}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={bioRegistered ? 'white' : '#6b7280'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4" />
+                  <path d="M14 13.12c0 2.38 0 6.38-1 8.88" />
+                  <path d="M17.29 21.02c.12-.6.43-2.3.5-3.02" />
+                  <path d="M2 12a10 10 0 0 1 18-6" />
+                  <path d="M2 16h.01" />
+                  <path d="M21.8 16c.2-2 .131-5.354 0-6" />
+                  <path d="M5 19.5C5.5 18 6 15 6 12a6 6 0 0 1 .34-2" />
+                  <path d="M8.65 22c.21-.66.45-1.32.57-2" />
+                  <path d="M9 6.8a6 6 0 0 1 9 5.2v2" />
+                </svg>
+              </div>
+              <div className="break-keep">
+                <p className="text-sm font-semibold text-gray-900">지문 인증</p>
+                <p className="text-xs text-gray-600 mt-0.5">{bioRegistered ? '등록됨 — 잠금 해제 시 지문 사용' : 'PIN 대신 지문으로 잠금 해제'}</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              disabled={bioSubmitting}
+              onClick={handleToggleBio}
+              className={`shrink-0 w-12 h-7 rounded-full transition-colors duration-200 disabled:opacity-50 ${bioRegistered ? 'bg-gray-900' : 'bg-gray-200'}`}
+            >
+              <span className={`block w-5 h-5 bg-white rounded-full shadow-sm transform transition-transform duration-200 ${bioRegistered ? 'translate-x-6' : 'translate-x-1'}`} />
+            </button>
+          </div>
+        </section>
+      )}
 
       <section className="px-4 flex flex-col gap-2 mt-2">
         {keys.length === 0 ? (
@@ -308,7 +602,7 @@ function ResetConfirmModal({ confirmText, onChangeText, onCancel, onConfirm }: {
             </li>
             <li className="flex items-start gap-2 text-sm text-red-700">
               <span className="mt-0.5 text-red-500 shrink-0">•</span>
-              <span className="break-keep"><strong>PIN</strong>이 초기화되어 재설정이 필요합니다.</span>
+              <span className="break-keep"><strong>PIN 및 지문 인증</strong>이 초기화됩니다.</span>
             </li>
             <li className="flex items-start gap-2 text-sm text-red-700">
               <span className="mt-0.5 text-red-500 shrink-0">•</span>

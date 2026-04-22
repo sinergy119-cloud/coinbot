@@ -42,6 +42,11 @@ interface MetaRow {
   failureCount: number
   lockedUntil: number | null   // epoch ms
   deviceKey?: JsonWebKey  // SW 자동 실행용 기기 AES 키 (JWK)
+  // 생체 인증(WebAuthn) 필드
+  biometricCredentialId?: string  // base64 encoded WebAuthn credential ID
+  bioKeyJwk?: JsonWebKey          // PIN 암호화용 AES-256 키 (JWK)
+  biometricPin?: string           // bioKey로 암호화된 PIN (base64)
+  biometricPinIv?: string         // IV (base64)
 }
 
 function openDB(): Promise<IDBDatabase> {
@@ -232,6 +237,125 @@ export async function resetAll(): Promise<void> {
     t.oncomplete = () => resolve()
     t.onerror = () => reject(t.error)
   })
+}
+
+// ─────────────────────────────────────────────────────────────
+// 생체 인증 (WebAuthn Platform Authenticator)
+// ─────────────────────────────────────────────────────────────
+
+/** 생체 인증(지문/Face ID) 지원 여부 확인 */
+export async function isBiometricAvailable(): Promise<boolean> {
+  if (typeof window === 'undefined') return false
+  if (!window.PublicKeyCredential) return false
+  try {
+    return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()
+  } catch {
+    return false
+  }
+}
+
+/** 생체 인증 등록 여부 확인 */
+export async function isBiometricRegistered(): Promise<boolean> {
+  try {
+    const meta = await tx<MetaRow | undefined>(STORE_META, 'readonly', (s) => s.get('meta') as IDBRequest<MetaRow | undefined>)
+    return !!(meta?.biometricCredentialId && meta?.bioKeyJwk && meta?.biometricPin)
+  } catch {
+    return false
+  }
+}
+
+/** 생체 인증 등록 — PIN을 생체 인증으로 보호 */
+export async function registerBiometric(pin: string): Promise<void> {
+  const meta = await tx<MetaRow | undefined>(STORE_META, 'readonly', (s) => s.get('meta') as IDBRequest<MetaRow | undefined>)
+  if (!meta) throw new Error('PIN이 설정되지 않았습니다.')
+
+  // 1. WebAuthn 플랫폼 인증자(지문/Face ID) 등록
+  const userId = crypto.getRandomValues(new Uint8Array(16))
+  const challenge = crypto.getRandomValues(new Uint8Array(32))
+
+  const credential = (await navigator.credentials.create({
+    publicKey: {
+      challenge,
+      rp: { name: 'MyCoinBot', id: window.location.hostname },
+      user: { id: userId, name: 'coinbot-user', displayName: 'CoinBot' },
+      pubKeyCredParams: [
+        { alg: -7, type: 'public-key' },   // ES256
+        { alg: -257, type: 'public-key' },  // RS256
+      ],
+      authenticatorSelection: {
+        authenticatorAttachment: 'platform',
+        userVerification: 'required',
+        residentKey: 'preferred',
+      },
+      timeout: 60000,
+    },
+  })) as PublicKeyCredential | null
+
+  if (!credential) throw new Error('생체 인증 등록에 실패했습니다.')
+
+  // 2. PIN → AES-GCM 암호화
+  const bioKey = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt'])
+  const iv = crypto.getRandomValues(new Uint8Array(12))
+  const pinBuf = new TextEncoder().encode(pin)
+  const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, bioKey, pinBuf)
+  const bioKeyJwk = await crypto.subtle.exportKey('jwk', bioKey)
+
+  // 3. IndexedDB meta에 저장
+  const updated: MetaRow = {
+    ...meta,
+    biometricCredentialId: u8ToB64(new Uint8Array(credential.rawId)),
+    bioKeyJwk,
+    biometricPin: u8ToB64(new Uint8Array(ciphertext)),
+    biometricPinIv: u8ToB64(iv),
+  }
+  await tx<IDBValidKey>(STORE_META, 'readwrite', (s) => s.put(updated))
+}
+
+/** 생체 인증 실행 → PIN 반환 */
+export async function authenticateWithBiometric(): Promise<string> {
+  const meta = await tx<MetaRow | undefined>(STORE_META, 'readonly', (s) => s.get('meta') as IDBRequest<MetaRow | undefined>)
+  if (!meta?.biometricCredentialId || !meta?.bioKeyJwk || !meta?.biometricPin || !meta?.biometricPinIv) {
+    throw new Error('생체 인증이 등록되지 않았습니다.')
+  }
+
+  // WebAuthn assertion (지문/Face ID 프롬프트)
+  const bioChallenge = new Uint8Array(32)
+  crypto.getRandomValues(bioChallenge)
+  const assertion = (await navigator.credentials.get({
+    publicKey: {
+      challenge: bioChallenge.buffer as ArrayBuffer,
+      allowCredentials: [{ id: b64ToU8(meta.biometricCredentialId).buffer as ArrayBuffer, type: 'public-key' }],
+      userVerification: 'required',
+      timeout: 60000,
+    },
+  })) as PublicKeyCredential | null
+
+  if (!assertion) throw new Error('생체 인증에 실패했습니다.')
+
+  // PIN 복호화
+  const bioKey = await crypto.subtle.importKey(
+    'jwk', meta.bioKeyJwk, { name: 'AES-GCM', length: 256 }, false, ['decrypt'],
+  )
+  const pinIv = b64ToU8(meta.biometricPinIv)
+  const pinCipher = b64ToU8(meta.biometricPin)
+  const pinBuf = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv: pinIv.buffer as ArrayBuffer },
+    bioKey,
+    pinCipher.buffer as ArrayBuffer,
+  )
+  return new TextDecoder().decode(pinBuf)
+}
+
+/** 생체 인증 해제 */
+export async function removeBiometric(): Promise<void> {
+  const meta = await tx<MetaRow | undefined>(STORE_META, 'readonly', (s) => s.get('meta') as IDBRequest<MetaRow | undefined>)
+  if (!meta) return
+  const updated: MetaRow = { ...meta }
+  delete updated.biometricCredentialId
+  delete updated.bioKeyJwk
+  delete updated.biometricPin
+  delete updated.biometricPinIv
+  await tx<IDBValidKey>(STORE_META, 'readwrite', (s) => s.put(updated))
 }
 
 // 모든 키를 특정 PIN으로 일괄 복호화 (실행 시)

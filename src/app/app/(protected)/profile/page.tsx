@@ -3,6 +3,15 @@
 import { useEffect, useState } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import WithdrawModal from '@/components/WithdrawModal'
+import PinPad from '../../_components/PinPad'
+import {
+  isPinSet,
+  verifyPin,
+  isBiometricAvailable,
+  isBiometricRegistered,
+  registerBiometric,
+  removeBiometric,
+} from '@/lib/app/key-store'
 
 interface Profile {
   userId: string
@@ -113,6 +122,14 @@ export default function ProfilePage() {
   const [notifOpen, setNotifOpen] = useState(false)
   const [withdrawOpen, setWithdrawOpen] = useState(false)
 
+  // 생체 인증 상태
+  const [pinSet, setPinSet] = useState(false)
+  const [bioAvailable, setBioAvailable] = useState(false)
+  const [bioRegistered, setBioRegistered] = useState(false)
+  const [showBioPinModal, setShowBioPinModal] = useState(false)
+  const [bioPinError, setBioPinError] = useState<string | null>(null)
+  const [bioSubmitting, setBioSubmitting] = useState(false)
+
   useEffect(() => {
     (async () => {
       try {
@@ -135,6 +152,16 @@ export default function ProfilePage() {
         setLoading(false)
       }
     })()
+    // 생체 인증 지원 여부 + 등록 여부 확인
+    ;(async () => {
+      const [bioAvail, pinIsSet] = await Promise.all([isBiometricAvailable(), isPinSet()])
+      setBioAvailable(bioAvail)
+      setPinSet(pinIsSet)
+      if (bioAvail && pinIsSet) {
+        const bioReg = await isBiometricRegistered()
+        setBioRegistered(bioReg)
+      }
+    })()
   }, [])
 
   async function toggleSetting(key: keyof Settings) {
@@ -151,6 +178,37 @@ export default function ProfilePage() {
       if (json.ok) setSettings(json.data)
     } catch {
       setSettings(settings)
+    }
+  }
+
+  async function handleBioToggle() {
+    if (bioRegistered) {
+      if (!confirm('지문 인증을 해제하시겠습니까?')) return
+      await removeBiometric()
+      setBioRegistered(false)
+    } else {
+      // PIN 입력 후 생체 등록
+      setBioPinError(null)
+      setShowBioPinModal(true)
+    }
+  }
+
+  async function handleBioRegisterPin(pin: string) {
+    setBioSubmitting(true)
+    setBioPinError(null)
+    try {
+      const r = await verifyPin(pin)
+      if (!r.ok) {
+        setBioPinError('PIN이 틀립니다.')
+        return
+      }
+      await registerBiometric(pin)
+      setBioRegistered(true)
+      setShowBioPinModal(false)
+    } catch (err) {
+      setBioPinError(err instanceof Error ? err.message : '등록 실패')
+    } finally {
+      setBioSubmitting(false)
     }
   }
 
@@ -222,6 +280,26 @@ export default function ProfilePage() {
             </div>
             <span className="text-gray-400 text-sm">→</span>
           </a>
+          {bioAvailable && pinSet && (
+            <>
+              <Divider />
+              <div className="flex items-center justify-between px-4 py-3.5">
+                <div className="break-keep pr-3">
+                  <p className="text-sm font-semibold text-gray-900">지문 인증</p>
+                  <p className="text-xs text-gray-600 mt-0.5">
+                    {bioRegistered ? 'PIN 대신 지문으로 잠금 해제' : 'API Key 잠금 해제 시 지문 사용'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleBioToggle}
+                  className={`shrink-0 w-12 h-7 rounded-full transition-colors duration-200 ${bioRegistered ? 'bg-gray-900' : 'bg-gray-200'}`}
+                >
+                  <span className={`block w-5 h-5 bg-white rounded-full shadow-sm transform transition-transform duration-200 ${bioRegistered ? 'translate-x-6' : 'translate-x-1'}`} />
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </section>
 
@@ -253,6 +331,26 @@ export default function ProfilePage() {
           schedulePath="/app/schedule"
           tradeJobsApiPath="/api/app/trade-jobs"
         />
+      )}
+
+      {/* 지문 등록용 PIN 입력 모달 */}
+      {showBioPinModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center"
+          style={{ background: 'rgba(0,0,0,0.55)' }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowBioPinModal(false) }}
+        >
+          <div className="w-full max-w-sm bg-white rounded-t-3xl pt-6 pb-4 shadow-2xl">
+            <PinPad
+              title="PIN 입력"
+              description="지문 인증을 등록하려면 PIN을 입력해주세요."
+              errorMessage={bioPinError}
+              onSubmit={handleBioRegisterPin}
+              onCancel={() => { setShowBioPinModal(false); setBioPinError(null) }}
+              submitting={bioSubmitting}
+            />
+          </div>
+        </div>
       )}
     </div>
   )
