@@ -6,7 +6,7 @@ export default function PrivacyPage() {
   return (
     <div className="min-h-screen bg-white px-5 py-10 max-w-2xl mx-auto">
       <h1 className="text-2xl font-bold text-gray-900 mb-2">개인정보처리방침</h1>
-      <p className="text-sm text-gray-600 mb-8">시행일: 2025년 4월 1일 · 최종 수정일: 2025년 4월 21일</p>
+      <p className="text-sm text-gray-600 mb-8">시행일: 2025년 4월 1일 · 최종 수정일: 2026년 4월 22일</p>
 
       <p className="text-sm text-gray-700 leading-relaxed mb-8 break-keep">
         브로솔루션(이하 "회사")이 운영하는 MyCoinBot 서비스(이하 "서비스")는 이용자의 개인정보를 소중히 여기며,
@@ -42,7 +42,7 @@ export default function PrivacyPage() {
             </tr>
           </tbody>
         </table>
-        <p className="text-xs text-gray-600 break-keep">※ 거래소 API Key는 이용자의 기기에만 AES-256-GCM 방식으로 암호화 저장되며, 서버에는 암호화된 값만 보관됩니다.</p>
+        <p className="text-xs text-gray-600 break-keep">※ 거래소 API Key(앱 서비스)는 서버로 전송되지 않으며, AES-256-GCM 방식으로 암호화되어 사용자 기기(IndexedDB)에만 저장됩니다.</p>
       </Section>
 
       <Section title="제2조 개인정보의 수집·이용 목적">
@@ -124,6 +124,7 @@ export default function PrivacyPage() {
         <ul className="space-y-2 text-sm text-gray-700 break-keep">
           <li><b>파기 절차:</b> 목적 달성 후 내부 방침 및 관련 법령에 따라 일정 기간 보관 후 파기합니다.</li>
           <li><b>파기 방법:</b> 전자적 파일 형태는 복구 불가능한 방법으로 영구 삭제하며, 출력물은 파쇄 또는 소각합니다.</li>
+          <li><b>거래소 API Key:</b> 앱 서비스에서 사용자 기기에만 저장되며, 회원 탈퇴 또는 앱 데이터 삭제 시 기기에서 즉시 삭제됩니다.</li>
         </ul>
       </Section>
 
@@ -141,7 +142,7 @@ export default function PrivacyPage() {
 
       <Section title="제8조 개인정보 보호를 위한 기술적·관리적 조치">
         <ul className="space-y-1 text-sm text-gray-700 break-keep list-disc pl-5">
-          <li>거래소 API Key: AES-256-GCM 암호화 저장</li>
+          <li>거래소 API Key(앱): AES-256-GCM 암호화 후 기기 로컬(IndexedDB) 저장 — 서버 미전송</li>
           <li>세션: JWT 기반 암호화 쿠키, HTTPS 전송</li>
           <li>접근 제어: 관리자 계정 분리, IP 기반 접근 로그 기록</li>
           <li>정기적 보안 점검 및 취약점 패치</li>
@@ -161,7 +162,7 @@ export default function PrivacyPage() {
             </tr>
             <tr>
               <td className="border border-gray-300 px-3 py-2 font-semibold text-gray-700">담당자</td>
-              <td className="border border-gray-300 px-3 py-2 text-gray-700">김재한</td>
+              <td className="border border-gray-300 px-3 py-2 text-gray-700">브로솔루션 개인정보보호 담당자</td>
             </tr>
             <tr className="bg-gray-50">
               <td className="border border-gray-300 px-3 py-2 font-semibold text-gray-700">이메일</td>
