@@ -53,6 +53,9 @@ export default function EventManager({ prefill, onClearPrefill }: Props) {
   const [coinsLoading, setCoinsLoading] = useState(false)
   const [coinFocused, setCoinFocused] = useState(false)
 
+  // 이벤트 리스트 필터
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'completed'>('all')
+
   function resetForm(keepPrefill = false) {
     setEditingId(null)
     setExchange(null); setCoin(''); setAmount('1만원(일일)'); setRequireApply(false); setApiAllowed(true)
@@ -373,14 +376,55 @@ export default function EventManager({ prefill, onClearPrefill }: Props) {
 
       {/* 이벤트 리스트 */}
       <section className="rounded-xl border border-gray-200 bg-white p-4">
-        <h2 className="mb-3 text-base font-semibold text-gray-900">
-          이벤트 리스트 <span className="text-sm font-normal text-gray-500">({events.length}건)</span>
-        </h2>
+        {/* 헤더 + 필터 */}
+        <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
+          <h2 className="text-base font-semibold text-gray-900 shrink-0">
+            이벤트 리스트
+          </h2>
+          {(() => {
+            const today = getTodayKST()
+            const activeCount = events.filter((e) => e.end_date >= today).length
+            const completedCount = events.filter((e) => e.end_date < today).length
+            const pills: { key: 'all' | 'active' | 'completed'; label: string; count: number; color: string }[] = [
+              { key: 'all',       label: '전체',  count: events.length, color: 'bg-gray-800 text-white' },
+              { key: 'active',    label: '진행중', count: activeCount,   color: 'bg-green-600 text-white' },
+              { key: 'completed', label: '완료',  count: completedCount, color: 'bg-gray-400 text-white' },
+            ]
+            return (
+              <div className="flex gap-1.5 flex-wrap">
+                {pills.map((p) => (
+                  <button
+                    key={p.key}
+                    type="button"
+                    onClick={() => setStatusFilter(p.key)}
+                    className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-all ${
+                      statusFilter === p.key
+                        ? p.color + ' shadow-sm'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    {p.label}
+                    <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+                      statusFilter === p.key ? 'bg-white/30' : 'bg-gray-300/60 text-gray-700'
+                    }`}>
+                      {p.count}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )
+          })()}
+        </div>
         {events.length === 0 ? (
           <p className="text-sm text-gray-500">등록된 이벤트가 없습니다.</p>
         ) : (
           <div className="space-y-2">
-            {events.map((ev) => {
+            {events.filter((ev) => {
+              const today = getTodayKST()
+              if (statusFilter === 'active')    return ev.end_date >= today
+              if (statusFilter === 'completed') return ev.end_date < today
+              return true
+            }).map((ev) => {
               const today = getTodayKST()
               const isCompleted = ev.end_date < today
               return (
@@ -435,6 +479,16 @@ export default function EventManager({ prefill, onClearPrefill }: Props) {
                 </div>
               )
             })}
+            {events.filter((ev) => {
+              const today = getTodayKST()
+              if (statusFilter === 'active')    return ev.end_date >= today
+              if (statusFilter === 'completed') return ev.end_date < today
+              return true
+            }).length === 0 && (
+              <p className="text-sm text-gray-500 py-2">
+                {statusFilter === 'active' ? '진행중인 이벤트가 없습니다.' : '완료된 이벤트가 없습니다.'}
+              </p>
+            )}
           </div>
         )}
       </section>
