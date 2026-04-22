@@ -449,7 +449,7 @@ export default function LoginPage() {
                 const redirectUri = `${window.location.origin}/api/auth/kakao/callback`
                 const state = Math.random().toString(36).slice(2)
                 sessionStorage.setItem('oauth_state', state)
-                window.location.href = `https://kauth.kakao.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&state=${state}`
+                window.location.href = `https://kauth.kakao.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&state=${state}&scope=account_email`
               }}
               className="relative flex w-full items-center justify-center rounded-xl bg-[#FEE500] py-3 text-sm font-semibold text-[#3C1E1E] hover:brightness-95 transition"
             >
