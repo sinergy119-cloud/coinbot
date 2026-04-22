@@ -54,6 +54,17 @@ export async function GET(req: NextRequest) {
   })
   const userData = await userRes.json()
 
+  // ── [임시 디버그] 카카오 응답 전체 출력 ──────────────────────────
+  console.log('[KAKAO DEBUG] userData.kakao_account:', JSON.stringify({
+    email: userData.kakao_account?.email,
+    email_needs_agreement: userData.kakao_account?.email_needs_agreement,
+    is_email_valid: userData.kakao_account?.is_email_valid,
+    is_email_verified: userData.kakao_account?.is_email_verified,
+    has_email: userData.kakao_account?.has_email,
+    profile_nickname_needs_agreement: userData.kakao_account?.profile_nickname_needs_agreement,
+  }, null, 2))
+  // ─────────────────────────────────────────────────────────────────
+
   const kakaoId = String(userData.id)
   const nickname = userData.kakao_account?.profile?.nickname ?? `카카오${kakaoId.slice(-4)}`
   const email = userData.kakao_account?.email ?? null
