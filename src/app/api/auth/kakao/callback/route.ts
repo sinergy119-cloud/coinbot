@@ -56,9 +56,8 @@ export async function GET(req: NextRequest) {
 
   const kakaoId = String(userData.id)
   const nickname = userData.kakao_account?.profile?.nickname ?? `카카오${kakaoId.slice(-4)}`
-  // email_needs_agreement=true 이면 동의 미완료 → null 처리 (기존 연결 계정의 경우)
-  const emailNeedsAgreement = userData.kakao_account?.email_needs_agreement === true
-  const email = (!emailNeedsAgreement && userData.kakao_account?.email) ? userData.kakao_account.email : null
+  // 카카오는 암호화폐 서비스에 이메일 비즈 권한을 부여하지 않으므로 email은 항상 null
+  const email: string | null = null
 
   const db = createServerClient()
 

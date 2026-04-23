@@ -106,7 +106,7 @@ function ProfileCard({ profile }: { profile: Profile }) {
         </div>
         {profile.email ? (
           <p className="text-xs text-gray-500 mt-0.5 truncate">{profile.email}</p>
-        ) : (
+        ) : provider === 'kakao' ? null : (
           <p className="text-xs text-gray-400 mt-0.5">이메일 미등록</p>
         )}
       </div>
