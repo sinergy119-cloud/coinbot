@@ -363,7 +363,7 @@ export default function LoginPage() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/icon-192.png" alt="MyCoinBot" className="mx-auto mb-3 h-16 w-16 rounded-2xl shadow-md" />
           <h1 className="text-2xl font-bold text-gray-900">MyCoinBot</h1>
-          <p className="mt-1 text-sm text-gray-600 break-keep">코인 에어드랍 이벤트 자동 참여</p>
+          <p className="mt-1 text-sm text-gray-600 break-keep">코인 에어드랍 이벤트 관리</p>
         </div>
 
         {/* ── 서비스 안내 ── */}
