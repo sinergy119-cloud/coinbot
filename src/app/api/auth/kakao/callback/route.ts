@@ -56,7 +56,9 @@ export async function GET(req: NextRequest) {
 
   const kakaoId = String(userData.id)
   const nickname = userData.kakao_account?.profile?.nickname ?? `카카오${kakaoId.slice(-4)}`
-  const email = userData.kakao_account?.email ?? null
+  // email_needs_agreement=true 이면 동의 미완료 → null 처리 (기존 연결 계정의 경우)
+  const emailNeedsAgreement = userData.kakao_account?.email_needs_agreement === true
+  const email = (!emailNeedsAgreement && userData.kakao_account?.email) ? userData.kakao_account.email : null
 
   const db = createServerClient()
 
