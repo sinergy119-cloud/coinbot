@@ -1,17 +1,19 @@
-name: EC2 자동 배포
+name: CI / EC2 배포
 
-# main 브랜치에 push될 때 자동 배포
 on:
   push:
     branches:
       - main
-  workflow_dispatch:   # GitHub UI에서 수동 실행 가능
+  workflow_dispatch:
 
 jobs:
-  deploy:
-    name: EC2 배포
+  # ─────────────────────────────────────────
+  # Job 1: 빌드 & 타입 검사 (사전 차단)
+  # ─────────────────────────────────────────
+  ci:
+    name: 빌드 & 타입 검사
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
 
     steps:
       - name: 코드 체크아웃
@@ -23,22 +25,59 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
-      - name: 의존성 설치 및 빌드 검증
-        run: |
-          npm ci
-          npm run build
+      - name: 의존성 설치
+        run: npm ci
+
+      - name: TypeScript 타입 검사
+        run: npx tsc --noEmit
         env:
-          # 빌드 시 필요한 환경변수 (Secrets에 등록 필요)
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+
+      - name: 빌드 검증
+        run: npm run build
+        env:
+          # Supabase
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          # 세션 / 암호화
           SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+          ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
+          # 관리자
           ADMIN_USER_ID: ${{ secrets.ADMIN_USER_ID }}
+          # 텔레그램
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          # Cron
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
-          ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
+          # 카카오
+          KAKAO_REST_API_KEY: ${{ secrets.KAKAO_REST_API_KEY }}
+          NEXT_PUBLIC_KAKAO_REST_API_KEY: ${{ secrets.NEXT_PUBLIC_KAKAO_REST_API_KEY }}
+          KAKAO_CLIENT_SECRET: ${{ secrets.KAKAO_CLIENT_SECRET }}
+          KAKAO_LOGIN_ENABLED: ${{ secrets.KAKAO_LOGIN_ENABLED }}
+          # Firebase
+          NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
+          NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
+          NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
+          NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ secrets.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }}
+          NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
+          NEXT_PUBLIC_FIREBASE_APP_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID }}
+          NEXT_PUBLIC_FIREBASE_VAPID_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_VAPID_KEY }}
+          # 소셜 로그인
+          NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
+          NEXT_PUBLIC_NAVER_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_NAVER_CLIENT_ID }}
 
+  # ─────────────────────────────────────────
+  # Job 2: EC2 배포 (ci 통과 시에만 실행)
+  # ─────────────────────────────────────────
+  deploy:
+    name: EC2 배포
+    needs: ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
       - name: EC2 배포 (SSH)
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -64,4 +103,64 @@ jobs:
             echo "=== pm2 restart ==="
             pm2 restart coinbot
 
+            echo "=== 서버 기동 대기 (10초) ==="
+            sleep 10
+
+            echo "=== 기동 확인 ==="
+            curl -sf http://localhost:3000/app/login > /dev/null && echo "✅ 서버 응답 정상"
+
             echo "=== 배포 완료 ==="
+
+  # ─────────────────────────────────────────
+  # Job 3: 배포 후 Smoke Test (앱 기능 중심)
+  #   ※ 거래 실행(/api/execute) 테스트 제외
+  # ─────────────────────────────────────────
+  smoke-test:
+    name: Smoke Test (앱 기능)
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: 서버 안정화 대기
+        run: sleep 15
+
+      - name: PWA 필수 파일 확인
+        run: |
+          BASE="https://mycoinbot.duckdns.org"
+
+          check() {
+            local url="$1"
+            local expected="$2"
+            local code
+            code=$(curl -s -o /dev/null -w "%{http_code}" "$url")
+            if [ "$code" = "$expected" ]; then
+              echo "✅ $url → $code"
+            else
+              echo "❌ $url → $code (expected $expected)"
+              exit 1
+            fi
+          }
+
+          # PWA 필수 파일
+          check "$BASE/manifest.webmanifest" "200"
+          check "$BASE/firebase-messaging-sw.js" "200"
+
+          # 앱 로그인 페이지
+          check "$BASE/app/login" "200"
+
+          # 비로그인 공개 페이지
+          check "$BASE/privacy" "200"
+
+          # 미인증 접근 → 로그인으로 리다이렉트 (307) 확인
+          code=$(curl -s -o /dev/null -w "%{http_code}" "$BASE/app")
+          if [ "$code" = "307" ] || [ "$code" = "302" ]; then
+            echo "✅ $BASE/app → $code (인증 리다이렉트 정상)"
+          else
+            echo "❌ $BASE/app → $code (307/302 예상)"
+            exit 1
+          fi
+
+          # ⚠️ 거래 실행 API(/api/execute)는 테스트 제외
+          echo "──────────────────────────────"
+          echo "✅ 모든 Smoke Test 통과"
