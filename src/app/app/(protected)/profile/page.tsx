@@ -38,7 +38,6 @@ function getProvider(userId: string): Provider {
   return 'unknown'
 }
 
-/* ── 소셜 로고 원형 아이콘 ── */
 function ProviderIcon({ provider }: { provider: Provider }) {
   if (provider === 'kakao') return (
     <div className="w-12 h-12 rounded-full flex items-center justify-center shrink-0"
@@ -68,61 +67,62 @@ function ProviderIcon({ provider }: { provider: Provider }) {
     </div>
   )
   return (
-    <div className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 bg-gray-200">
-      <span className="text-lg font-bold text-gray-500">?</span>
+    <div className="w-12 h-12 rounded-full flex items-center justify-center shrink-0"
+      style={{ background: '#F2F4F6' }}>
+      <span className="text-lg font-bold" style={{ color: '#B0B8C1' }}>?</span>
     </div>
   )
 }
 
 const PROVIDER_LABEL: Record<Provider, string> = {
-  kakao: '카카오',
-  naver: '네이버',
-  google: '구글',
-  unknown: '소셜',
+  kakao: '카카오', naver: '네이버', google: '구글', unknown: '소셜',
 }
 
-/* ── 프로필 카드 (디자인 C) ── */
+const PROVIDER_BADGE: Record<Provider, { bg: string; text: string }> = {
+  kakao:   { bg: '#FFF9C4', text: '#7A6000' },
+  naver:   { bg: '#E6FBF0', text: '#0A7A3C' },
+  google:  { bg: '#EBF3FF', text: '#0050CC' },
+  unknown: { bg: '#F2F4F6', text: '#6B7684' },
+}
+
 function ProfileCard({ profile }: { profile: Profile }) {
   const provider = getProvider(profile.userId)
-  const label = PROVIDER_LABEL[provider]
+  const badge = PROVIDER_BADGE[provider]
 
   return (
-    <div className="bg-white rounded-2xl p-4 flex items-center gap-3">
+    <div
+      className="rounded-2xl p-4 flex items-center gap-3"
+      style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
+    >
       <ProviderIcon provider={provider} />
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <p className="text-base font-bold text-gray-900 truncate">
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className="text-[16px] font-bold truncate" style={{ color: '#191F28' }}>
             {profile.name ?? '(이름 없음)'}
           </p>
-          <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full"
-            style={
-              provider === 'kakao' ? { background: '#FFF9C4', color: '#7A6000' } :
-              provider === 'naver' ? { background: '#E6FBF0', color: '#0A7A3C' } :
-              provider === 'google' ? { background: '#EEF2FF', color: '#3B4FC4' } :
-              { background: '#F3F4F6', color: '#374151' }
-            }>
-            {label}
+          <span
+            className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full"
+            style={{ background: badge.bg, color: badge.text }}
+          >
+            {PROVIDER_LABEL[provider]}
           </span>
         </div>
         {profile.email ? (
-          <p className="text-xs text-gray-500 mt-0.5 truncate">{profile.email}</p>
+          <p className="text-[12px] mt-0.5 truncate" style={{ color: '#6B7684' }}>{profile.email}</p>
         ) : provider === 'kakao' ? null : (
-          <p className="text-xs text-gray-400 mt-0.5">이메일 미등록</p>
+          <p className="text-[12px] mt-0.5" style={{ color: '#B0B8C1' }}>이메일 미등록</p>
         )}
       </div>
     </div>
   )
 }
 
-/* ── 메인 페이지 ── */
 export default function ProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [settings, setSettings] = useState<Settings | null>(null)
   const [loading, setLoading] = useState(true)
   const [notifOpen, setNotifOpen] = useState(false)
   const [withdrawOpen, setWithdrawOpen] = useState(false)
-
-  // 생체 인증 상태
   const [pinSet, setPinSet] = useState(false)
   const [bioAvailable, setBioAvailable] = useState(false)
   const [bioRegistered, setBioRegistered] = useState(false)
@@ -152,7 +152,6 @@ export default function ProfilePage() {
         setLoading(false)
       }
     })()
-    // 생체 인증 지원 여부 + 등록 여부 확인
     ;(async () => {
       const [bioAvail, pinIsSet] = await Promise.all([isBiometricAvailable(), isPinSet()])
       setBioAvailable(bioAvail)
@@ -187,7 +186,6 @@ export default function ProfilePage() {
       await removeBiometric()
       setBioRegistered(false)
     } else {
-      // PIN 입력 후 생체 등록
       setBioPinError(null)
       setShowBioPinModal(true)
     }
@@ -198,10 +196,7 @@ export default function ProfilePage() {
     setBioPinError(null)
     try {
       const r = await verifyPin(pin)
-      if (!r.ok) {
-        setBioPinError('PIN이 틀립니다.')
-        return
-      }
+      if (!r.ok) { setBioPinError('PIN이 틀립니다.'); return }
       await registerBiometric(pin)
       setBioRegistered(true)
       setShowBioPinModal(false)
@@ -219,13 +214,18 @@ export default function ProfilePage() {
   }
 
   if (loading) {
-    return <div className="p-8 text-center text-sm text-gray-600">불러오는 중...</div>
+    return (
+      <div className="p-8 text-center text-[14px]" style={{ color: '#6B7684' }}>
+        불러오는 중...
+      </div>
+    )
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <header className="px-4 pt-6 pb-2">
-        <h1 className="text-2xl font-bold text-gray-900">내 정보</h1>
+    <div className="flex flex-col gap-5 pb-6" style={{ background: '#F9FAFB', minHeight: '100%' }}>
+
+      <header className="px-4 pt-6 pb-0">
+        <h1 className="text-[22px] font-bold" style={{ color: '#191F28' }}>내 정보</h1>
       </header>
 
       {/* 프로필 카드 */}
@@ -237,8 +237,8 @@ export default function ProfilePage() {
 
       {/* 알림 설정 */}
       <section className="px-4">
-        <h2 className="text-base font-bold text-gray-900 mb-2">알림 설정</h2>
-        <div className="bg-white rounded-2xl overflow-hidden">
+        <p className="text-[13px] font-semibold mb-2 px-1" style={{ color: '#6B7684' }}>알림 설정</p>
+        <div className="rounded-2xl overflow-hidden" style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
           <SettingRow
             label="전체 알림"
             description="꺼짐 시 모든 알림이 오지 않습니다"
@@ -271,32 +271,29 @@ export default function ProfilePage() {
 
       {/* 보안 */}
       <section className="px-4">
-        <h2 className="text-base font-bold text-gray-900 mb-2">보안</h2>
-        <div className="bg-white rounded-2xl overflow-hidden">
-          <a href="/app/profile/api-keys" className="flex items-center justify-between p-4 active:bg-gray-50">
+        <p className="text-[13px] font-semibold mb-2 px-1" style={{ color: '#6B7684' }}>보안</p>
+        <div className="rounded-2xl overflow-hidden" style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+          <a
+            href="/app/profile/api-keys"
+            className="flex items-center justify-between p-4 active:bg-gray-50 transition-colors"
+          >
             <div className="break-keep pr-3">
-              <p className="text-sm font-semibold text-gray-900">거래소 API Key</p>
-              <p className="text-xs text-gray-600 mt-0.5">기기에만 저장 · PIN 잠금</p>
+              <p className="text-[15px] font-semibold" style={{ color: '#191F28' }}>거래소 API Key</p>
+              <p className="text-[12px] mt-0.5" style={{ color: '#6B7684' }}>기기에만 저장 · PIN 잠금</p>
             </div>
-            <span className="text-gray-400 text-sm">→</span>
+            <span className="text-[14px]" style={{ color: '#B0B8C1' }}>›</span>
           </a>
           {bioAvailable && pinSet && (
             <>
               <Divider />
-              <div className="flex items-center justify-between px-4 py-3.5">
+              <div className="flex items-center justify-between px-4 py-4">
                 <div className="break-keep pr-3">
-                  <p className="text-sm font-semibold text-gray-900">지문 인증</p>
-                  <p className="text-xs text-gray-600 mt-0.5">
+                  <p className="text-[15px] font-semibold" style={{ color: '#191F28' }}>지문 인증</p>
+                  <p className="text-[12px] mt-0.5" style={{ color: '#6B7684' }}>
                     {bioRegistered ? 'PIN 대신 지문으로 잠금 해제' : 'API Key 잠금 해제 시 지문 사용'}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleBioToggle}
-                  className={`shrink-0 w-12 h-7 rounded-full transition-colors duration-200 ${bioRegistered ? 'bg-gray-900' : 'bg-gray-200'}`}
-                >
-                  <span className={`block w-5 h-5 bg-white rounded-full shadow-sm transform transition-transform duration-200 ${bioRegistered ? 'translate-x-6' : 'translate-x-1'}`} />
-                </button>
+                <TossToggle checked={bioRegistered} onChange={handleBioToggle} />
               </div>
             </>
           )}
@@ -305,23 +302,23 @@ export default function ProfilePage() {
 
       {/* 기타 */}
       <section className="px-4">
-        <div className="bg-white rounded-2xl overflow-hidden">
+        <div className="rounded-2xl overflow-hidden" style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
           <button type="button" onClick={logout}
-            className="w-full flex items-center justify-between p-4 active:bg-gray-50 text-left">
-            <span className="text-sm font-semibold text-red-500">로그아웃</span>
-            <span className="text-gray-400 text-sm">→</span>
+            className="w-full flex items-center justify-between p-4 active:bg-gray-50 text-left transition-colors">
+            <span className="text-[15px] font-semibold" style={{ color: '#FF4D4F' }}>로그아웃</span>
+            <span className="text-[14px]" style={{ color: '#B0B8C1' }}>›</span>
           </button>
           <Divider />
           <button type="button" onClick={() => setWithdrawOpen(true)}
-            className="w-full flex items-center justify-between p-4 active:bg-gray-50 text-left">
-            <span className="text-sm text-gray-500">회원탈퇴</span>
-            <span className="text-gray-400 text-sm">→</span>
+            className="w-full flex items-center justify-between p-4 active:bg-gray-50 text-left transition-colors">
+            <span className="text-[14px]" style={{ color: '#B0B8C1' }}>회원탈퇴</span>
+            <span className="text-[14px]" style={{ color: '#B0B8C1' }}>›</span>
           </button>
         </div>
       </section>
 
-      <div className="px-4 py-4 text-center">
-        <p className="text-[10px] text-gray-400">MyCoinBot v1.0.0</p>
+      <div className="px-4 text-center">
+        <p className="text-[11px]" style={{ color: '#B0B8C1' }}>MyCoinBot v1.0.0</p>
       </div>
 
       {withdrawOpen && (
@@ -333,7 +330,6 @@ export default function ProfilePage() {
         />
       )}
 
-      {/* 지문 등록용 PIN 입력 모달 */}
       {showBioPinModal && (
         <div
           className="fixed inset-0 z-50 flex items-end justify-center"
@@ -356,11 +352,26 @@ export default function ProfilePage() {
   )
 }
 
+/* ── 토스 스타일 토글 스위치 ── */
+function TossToggle({ checked, onChange, disabled }: { checked: boolean; onChange: () => void; disabled?: boolean }) {
+  return (
+    <button
+      type="button"
+      onClick={onChange}
+      disabled={disabled}
+      className="shrink-0 w-12 h-7 rounded-full transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-40"
+      style={{ background: checked ? '#0064FF' : '#E5E8EB' }}
+    >
+      <span
+        className="block w-5 h-5 bg-white rounded-full shadow-sm transform transition-transform duration-200"
+        style={{ transform: checked ? 'translateX(22px)' : 'translateX(4px)' }}
+      />
+    </button>
+  )
+}
+
 function NotifAccordionHeader({ open, disabled, settings, onClick }: {
-  open: boolean
-  disabled: boolean | undefined
-  settings: Settings | null
-  onClick: () => void
+  open: boolean; disabled: boolean | undefined; settings: Settings | null; onClick: () => void
 }) {
   const subKeys: (keyof Settings)[] = ['tradeResultEnabled', 'eventEnabled', 'scheduleEnabled', 'systemEnabled', 'announcementEnabled']
   const enabledCount = settings ? subKeys.filter((k) => settings[k]).length : 0
@@ -368,12 +379,15 @@ function NotifAccordionHeader({ open, disabled, settings, onClick }: {
 
   return (
     <button type="button" onClick={onClick}
-      className={`w-full flex items-center justify-between px-4 py-3.5 active:bg-gray-50 ${disabled ? 'opacity-50 pointer-events-none' : ''}`}>
+      className={`w-full flex items-center justify-between px-4 py-4 active:bg-gray-50 transition-colors ${disabled ? 'opacity-50 pointer-events-none' : ''}`}>
       <div className="break-keep">
-        <p className="text-sm font-semibold text-gray-900 text-left">{label}</p>
-        {!open && <p className="text-xs text-gray-600 mt-0.5 text-left">거래 결과, 이벤트 등 개별 설정</p>}
+        <p className="text-[15px] font-semibold text-left" style={{ color: '#191F28' }}>{label}</p>
+        {!open && <p className="text-[12px] mt-0.5 text-left" style={{ color: '#6B7684' }}>거래 결과, 이벤트 등 개별 설정</p>}
       </div>
-      {open ? <ChevronUp size={18} className="shrink-0 text-gray-400" /> : <ChevronDown size={18} className="shrink-0 text-gray-400" />}
+      {open
+        ? <ChevronUp size={18} className="shrink-0" style={{ color: '#B0B8C1' }} />
+        : <ChevronDown size={18} className="shrink-0" style={{ color: '#B0B8C1' }} />
+      }
     </button>
   )
 }
@@ -382,21 +396,18 @@ function SettingRow({ label, description, value, onChange, disabled, indent }: {
   label: string; description: string; value: boolean | undefined
   onChange: () => void; disabled?: boolean; indent?: boolean
 }) {
-  const on = !!value
   return (
-    <div className={`flex items-center justify-between px-4 py-3.5 ${indent ? 'pl-7 bg-gray-50/50' : ''} ${disabled ? 'opacity-40' : ''}`}>
+    <div className={`flex items-center justify-between px-4 py-4 ${indent ? 'pl-7' : ''} ${disabled ? 'opacity-40' : ''}`}
+      style={indent ? { background: '#FAFAFA' } : undefined}>
       <div className="break-keep pr-3">
-        <p className="text-sm font-semibold text-gray-900">{label}</p>
-        <p className="text-xs text-gray-600 mt-0.5">{description}</p>
+        <p className="text-[15px] font-semibold" style={{ color: '#191F28' }}>{label}</p>
+        <p className="text-[12px] mt-0.5" style={{ color: '#6B7684' }}>{description}</p>
       </div>
-      <button type="button" onClick={onChange} disabled={disabled}
-        className={`shrink-0 w-12 h-7 rounded-full transition-colors duration-200 ${on ? 'bg-gray-900' : 'bg-gray-200'} disabled:cursor-not-allowed`}>
-        <span className={`block w-5 h-5 bg-white rounded-full shadow-sm transform transition-transform duration-200 ${on ? 'translate-x-6' : 'translate-x-1'}`} />
-      </button>
+      <TossToggle checked={!!value} onChange={onChange} disabled={disabled} />
     </div>
   )
 }
 
 function Divider() {
-  return <div className="h-px bg-gray-100 mx-4" />
+  return <div className="mx-4" style={{ height: '1px', background: '#F2F4F6' }} />
 }
