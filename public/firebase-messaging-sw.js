@@ -26,7 +26,6 @@ self.addEventListener('activate', (event) => {
 
 // fetch 핸들러 — Chrome이 PWA 설치 조건으로 요구
 self.addEventListener('fetch', (event) => {
-  // 네트워크 우선, 실패 시 캐시 폴백 (정적 자산만)
   const url = new URL(event.request.url)
   const isStatic = STATIC_ASSETS.includes(url.pathname)
 
@@ -41,20 +40,50 @@ self.addEventListener('fetch', (event) => {
         .catch(() => caches.match(event.request))
     )
   }
-  // 그 외 요청은 네트워크 그대로 통과 (API, 페이지 등)
 })
 
-// Firebase Cloud Messaging 수신 처리 (추후 확장용)
+// ─── FCM 푸시 수신 ───────────────────────────────────────────────
+// dataOnly=false: data.notification.title / data.notification.body
+// dataOnly=true : data.data.title / data.data.body (SW가 직접 표시)
 self.addEventListener('push', (event) => {
   if (!event.data) return
   try {
     const data = event.data.json()
-    const title = data.notification?.title ?? 'MyCoinBot'
+
+    const title = data.notification?.title ?? data.data?.title ?? 'MyCoinBot'
+    const body  = data.notification?.body  ?? data.data?.body  ?? ''
+    const deepLink = data.data?.deepLink ?? null
+
     const options = {
-      body: data.notification?.body ?? '',
+      body,
       icon: '/icon-192.png',
       badge: '/icon-badge.png',
+      data: { deepLink },
     }
     event.waitUntil(self.registration.showNotification(title, options))
-  } catch {}
+  } catch {
+    // 파싱 실패 시 무시
+  }
+})
+
+// ─── 알림 클릭 → 딥링크 이동 ────────────────────────────────────
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+
+  const deepLink = event.notification.data?.deepLink || '/app'
+  // 상대 경로이면 origin 붙이기
+  const url = deepLink.startsWith('http') ? deepLink : (self.location.origin + deepLink)
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      // 이미 열린 탭이 있으면 해당 탭을 포커스 + 이동
+      for (const client of clientList) {
+        if ('navigate' in client && 'focus' in client) {
+          return client.navigate(url).then(() => client.focus())
+        }
+      }
+      // 없으면 새 탭
+      if (clients.openWindow) return clients.openWindow(url)
+    })
+  )
 })

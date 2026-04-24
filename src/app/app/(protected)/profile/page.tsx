@@ -253,6 +253,17 @@ export default function ProfilePage() {
             onChange={() => toggleSetting('masterEnabled')}
           />
           <Divider />
+          <a
+            href="/app/profile/push-setup"
+            className="flex items-center justify-between p-4 active:bg-gray-50 transition-colors"
+          >
+            <div className="break-keep pr-3">
+              <p className="text-[15px] font-semibold" style={{ color: '#191F28' }}>🔔 PUSH 알림 설정 확인</p>
+              <p className="text-[12px] mt-0.5" style={{ color: '#6B7684' }}>토큰 등록 · 수신 테스트</p>
+            </div>
+            <span className="text-[14px]" style={{ color: '#B0B8C1' }}>›</span>
+          </a>
+          <Divider />
           <NotifAccordionHeader
             open={notifOpen}
             disabled={!settings?.masterEnabled}
