@@ -62,9 +62,7 @@ export default function NotificationsPage() {
     }
   }
 
-  useEffect(() => {
-    load(category)
-  }, [category])
+  useEffect(() => { load(category) }, [category])
 
   async function readAll() {
     const res = await fetch('/api/app/notifications/read-all', { method: 'PATCH' })
@@ -87,18 +85,23 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      <header className="px-4 pt-6 pb-2 break-keep">
+    <div className="flex flex-col gap-4 pb-6" style={{ background: '#F9FAFB', minHeight: '100%' }}>
+
+      {/* 헤더 */}
+      <header className="px-4 pt-6 pb-0 break-keep">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">알림함</h1>
-            <p className="text-sm text-gray-600 mt-1">미읽음 {unreadCount}건</p>
+            <h1 className="text-[22px] font-bold" style={{ color: '#191F28' }}>알림함</h1>
+            <p className="text-[13px] mt-1" style={{ color: '#6B7684' }}>
+              {unreadCount > 0 ? `미읽음 ${unreadCount}건` : '모두 읽었습니다'}
+            </p>
           </div>
           {unreadCount > 0 && (
             <button
               type="button"
               onClick={readAll}
-              className="text-xs font-semibold text-gray-700 bg-white border border-gray-200 px-3 py-1.5 rounded-lg"
+              className="text-[12px] font-semibold px-3 py-1.5 rounded-xl active:opacity-70 transition-opacity"
+              style={{ background: '#EBF3FF', color: '#0064FF' }}
             >
               전체 읽음
             </button>
@@ -108,67 +111,114 @@ export default function NotificationsPage() {
 
       {/* 카테고리 필터 */}
       <div className="px-4 overflow-x-auto">
-        <div className="flex gap-2 whitespace-nowrap">
-          {Object.entries(CATEGORY_LABEL).map(([key, label]) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setCategory(key)}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold ${
-                category === key ? 'bg-gray-900 text-white' : 'bg-white text-gray-700 border border-gray-200'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
+        <div className="flex gap-2 whitespace-nowrap pb-0.5">
+          {Object.entries(CATEGORY_LABEL).map(([key, label]) => {
+            const isActive = category === key
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setCategory(key)}
+                className="px-3 py-1.5 rounded-full text-[12px] font-semibold transition-all"
+                style={isActive
+                  ? { background: '#0064FF', color: '#fff' }
+                  : { background: '#fff', color: '#6B7684', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }
+                }
+              >
+                {label}
+              </button>
+            )
+          })}
         </div>
       </div>
 
-      <section className="px-4 flex flex-col gap-2">
+      {/* 알림 목록 */}
+      <section className="px-4">
         {loading ? (
-          <div className="bg-white rounded-2xl p-8 text-center text-sm text-gray-600">불러오는 중...</div>
+          <div
+            className="rounded-2xl p-8 text-center text-[14px] break-keep"
+            style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', color: '#6B7684' }}
+          >
+            불러오는 중...
+          </div>
         ) : items.length === 0 ? (
-          <div className="bg-white rounded-2xl p-8 text-center text-sm text-gray-600 break-keep">알림이 없습니다.</div>
+          <div
+            className="rounded-2xl p-8 text-center text-[14px] break-keep"
+            style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', color: '#6B7684' }}
+          >
+            알림이 없습니다.
+          </div>
         ) : (
-          items.map((n) => (
-            <div
-              key={n.id}
-              onClick={() => !n.readAt && readOne(n.id)}
-              className={`bg-white rounded-2xl p-4 cursor-pointer ${n.readAt ? 'opacity-70' : 'border-l-4 border-blue-500'}`}
-            >
-              <div className="flex items-start gap-3 break-keep">
-                <span className="text-xl shrink-0">{CATEGORY_ICON[n.category] ?? '🔔'}</span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="text-sm font-semibold text-gray-900 break-keep">{n.title}</p>
-                    <span className="text-[10px] text-gray-600 shrink-0">{formatRelative(n.createdAt)}</span>
-                  </div>
-                  <p className="text-xs text-gray-700 mt-1 break-keep">{n.body}</p>
-                  <div className="flex items-center gap-3 mt-2">
-                    {n.deepLink && (
-                      <a
-                        href={n.deepLink}
-                        className="text-xs font-semibold text-blue-600"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        이동 →
-                      </a>
-                    )}
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        remove(n.id)
-                      }}
-                      className="text-xs text-gray-600 ml-auto"
+          <div
+            className="rounded-2xl overflow-hidden"
+            style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
+          >
+            {items.map((n, idx, arr) => (
+              <div
+                key={n.id}
+                onClick={() => !n.readAt && readOne(n.id)}
+                className="px-5 py-4 break-keep cursor-pointer active:bg-gray-50 transition-colors"
+                style={{
+                  borderBottom: idx < arr.length - 1 ? '1px solid #F2F4F6' : undefined,
+                  borderLeft: n.readAt ? undefined : '3px solid #0064FF',
+                  opacity: n.readAt ? 0.65 : 1,
+                }}
+              >
+                <div className="flex items-start gap-3">
+                  {/* 아이콘 */}
+                  <span className="text-[20px] shrink-0 mt-0.5">
+                    {CATEGORY_ICON[n.category] ?? '🔔'}
+                  </span>
+
+                  <div className="min-w-0 flex-1">
+                    {/* 제목 + 시간 */}
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-[14px] font-semibold leading-snug" style={{ color: '#191F28' }}>
+                        {n.title}
+                      </p>
+                      <span className="text-[11px] shrink-0" style={{ color: '#B0B8C1' }}>
+                        {formatRelative(n.createdAt)}
+                      </span>
+                    </div>
+
+                    {/* 본문 */}
+                    <p
+                      className="text-[12px] mt-0.5 leading-relaxed line-clamp-2"
+                      style={{ color: '#6B7684' }}
                     >
-                      삭제
-                    </button>
+                      {n.body}
+                    </p>
+
+                    {/* 액션 */}
+                    {(n.deepLink) && (
+                      <div className="flex items-center gap-3 mt-2">
+                        {n.deepLink && (
+                          <a
+                            href={n.deepLink}
+                            className="text-[12px] font-semibold"
+                            style={{ color: '#0064FF' }}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            이동 →
+                          </a>
+                        )}
+                      </div>
+                    )}
                   </div>
+
+                  {/* 삭제 버튼 */}
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); remove(n.id) }}
+                    className="shrink-0 text-[12px] px-2 py-1 rounded-lg active:opacity-70 transition-opacity"
+                    style={{ color: '#B0B8C1' }}
+                  >
+                    ✕
+                  </button>
                 </div>
               </div>
-            </div>
-          ))
+            ))}
+          </div>
         )}
       </section>
     </div>
