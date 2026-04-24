@@ -8,6 +8,7 @@ interface AnnouncementRow {
   amount: string | null
   require_apply: boolean
   api_allowed: boolean
+  link: string | null
   start_date: string
   end_date: string
 }
@@ -25,7 +26,7 @@ export default async function EventsPage() {
   const today = kstToday()
   const { data } = await db
     .from('announcements')
-    .select('id, exchange, coin, amount, require_apply, api_allowed, start_date, end_date')
+    .select('id, exchange, coin, amount, require_apply, api_allowed, link, start_date, end_date')
     .lte('start_date', today)
     .gte('end_date', today)
     .order('created_at', { ascending: false })

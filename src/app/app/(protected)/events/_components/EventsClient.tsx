@@ -11,6 +11,7 @@ interface AnnouncementRow {
   amount: string | null
   require_apply: boolean
   api_allowed: boolean
+  link: string | null
   start_date: string
   end_date: string
 }
@@ -25,12 +26,15 @@ const EXCHANGE_BADGE: Record<string, { bg: string; text: string }> = {
 
 const EXCHANGE_ORDER: Exchange[] = ['BITHUMB', 'UPBIT', 'COINONE', 'KORBIT', 'GOPAX']
 
+// MM/DD 형식 변환
+function fmtDate(d: string) {
+  return d.slice(5).replace('-', '/')
+}
+
 export default function EventsClient({ items }: { items: AnnouncementRow[] }) {
   const [filter, setFilter] = useState<string>('all')
 
-  // 필터 칩 목록 (존재하는 거래소만)
   const existingExchanges = EXCHANGE_ORDER.filter((ex) => items.some((e) => e.exchange === ex))
-
   const filtered = filter === 'all' ? items : items.filter((e) => e.exchange === filter)
 
   return (
@@ -41,9 +45,7 @@ export default function EventsClient({ items }: { items: AnnouncementRow[] }) {
         <h1 className="text-[22px] font-bold break-keep" style={{ color: '#191F28' }}>
           진행 중인 이벤트
         </h1>
-        <p className="text-[13px] mt-1" style={{ color: '#6B7684' }}>
-          총 {items.length}건
-        </p>
+        <p className="text-[13px] mt-1" style={{ color: '#6B7684' }}>총 {items.length}건</p>
       </header>
 
       {/* 거래소 필터 칩 */}
@@ -101,18 +103,20 @@ export default function EventsClient({ items }: { items: AnnouncementRow[] }) {
             return (
               <div
                 key={e.id}
-                className="rounded-2xl p-5 break-keep"
+                className="rounded-2xl p-4 break-keep"
                 style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
               >
-                {/* 상단: 거래소 뱃지 + 종료일 */}
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
+                {/* 상단: 거래소 뱃지 + 기간 */}
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {/* 거래소 */}
                     <span
                       className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
                       style={{ background: badge.bg, color: badge.text }}
                     >
                       {exchangeLabel}
                     </span>
+                    {/* 신청 필요 */}
                     {e.require_apply && (
                       <span
                         className="text-[10px] font-semibold px-1.5 py-0.5 rounded"
@@ -121,22 +125,33 @@ export default function EventsClient({ items }: { items: AnnouncementRow[] }) {
                         신청필요
                       </span>
                     )}
+                    {/* API 미허용 */}
+                    {!e.api_allowed && (
+                      <span
+                        className="text-[10px] font-semibold px-1.5 py-0.5 rounded"
+                        style={{ background: '#F2F4F6', color: '#6B7684' }}
+                      >
+                        API미허용
+                      </span>
+                    )}
                   </div>
-                  <span className="text-[12px]" style={{ color: '#B0B8C1' }}>
-                    ~ {e.end_date.slice(5).replace('-', '/')}
+                  {/* 기간: 시작~종료 */}
+                  <span className="text-[11px] shrink-0 ml-2" style={{ color: '#B0B8C1' }}>
+                    {fmtDate(e.start_date)}~{fmtDate(e.end_date)}
                   </span>
                 </div>
 
-                {/* 코인명 */}
-                <Link href={`/app/events/${e.id}`} className="block">
+                {/* 코인명 + 보상 */}
+                <Link href={`/app/events/${e.id}`} className="block mb-3">
                   <p className="text-[18px] font-bold" style={{ color: '#191F28' }}>{e.coin}</p>
                   {e.amount && (
-                    <p className="text-[13px] mt-1" style={{ color: '#6B7684' }}>{e.amount}</p>
+                    <p className="text-[13px] mt-0.5" style={{ color: '#6B7684' }}>{e.amount}</p>
                   )}
                 </Link>
 
-                {/* CTA 버튼 */}
-                <div className="flex gap-2 mt-3">
+                {/* CTA 버튼 행 */}
+                <div className="flex gap-2">
+                  {/* 즉시 거래 OR 원문 보기 */}
                   {e.api_allowed ? (
                     <Link
                       href={`/app/trade?tab=instant&${tradeParams}`}
@@ -145,15 +160,27 @@ export default function EventsClient({ items }: { items: AnnouncementRow[] }) {
                     >
                       ⚡ 즉시 거래
                     </Link>
+                  ) : e.link ? (
+                    <a
+                      href={e.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold text-center active:opacity-80 transition-opacity"
+                      style={{ background: '#F2F4F6', color: '#6B7684' }}
+                    >
+                      원문 보기 ↗
+                    </a>
                   ) : (
                     <Link
                       href={`/app/events/${e.id}`}
                       className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold text-center active:opacity-80 transition-opacity"
                       style={{ background: '#F2F4F6', color: '#6B7684' }}
                     >
-                      거래소 공지 보기
+                      공지 보기
                     </Link>
                   )}
+
+                  {/* 스케줄 등록 */}
                   <Link
                     href={`/app/trade?tab=schedule&${tradeParams}`}
                     className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold text-center active:opacity-80 transition-opacity"
@@ -162,6 +189,19 @@ export default function EventsClient({ items }: { items: AnnouncementRow[] }) {
                     📅 스케줄 등록
                   </Link>
                 </div>
+
+                {/* 원문 보기 (api_allowed=true이면서 link 있는 경우 별도 행) */}
+                {e.api_allowed && e.link && (
+                  <a
+                    href={e.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block mt-2 text-center text-[12px] font-semibold py-1.5 rounded-xl active:opacity-70 transition-opacity"
+                    style={{ background: '#F9FAFB', color: '#6B7684', border: '1px solid #F2F4F6' }}
+                  >
+                    원문 보기 ↗
+                  </a>
+                )}
               </div>
             )
           })

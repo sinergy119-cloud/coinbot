@@ -41,6 +41,14 @@ export default function KeySelector({ exchange, multi = false, value, onChange }
     }
   }
 
+  function selectAll() {
+    onChange(keys.map((k) => k.id))
+  }
+
+  function deselectAll() {
+    onChange([])
+  }
+
   if (loading) return <p className="text-xs text-gray-600">불러오는 중...</p>
   if (keys.length === 0) {
     return (
@@ -53,8 +61,28 @@ export default function KeySelector({ exchange, multi = false, value, onChange }
     )
   }
 
+  const allSelected = keys.every((k) => value.includes(k.id))
+
   return (
     <div className="flex flex-col gap-2">
+      {/* 멀티 선택 헤더 */}
+      {multi && (
+        <div className="flex items-center justify-between px-0.5 mb-0.5">
+          <span className="text-[12px] font-semibold" style={{ color: '#6B7684' }}>
+            {value.length > 0 ? `${value.length}개 선택됨` : '계정 선택'}
+          </span>
+          <button
+            type="button"
+            onClick={allSelected ? deselectAll : selectAll}
+            className="text-[12px] font-semibold"
+            style={{ color: '#0064FF' }}
+          >
+            {allSelected ? '전체 해제' : '전체 선택'}
+          </button>
+        </div>
+      )}
+
+      {/* 계정 목록 */}
       {keys.map((k) => {
         const selected = value.includes(k.id)
         return (
@@ -62,12 +90,31 @@ export default function KeySelector({ exchange, multi = false, value, onChange }
             key={k.id}
             type="button"
             onClick={() => toggle(k.id)}
-            className={`flex items-center justify-between p-3 rounded-xl border text-left break-keep ${
-              selected ? 'bg-gray-900 border-gray-900 text-white' : 'bg-white border-gray-200 text-gray-900'
-            }`}
+            className="flex items-center gap-3 p-3 rounded-xl text-left transition-all break-keep"
+            style={
+              selected
+                ? { background: '#EBF3FF', border: '1.5px solid #0064FF' }
+                : { background: '#F2F4F6', border: '1.5px solid transparent' }
+            }
           >
-            <span className="text-sm font-semibold">{k.label}</span>
-            {selected && <span className="text-xs">✓</span>}
+            {/* 체크박스 아이콘 */}
+            <span
+              className="shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold"
+              style={
+                selected
+                  ? { background: '#0064FF', color: '#fff' }
+                  : { background: '#fff', border: '1.5px solid #D1D5DB', color: 'transparent' }
+              }
+            >
+              ✓
+            </span>
+            {/* 라벨 */}
+            <span
+              className="text-sm font-semibold"
+              style={{ color: selected ? '#0064FF' : '#374151' }}
+            >
+              {k.label}
+            </span>
           </button>
         )
       })}

@@ -31,7 +31,7 @@ const STATUS_LABEL: Record<string, string> = {
 }
 
 const EXCHANGES: Exchange[] = ['BITHUMB', 'UPBIT', 'COINONE', 'KORBIT', 'GOPAX']
-const TRADE_TYPES: TradeType[] = ['BUY', 'SELL', 'CYCLE']
+const TRADE_TYPES: TradeType[] = ['CYCLE', 'BUY', 'SELL']
 
 // ────────────────────────────────────────
 // 서브탭 헤더
@@ -94,8 +94,8 @@ function TradeInner() {
   return (
     <div style={{ background: '#F9FAFB', minHeight: '100%' }}>
       <SubTabs active={activeTab} onChange={switchTab} />
-      {activeTab === 'instant'  && <InstantForm  initCoin={initCoin} initExchange={initExchange} onDone={() => switchTab('list')} />}
-      {activeTab === 'schedule' && <ScheduleForm initCoin={initCoin} initExchange={initExchange} onDone={() => switchTab('list')} />}
+      {activeTab === 'instant'  && <InstantForm  key={`instant-${initExchange}-${initCoin}`}  initCoin={initCoin} initExchange={initExchange} onDone={() => switchTab('list')} />}
+      {activeTab === 'schedule' && <ScheduleForm key={`schedule-${initExchange}-${initCoin}`} initCoin={initCoin} initExchange={initExchange} onDone={() => switchTab('list')} />}
       {activeTab === 'list'     && <ScheduleList />}
     </div>
   )
