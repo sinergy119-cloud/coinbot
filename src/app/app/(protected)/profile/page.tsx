@@ -242,51 +242,6 @@ export default function ProfilePage() {
         </section>
       )}
 
-      {/* 알림 설정 */}
-      <section className="px-4">
-        <p className="text-[13px] font-semibold mb-2 px-1" style={{ color: '#6B7684' }}>알림 설정</p>
-        <div className="rounded-2xl overflow-hidden" style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-          <SettingRow
-            label="전체 알림"
-            description="꺼짐 시 모든 알림이 오지 않습니다"
-            value={settings?.masterEnabled}
-            onChange={() => toggleSetting('masterEnabled')}
-          />
-          <Divider />
-          <a
-            href="/app/profile/push-setup"
-            className="flex items-center justify-between p-4 active:bg-gray-50 transition-colors"
-          >
-            <div className="break-keep pr-3">
-              <p className="text-[15px] font-semibold" style={{ color: '#191F28' }}>🔔 PUSH 알림 설정 확인</p>
-              <p className="text-[12px] mt-0.5" style={{ color: '#6B7684' }}>토큰 등록 · 수신 테스트</p>
-            </div>
-            <span className="text-[14px]" style={{ color: '#B0B8C1' }}>›</span>
-          </a>
-          <Divider />
-          <NotifAccordionHeader
-            open={notifOpen}
-            disabled={!settings?.masterEnabled}
-            settings={settings}
-            onClick={() => setNotifOpen((v) => !v)}
-          />
-          {notifOpen && (
-            <>
-              <Divider />
-              <SettingRow label="거래 결과" description="스케줄·즉시 거래 체결 결과" value={settings?.tradeResultEnabled} onChange={() => toggleSetting('tradeResultEnabled')} disabled={!settings?.masterEnabled} indent />
-              <Divider />
-              <SettingRow label="신규 이벤트" description="새 에어드랍·N빵 공지" value={settings?.eventEnabled} onChange={() => toggleSetting('eventEnabled')} disabled={!settings?.masterEnabled} indent />
-              <Divider />
-              <SettingRow label="스케줄 변경" description="스케줄 등록·실행 알림" value={settings?.scheduleEnabled} onChange={() => toggleSetting('scheduleEnabled')} disabled={!settings?.masterEnabled} indent />
-              <Divider />
-              <SettingRow label="시스템 경고" description="연속 실패 등 중요 경고" value={settings?.systemEnabled} onChange={() => toggleSetting('systemEnabled')} disabled={!settings?.masterEnabled} indent />
-              <Divider />
-              <SettingRow label="공지·프로모션" description="운영 공지사항 (기본 꺼짐)" value={settings?.announcementEnabled} onChange={() => toggleSetting('announcementEnabled')} disabled={!settings?.masterEnabled} indent />
-            </>
-          )}
-        </div>
-      </section>
-
       {/* 보안 */}
       <section className="px-4">
         <p className="text-[13px] font-semibold mb-2 px-1" style={{ color: '#6B7684' }}>보안</p>
@@ -313,6 +268,55 @@ export default function ProfilePage() {
                 </div>
                 <TossToggle checked={bioRegistered} onChange={handleBioToggle} />
               </div>
+            </>
+          )}
+        </div>
+      </section>
+
+      {/* 알림 설정 */}
+      <section className="px-4">
+        <p className="text-[13px] font-semibold mb-2 px-1" style={{ color: '#6B7684' }}>알림 설정</p>
+        <div className="rounded-2xl overflow-hidden" style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+          <SettingRow
+            label="전체 알림"
+            description="꺼짐 시 모든 알림이 오지 않습니다"
+            value={settings?.masterEnabled}
+            onChange={() => toggleSetting('masterEnabled')}
+          />
+          <Divider />
+          <NotifAccordionHeader
+            open={notifOpen}
+            disabled={!settings?.masterEnabled}
+            settings={settings}
+            onClick={() => setNotifOpen((v) => !v)}
+          />
+          {notifOpen && (
+            <>
+              <Divider />
+              <SettingRow label="거래 결과" description="스케줄·즉시 거래 체결 결과" value={settings?.tradeResultEnabled} onChange={() => toggleSetting('tradeResultEnabled')} disabled={!settings?.masterEnabled} indent />
+              <Divider />
+              <SettingRow label="신규 이벤트" description="새 에어드랍·N빵 공지" value={settings?.eventEnabled} onChange={() => toggleSetting('eventEnabled')} disabled={!settings?.masterEnabled} indent />
+              <Divider />
+              <SettingRow label="스케줄 변경" description="스케줄 등록·실행 알림" value={settings?.scheduleEnabled} onChange={() => toggleSetting('scheduleEnabled')} disabled={!settings?.masterEnabled} indent />
+              <Divider />
+              <SettingRow label="시스템 경고" description="연속 실패 등 중요 경고" value={settings?.systemEnabled} onChange={() => toggleSetting('systemEnabled')} disabled={!settings?.masterEnabled} indent />
+              <Divider />
+              <SettingRow label="공지·프로모션" description="운영 공지사항 (기본 꺼짐)" value={settings?.announcementEnabled} onChange={() => toggleSetting('announcementEnabled')} disabled={!settings?.masterEnabled} indent />
+              <Divider />
+              <a
+                href="/app/profile/push-setup"
+                className="flex items-center justify-between px-4 py-3.5 active:bg-gray-50 transition-colors"
+                style={{ background: '#FAFAFA' }}
+              >
+                <div className="flex items-center gap-2.5 break-keep pr-3">
+                  <span className="text-[14px]">🔔</span>
+                  <div>
+                    <p className="text-[14px] font-semibold" style={{ color: '#191F28' }}>PUSH 알림 설정 확인</p>
+                    <p className="text-[11px] mt-0.5" style={{ color: '#6B7684' }}>토큰 등록 · 수신 테스트</p>
+                  </div>
+                </div>
+                <span className="text-[14px]" style={{ color: '#B0B8C1' }}>›</span>
+              </a>
             </>
           )}
         </div>
