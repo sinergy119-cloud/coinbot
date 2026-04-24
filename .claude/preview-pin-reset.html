@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PIN 초기화 확인 모달 프리뷰</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+</style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+
+  <!-- 배경 (앱 화면 시뮬레이션) -->
+  <div class="relative w-full max-w-sm">
+
+    <!-- 앱 배경 흐림 처리 -->
+    <div class="bg-white rounded-3xl shadow-xl overflow-hidden" style="filter: blur(1px); opacity: 0.4; pointer-events: none;">
+      <div class="p-5">
+        <div class="h-6 bg-gray-200 rounded w-1/2 mb-4"></div>
+        <div class="h-4 bg-gray-100 rounded w-full mb-2"></div>
+        <div class="h-4 bg-gray-100 rounded w-3/4 mb-6"></div>
+        <div class="bg-gray-50 rounded-2xl p-4 mb-3">
+          <div class="h-3 bg-gray-200 rounded w-1/3 mb-2"></div>
+          <div class="h-5 bg-gray-300 rounded w-2/3"></div>
+        </div>
+        <div class="bg-gray-50 rounded-2xl p-4 mb-3">
+          <div class="h-3 bg-gray-200 rounded w-1/3 mb-2"></div>
+          <div class="h-5 bg-gray-300 rounded w-2/3"></div>
+        </div>
+        <div class="mt-8 border-t pt-4">
+          <div class="h-4 bg-gray-200 rounded w-1/3 mx-auto"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 확인 모달 오버레이 ── -->
+    <div class="absolute inset-0 flex items-end justify-center" style="background: rgba(0,0,0,0.55); border-radius: 1.5rem;">
+      <div class="w-full bg-white rounded-t-3xl px-5 pt-6 pb-8 shadow-2xl">
+
+        <!-- 경고 아이콘 + 제목 -->
+        <div class="flex flex-col items-center mb-5">
+          <div class="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center mb-3">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+              <path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
+                stroke="#DC2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h2 class="text-lg font-bold text-gray-900">전체 초기화</h2>
+          <p class="text-xs text-gray-500 mt-0.5">PIN 분실 시에만 사용하세요</p>
+        </div>
+
+        <!-- 경고 설명 -->
+        <div class="bg-red-50 border border-red-200 rounded-2xl p-4 mb-5">
+          <ul class="space-y-1.5">
+            <li class="flex items-start gap-2 text-sm text-red-700">
+              <span class="mt-0.5 text-red-500">•</span>
+              <span class="break-keep">등록된 <strong>모든 API Key</strong>가 삭제됩니다.</span>
+            </li>
+            <li class="flex items-start gap-2 text-sm text-red-700">
+              <span class="mt-0.5 text-red-500">•</span>
+              <span class="break-keep"><strong>PIN</strong>이 초기화되어 재설정이 필요합니다.</span>
+            </li>
+            <li class="flex items-start gap-2 text-sm text-red-700">
+              <span class="mt-0.5 text-red-500">•</span>
+              <span class="break-keep font-semibold">이 작업은 되돌릴 수 없습니다.</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- 인증 텍스트 입력 -->
+        <div class="mb-5">
+          <p class="text-sm text-gray-700 mb-2 break-keep">
+            계속하려면 아래에 <strong class="text-gray-900">"전체 초기화"</strong>를 입력하세요.
+          </p>
+          <input
+            id="confirmInput"
+            type="text"
+            placeholder="전체 초기화"
+            oninput="checkInput(this.value)"
+            class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-sm font-medium text-gray-900 placeholder-gray-300 focus:outline-none focus:border-red-400 transition-colors"
+          />
+        </div>
+
+        <!-- 버튼 -->
+        <div class="flex gap-3">
+          <button
+            type="button"
+            onclick="closeModal()"
+            class="flex-1 py-3.5 rounded-2xl border border-gray-200 text-sm font-semibold text-gray-700 bg-white active:scale-95 transition-transform"
+          >
+            취소
+          </button>
+          <button
+            id="confirmBtn"
+            type="button"
+            disabled
+            class="flex-1 py-3.5 rounded-2xl text-sm font-semibold text-white transition-all active:scale-95"
+            style="background: #d1d5db; cursor: not-allowed;"
+            onclick="doReset()"
+          >
+            초기화 진행
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 성공 토스트 (숨김) -->
+  <div id="successToast" class="fixed top-6 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-sm font-medium px-5 py-3 rounded-full shadow-lg hidden">
+    ✓ 초기화가 완료되었습니다.
+  </div>
+
+<script>
+  const CONFIRM_TEXT = '전체 초기화'
+
+  function checkInput(value) {
+    const btn = document.getElementById('confirmBtn')
+    const matched = value === CONFIRM_TEXT
+    btn.disabled = !matched
+    if (matched) {
+      btn.style.background = '#DC2626'
+      btn.style.cursor = 'pointer'
+    } else {
+      btn.style.background = '#d1d5db'
+      btn.style.cursor = 'not-allowed'
+    }
+  }
+
+  function closeModal() {
+    document.getElementById('confirmInput').value = ''
+    checkInput('')
+    alert('취소되었습니다.')
+  }
+
+  function doReset() {
+    const toast = document.getElementById('successToast')
+    toast.classList.remove('hidden')
+    setTimeout(() => toast.classList.add('hidden'), 2500)
+  }
+</script>
+</body>
+</html>

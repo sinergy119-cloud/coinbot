@@ -3,20 +3,22 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { Home, Megaphone, Calendar, User, type LucideIcon } from 'lucide-react'
+import { Home, Megaphone, Zap, BarChart2, User, type LucideIcon } from 'lucide-react'
 
 interface Tab {
   href: string
   label: string
   Icon: LucideIcon
   badge?: boolean
+  matchPrefixes?: string[]
 }
 
 const TABS: Tab[] = [
-  { href: '/app',          label: '홈',      Icon: Home },
-  { href: '/app/events',   label: '이벤트',  Icon: Megaphone, badge: true },
-  { href: '/app/schedule', label: '스케줄',  Icon: Calendar },
-  { href: '/app/profile',  label: '내 정보', Icon: User },
+  { href: '/app',         label: '홈',    Icon: Home },
+  { href: '/app/events',  label: '이벤트', Icon: Megaphone, badge: true },
+  { href: '/app/trade',   label: '거래',   Icon: Zap,        matchPrefixes: ['/app/trade', '/app/schedule'] },
+  { href: '/app/browse',  label: '조회',   Icon: BarChart2,  matchPrefixes: ['/app/browse', '/app/assets'] },
+  { href: '/app/profile', label: '내정보', Icon: User },
 ]
 
 export default function BottomNav() {
@@ -46,11 +48,12 @@ export default function BottomNav() {
         paddingBottom: 'env(safe-area-inset-bottom)',
       }}
     >
-      <ul className="grid grid-cols-4 max-w-lg mx-auto h-[60px]">
+      <ul className="grid grid-cols-5 max-w-lg mx-auto h-[60px]">
         {TABS.map((tab) => {
+          const prefixes = tab.matchPrefixes ?? [tab.href]
           const isActive =
             pathname === tab.href ||
-            (tab.href !== '/app' && pathname.startsWith(tab.href))
+            (tab.href !== '/app' && prefixes.some((p) => pathname.startsWith(p)))
           const badgeCount = tab.badge && tab.href === '/app/events' ? newEventCount : 0
           const Icon = tab.Icon
 
@@ -61,14 +64,12 @@ export default function BottomNav() {
                 aria-label={tab.label}
                 className="flex flex-col items-center justify-center h-full gap-[3px]"
               >
-                {/* 아이콘 */}
                 <span className="relative flex items-center justify-center w-7 h-7">
                   <Icon
-                    size={24}
+                    size={22}
                     strokeWidth={isActive ? 2.2 : 1.6}
                     style={{ color: isActive ? '#0064FF' : '#B0B8C1' }}
                   />
-                  {/* 이벤트 뱃지 */}
                   {badgeCount > 0 && (
                     <span
                       className="absolute -top-1 -right-1.5 text-white text-[9px] leading-none rounded-full min-w-[16px] h-4 px-1 flex items-center justify-center font-bold"
@@ -78,8 +79,6 @@ export default function BottomNav() {
                     </span>
                   )}
                 </span>
-
-                {/* 라벨 */}
                 <span
                   className="text-[10px] leading-none font-medium"
                   style={{ color: isActive ? '#0064FF' : '#B0B8C1' }}

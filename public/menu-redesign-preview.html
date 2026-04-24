@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MyCoinBot 메뉴 개편안</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Noto Sans KR',sans-serif; background:#1a1a2e; display:flex; justify-content:center; align-items:flex-start; min-height:100vh; padding:32px 16px; gap:24px; flex-wrap:wrap; }
+
+/* ── 폰 프레임 ── */
+.phone { width:375px; height:780px; background:#F9FAFB; border-radius:40px; overflow:hidden; position:relative; box-shadow:0 32px 80px rgba(0,0,0,0.5); border:8px solid #222; flex-shrink:0; }
+.phone-screen { width:100%; height:100%; overflow:hidden; position:relative; }
+
+/* ── 공통 ── */
+.screen { position:absolute; inset:0; display:none; flex-direction:column; background:#F9FAFB; padding-bottom:68px; }
+.screen.active { display:flex; }
+.scroll-area { flex:1; overflow-y:auto; padding:0 0 8px 0; }
+.scroll-area::-webkit-scrollbar { display:none; }
+
+/* 상단바 */
+.topbar { height:56px; background:#fff; display:flex; align-items:center; justify-content:space-between; padding:0 16px; border-bottom:1px solid #F2F4F6; flex-shrink:0; position:sticky; top:0; z-index:10; }
+.topbar-title { font-size:17px; font-weight:700; color:#191F28; }
+.topbar-bell { width:40px; height:40px; display:flex; align-items:center; justify-content:center; cursor:pointer; position:relative; }
+.bell-dot { position:absolute; top:8px; right:8px; width:8px; height:8px; background:#FF4D4F; border-radius:50%; }
+.topbar-icon { font-size:20px; }
+
+/* 하단 탭 */
+.bottom-nav { position:absolute; bottom:0; left:0; right:0; height:68px; background:#fff; border-top:1px solid #E5E8EB; display:grid; grid-template-columns:repeat(5,1fr); padding-bottom:env(safe-area-inset-bottom,0px); z-index:20; }
+.nav-item { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; cursor:pointer; padding:8px 0; position:relative; }
+.nav-icon { font-size:22px; line-height:1; }
+.nav-label { font-size:10px; font-weight:600; }
+.nav-item.active .nav-label { color:#0064FF; }
+.nav-item:not(.active) .nav-label { color:#B0B8C1; }
+.nav-badge { position:absolute; top:6px; right:50%; transform:translateX(12px); background:#FF4D4F; color:#fff; font-size:9px; font-weight:700; min-width:16px; height:16px; border-radius:8px; display:flex; align-items:center; justify-content:center; padding:0 3px; }
+
+/* 카드 공통 */
+.card { background:#fff; border-radius:16px; box-shadow:0 2px 8px rgba(0,0,0,0.06); }
+.section { padding:0 16px; margin-bottom:16px; }
+.section-label { font-size:13px; font-weight:600; color:#6B7684; margin-bottom:8px; padding-left:2px; }
+
+/* 배지 */
+.badge { display:inline-flex; align-items:center; font-size:10px; font-weight:700; padding:2px 8px; border-radius:99px; }
+.badge-bithumb { background:#FFF0E6; color:#C94B00; }
+.badge-upbit { background:#E6F0FF; color:#0050CC; }
+.badge-coinone { background:#E6F9EE; color:#007A30; }
+.badge-korbit { background:#F3EEFF; color:#5B21B6; }
+.badge-gopax { background:#FFFBE6; color:#946200; }
+.badge-new { background:#FFE8E8; color:#FF4D4F; }
+.badge-apply { background:#FFF9C4; color:#7A6000; }
+.badge-success { background:#E6F9EE; color:#007A30; }
+.badge-fail { background:#FFE8E8; color:#FF4D4F; }
+.badge-active { background:#EBF3FF; color:#0050CC; }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   홈 화면
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.home-greeting { padding:20px 16px 12px; }
+.home-greeting .sub { font-size:13px; color:#6B7684; }
+.home-greeting .name { font-size:22px; font-weight:800; color:#191F28; margin-top:2px; }
+
+/* 온보딩 배너 */
+.onboarding-banner { margin:0 16px 16px; background:linear-gradient(135deg,#0064FF,#004FCC); border-radius:16px; padding:16px; color:#fff; position:relative; overflow:hidden; }
+.onboarding-banner::after { content:''; position:absolute; right:-20px; top:-20px; width:100px; height:100px; background:rgba(255,255,255,0.08); border-radius:50%; }
+.ob-step { font-size:11px; font-weight:600; opacity:0.8; margin-bottom:4px; }
+.ob-title { font-size:15px; font-weight:700; margin-bottom:12px; line-height:1.4; }
+.ob-progress { background:rgba(255,255,255,0.25); border-radius:4px; height:4px; margin-bottom:8px; }
+.ob-progress-fill { background:#fff; height:4px; border-radius:4px; width:33%; }
+.ob-steps-row { display:flex; gap:6px; }
+.ob-dot { width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,0.4); }
+.ob-dot.done { background:#fff; }
+.ob-action { font-size:12px; font-weight:600; margin-top:10px; background:rgba(255,255,255,0.2); border:none; color:#fff; padding:6px 14px; border-radius:20px; cursor:pointer; }
+
+/* 통계 카드 */
+.stat-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin:0 16px 16px; }
+.stat-card { background:#fff; border-radius:14px; padding:12px 10px; box-shadow:0 2px 8px rgba(0,0,0,0.06); text-align:center; }
+.stat-num { font-size:22px; font-weight:800; color:#191F28; }
+.stat-num.blue { color:#0064FF; }
+.stat-num.green { color:#00C853; }
+.stat-num.orange { color:#FF6B2B; }
+.stat-label { font-size:10px; color:#6B7684; margin-top:2px; font-weight:600; }
+
+/* 이벤트 카드 목록 */
+.event-list-card { border-radius:16px; overflow:hidden; background:#fff; box-shadow:0 2px 8px rgba(0,0,0,0.06); }
+.event-row { display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid #F2F4F6; cursor:pointer; }
+.event-row:last-child { border-bottom:none; }
+.event-coin { font-size:15px; font-weight:700; color:#191F28; }
+.event-amount { font-size:12px; color:#6B7684; margin-top:1px; }
+.event-end { font-size:11px; color:#B0B8C1; }
+
+/* 스케줄 현황 */
+.schedule-card { border-radius:16px; overflow:hidden; background:#fff; box-shadow:0 2px 8px rgba(0,0,0,0.06); }
+.sch-row { display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid #F2F4F6; }
+.sch-row:last-child { border-bottom:none; }
+.sch-coin { font-size:14px; font-weight:700; color:#191F28; }
+.sch-meta { font-size:11px; color:#B0B8C1; margin-top:2px; }
+.sch-status { font-size:11px; font-weight:600; }
+.sch-status.active { color:#0064FF; }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   이벤트 화면
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.filter-row { display:flex; gap:6px; padding:12px 16px; overflow-x:auto; }
+.filter-row::-webkit-scrollbar { display:none; }
+.filter-chip { white-space:nowrap; font-size:12px; font-weight:600; padding:6px 12px; border-radius:99px; cursor:pointer; border:none; }
+.filter-chip.active { background:#0064FF; color:#fff; }
+.filter-chip:not(.active) { background:#fff; color:#6B7684; box-shadow:0 1px 4px rgba(0,0,0,0.06); }
+
+.event-card { background:#fff; border-radius:16px; box-shadow:0 2px 8px rgba(0,0,0,0.06); padding:16px; margin:0 16px 10px; cursor:pointer; }
+.event-card-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+.event-card-coin { font-size:17px; font-weight:700; color:#191F28; }
+.event-card-amount { font-size:13px; color:#6B7684; margin-top:3px; }
+.event-card-cta { display:flex; align-items:center; gap:8px; margin-top:12px; }
+.btn-join { flex:1; background:#0064FF; color:#fff; border:none; border-radius:10px; padding:9px; font-size:13px; font-weight:700; cursor:pointer; }
+.btn-schedule { flex:1; background:#F2F4F6; color:#191F28; border:none; border-radius:10px; padding:9px; font-size:13px; font-weight:700; cursor:pointer; }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   거래 화면
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.sub-tab-row { display:flex; gap:0; margin:12px 16px 16px; background:#F2F4F6; border-radius:12px; padding:3px; }
+.sub-tab { flex:1; text-align:center; font-size:13px; font-weight:600; padding:8px 0; border-radius:9px; cursor:pointer; border:none; }
+.sub-tab.active { background:#fff; color:#191F28; box-shadow:0 1px 4px rgba(0,0,0,0.1); }
+.sub-tab:not(.active) { background:transparent; color:#6B7684; }
+
+/* 즉시매수 폼 */
+.form-card { background:#fff; border-radius:16px; box-shadow:0 2px 8px rgba(0,0,0,0.06); padding:16px; margin:0 16px 12px; }
+.form-label { font-size:12px; font-weight:600; color:#6B7684; margin-bottom:6px; }
+.form-select { width:100%; padding:12px; border-radius:10px; border:1.5px solid #E5E8EB; font-size:14px; font-weight:600; color:#191F28; background:#F9FAFB; }
+.form-input { width:100%; padding:12px; border-radius:10px; border:1.5px solid #E5E8EB; font-size:14px; font-weight:600; color:#191F28; background:#F9FAFB; margin-bottom:8px; }
+.trade-type-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-bottom:8px; }
+.trade-type-btn { padding:10px; border-radius:10px; border:none; font-size:13px; font-weight:700; cursor:pointer; }
+.trade-type-btn.buy { background:#0064FF; color:#fff; }
+.trade-type-btn:not(.buy) { background:#F2F4F6; color:#6B7684; }
+
+/* 다중 계정 선택 */
+.account-select-card { background:#fff; border-radius:16px; box-shadow:0 2px 8px rgba(0,0,0,0.06); margin:0 16px 12px; overflow:hidden; }
+.account-group-header { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; background:#F9FAFB; border-bottom:1px solid #F2F4F6; }
+.account-group-name { font-size:12px; font-weight:700; color:#6B7684; }
+.account-row { display:flex; align-items:center; gap:12px; padding:12px 16px; border-bottom:1px solid #F2F4F6; }
+.account-row:last-child { border-bottom:none; }
+.acc-check { width:20px; height:20px; border-radius:6px; background:#0064FF; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.acc-check-empty { width:20px; height:20px; border-radius:6px; border:2px solid #E5E8EB; flex-shrink:0; }
+.acc-name { font-size:14px; font-weight:600; color:#191F28; }
+.acc-balance { font-size:11px; color:#6B7684; margin-top:1px; }
+.acc-all { font-size:12px; font-weight:600; color:#0064FF; cursor:pointer; }
+
+.btn-execute { width:calc(100% - 32px); margin:0 16px 12px; background:#0064FF; color:#fff; border:none; border-radius:14px; padding:15px; font-size:15px; font-weight:700; cursor:pointer; }
+
+/* 스케줄 목록 */
+.sch-full-card { background:#fff; border-radius:16px; box-shadow:0 2px 8px rgba(0,0,0,0.06); margin:0 16px 10px; overflow:hidden; }
+.sch-full-row { display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid #F2F4F6; }
+.sch-full-row:last-child { border-bottom:none; }
+.sch-info .coin { font-size:15px; font-weight:700; color:#191F28; }
+.sch-info .meta { font-size:11px; color:#B0B8C1; margin-top:2px; }
+.sch-info .amount { font-size:12px; color:#6B7684; margin-top:1px; }
+.sch-cancel { font-size:11px; font-weight:600; color:#FF4D4F; background:#FFF0F0; padding:5px 10px; border-radius:8px; border:none; cursor:pointer; }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   조회 화면
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.total-asset-card { margin:12px 16px; background:#191F28; border-radius:18px; padding:20px; color:#fff; }
+.asset-label-sm { font-size:12px; color:#B0B8C1; }
+.asset-total { font-size:28px; font-weight:800; margin-top:4px; }
+.asset-sub { font-size:12px; color:#6B7684; margin-top:4px; }
+.asset-refresh { font-size:11px; font-weight:600; color:#0064FF; background:#EBF3FF; border:none; padding:5px 10px; border-radius:99px; cursor:pointer; margin-top:10px; }
+
+.exchange-asset-card { background:#fff; border-radius:16px; box-shadow:0 2px 8px rgba(0,0,0,0.06); margin:0 16px 10px; overflow:hidden; }
+.exch-header { display:flex; align-items:center; justify-content:space-between; padding:14px 16px; }
+.exch-left { display:flex; align-items:center; gap:8px; }
+.exch-total { font-size:16px; font-weight:700; color:#191F28; }
+.exch-sub { font-size:11px; color:#B0B8C1; margin-top:1px; }
+.exch-expand { font-size:12px; color:#B0B8C1; }
+.coin-list { padding:0 16px 12px; border-top:1px solid #F2F4F6; }
+.coin-row-item { display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid #F9FAFB; }
+.coin-row-item:last-child { border-bottom:none; }
+.coin-name { font-size:13px; font-weight:700; color:#191F28; }
+.coin-amount { font-size:11px; color:#B0B8C1; margin-top:1px; }
+.coin-value { font-size:13px; font-weight:600; color:#191F28; }
+
+/* 거래 내역 */
+.trade-hist-card { background:#fff; border-radius:16px; box-shadow:0 2px 8px rgba(0,0,0,0.06); margin:0 16px 10px; overflow:hidden; }
+.trade-hist-row { display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid #F2F4F6; }
+.trade-hist-row:last-child { border-bottom:none; }
+.th-info .exch-coin { font-size:13px; font-weight:600; color:#6B7684; }
+.th-info .coin { font-size:15px; font-weight:700; color:#191F28; margin-top:1px; }
+.th-info .amount { font-size:12px; color:#6B7684; margin-top:1px; }
+.th-result { text-align:right; }
+.th-result .result { font-size:13px; font-weight:700; }
+.th-result .time { font-size:10px; color:#B0B8C1; margin-top:2px; }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   내정보 화면
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.profile-top { margin:16px 16px 0; background:#fff; border-radius:16px; box-shadow:0 2px 8px rgba(0,0,0,0.06); padding:16px; display:flex; align-items:center; gap:12px; }
+.profile-avatar { width:48px; height:48px; border-radius:50%; background:#FEE500; display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; }
+.profile-name { font-size:16px; font-weight:700; color:#191F28; }
+.profile-sub { font-size:12px; color:#6B7684; margin-top:2px; }
+
+.guide-banner { margin:12px 16px; background:linear-gradient(135deg,#0064FF 0%,#004FCC 100%); border-radius:14px; padding:14px 16px; display:flex; align-items:center; justify-content:space-between; cursor:pointer; }
+.guide-banner-text .t { font-size:14px; font-weight:700; color:#fff; }
+.guide-banner-text .s { font-size:11px; color:rgba(255,255,255,0.75); margin-top:2px; }
+.guide-arrow { font-size:18px; color:rgba(255,255,255,0.6); }
+
+.menu-section { margin:0 16px 12px; }
+.menu-section-label { font-size:12px; font-weight:600; color:#B0B8C1; margin-bottom:6px; padding-left:2px; }
+.menu-card { background:#fff; border-radius:16px; box-shadow:0 2px 8px rgba(0,0,0,0.06); overflow:hidden; }
+.menu-row { display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid #F2F4F6; cursor:pointer; }
+.menu-row:last-child { border-bottom:none; }
+.menu-row-left { display:flex; align-items:center; gap:10px; }
+.menu-icon { width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; }
+.menu-icon.blue { background:#EBF3FF; }
+.menu-icon.green { background:#E6F9EE; }
+.menu-icon.purple { background:#F3EEFF; }
+.menu-icon.gray { background:#F2F4F6; }
+.menu-icon.red { background:#FFF0F0; }
+.menu-row-title { font-size:14px; font-weight:600; color:#191F28; }
+.menu-row-sub { font-size:11px; color:#6B7684; margin-top:1px; }
+.menu-row-arrow { font-size:16px; color:#B0B8C1; }
+.menu-row-badge { font-size:10px; font-weight:700; background:#0064FF; color:#fff; padding:2px 7px; border-radius:99px; }
+
+.logout-btn { margin:0 16px 20px; background:#fff; border-radius:16px; box-shadow:0 2px 8px rgba(0,0,0,0.06); padding:14px 16px; display:flex; align-items:center; justify-content:space-between; cursor:pointer; border:none; width:calc(100% - 32px); }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   레이블 페이지 (개요)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.label-page { background:#1a1a2e; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:32px 24px; }
+.label-page h2 { font-size:28px; font-weight:800; color:#fff; margin-bottom:8px; }
+.label-page p { font-size:14px; color:rgba(255,255,255,0.6); line-height:1.7; }
+
+/* 화면 제목 레이블 */
+.screen-tag { position:absolute; top:8px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.55); color:#fff; font-size:10px; font-weight:700; padding:3px 10px; border-radius:99px; white-space:nowrap; z-index:100; pointer-events:none; }
+
+/* 탭 네비게이션 (HTML) */
+.nav-tabs-outer { display:flex; justify-content:center; gap:8px; flex-wrap:wrap; max-width:600px; margin:0 auto 24px; }
+.nav-tab-btn { background:rgba(255,255,255,0.1); border:none; color:rgba(255,255,255,0.6); font-size:13px; font-weight:600; padding:8px 16px; border-radius:99px; cursor:pointer; font-family:inherit; transition:all 0.2s; }
+.nav-tab-btn.active { background:#0064FF; color:#fff; }
+.page-title { font-size:24px; font-weight:800; color:#fff; text-align:center; margin-bottom:6px; }
+.page-sub { font-size:13px; color:rgba(255,255,255,0.55); text-align:center; margin-bottom:24px; }
+
+/* intro */
+.intro-wrap { display:flex; flex-direction:column; align-items:center; }
+.intro-logo { font-size:48px; margin-bottom:16px; }
+.intro-title { font-size:26px; font-weight:800; color:#fff; margin-bottom:8px; }
+.intro-desc { font-size:14px; color:rgba(255,255,255,0.6); line-height:1.7; text-align:center; margin-bottom:32px; }
+
+.flow-arrow { color:rgba(255,255,255,0.3); font-size:20px; margin:0 4px; }
+.flow-row { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:4px; margin-bottom:24px; }
+.flow-step { background:rgba(255,255,255,0.1); border-radius:10px; padding:8px 14px; font-size:12px; font-weight:600; color:#fff; }
+.flow-step.highlight { background:#0064FF; }
+</style>
+</head>
+<body>
+
+<!-- 페이지 탭 네비 -->
+<div style="width:100%;max-width:1400px;margin:0 auto;">
+<div class="intro-wrap" style="margin-bottom:32px;">
+  <div class="intro-logo">🤖</div>
+  <div class="intro-title">MyCoinBot 메뉴 개편안</div>
+  <div class="intro-desc">하단 탭 5개 재구성 · 드로어 제거 · 온보딩 배너<br>이벤트→거래 원스톱 플로우 · 다중계정 통합 관리</div>
+  <div class="flow-row">
+    <div class="flow-step highlight">① 이벤트 확인</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step highlight">② 즉시/스케줄 거래</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step highlight">③ 결과 모니터링</div>
+  </div>
+</div>
+
+<div class="nav-tabs-outer">
+  <button class="nav-tab-btn active" onclick="showPhone('home')">🏠 홈</button>
+  <button class="nav-tab-btn" onclick="showPhone('events')">🎁 이벤트</button>
+  <button class="nav-tab-btn" onclick="showPhone('trade')">⚡ 거래</button>
+  <button class="nav-tab-btn" onclick="showPhone('inquiry')">📊 조회</button>
+  <button class="nav-tab-btn" onclick="showPhone('myinfo')">👤 내정보</button>
+</div>
+
+<!-- ━━━━━ 폰 ━━━━━ -->
+<div style="display:flex;justify-content:center;">
+<div class="phone">
+<div class="phone-screen">
+
+<!-- ① 홈 화면 -->
+<div class="screen active" id="screen-home">
+  <div class="topbar">
+    <span class="topbar-title">MyCoinBot</span>
+    <div class="topbar-bell">
+      <span class="topbar-icon">🔔</span>
+      <span class="bell-dot"></span>
+    </div>
+  </div>
+  <div class="scroll-area">
+    <!-- 인사 -->
+    <div class="home-greeting">
+      <div class="sub">안녕하세요</div>
+      <div class="name">재한님 👋</div>
+    </div>
+
+    <!-- 온보딩 배너 (신규 사용자) -->
+    <div class="onboarding-banner">
+      <div class="ob-step">시작 설정 1/3 완료</div>
+      <div class="ob-title">거래소 API Key를 등록하면<br>자동 매수를 시작할 수 있어요</div>
+      <div class="ob-progress"><div class="ob-progress-fill"></div></div>
+      <div class="ob-steps-row">
+        <div class="ob-dot done"></div>
+        <div class="ob-dot done" style="background:rgba(255,255,255,0.6)"></div>
+        <div class="ob-dot"></div>
+      </div>
+      <button class="ob-action">API Key 등록하기 →</button>
+    </div>
+
+    <!-- 현황 숫자 -->
+    <div class="stat-row">
+      <div class="stat-card">
+        <div class="stat-num blue">12</div>
+        <div class="stat-label">진행 이벤트</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num orange">3</div>
+        <div class="stat-label">활성 스케줄</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num green">5</div>
+        <div class="stat-label">오늘 거래 성공</div>
+      </div>
+    </div>
+
+    <!-- 진행 중 이벤트 -->
+    <div class="section">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div class="section-label" style="margin:0">진행 중인 이벤트</div>
+        <span style="font-size:12px;font-weight:600;color:#0064FF;cursor:pointer" onclick="showPhone('events')">모두 보기 →</span>
+      </div>
+      <div class="event-list-card">
+        <div class="event-row">
+          <div>
+            <div style="display:flex;gap:6px;align-items:center;margin-bottom:5px">
+              <span class="badge badge-bithumb">빗썸</span>
+              <span class="badge badge-new">신규</span>
+            </div>
+            <div class="event-coin">MOVE</div>
+            <div class="event-amount">보유량 비례 에어드랍</div>
+          </div>
+          <div class="event-end">~ 05/15</div>
+        </div>
+        <div class="event-row">
+          <div>
+            <div style="display:flex;gap:6px;align-items:center;margin-bottom:5px">
+              <span class="badge badge-upbit">업비트</span>
+            </div>
+            <div class="event-coin">SOL</div>
+            <div class="event-amount">N빵 이벤트 · 5,100원 이상</div>
+          </div>
+          <div class="event-end">~ 05/20</div>
+        </div>
+        <div class="event-row" style="border-bottom:none">
+          <div>
+            <div style="display:flex;gap:6px;align-items:center;margin-bottom:5px">
+              <span class="badge badge-coinone">코인원</span>
+              <span class="badge badge-apply">신청필요</span>
+            </div>
+            <div class="event-coin">XRP</div>
+            <div class="event-amount">매수량 비례 보상</div>
+          </div>
+          <div class="event-end">~ 05/31</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 내 스케줄 현황 -->
+    <div class="section">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div class="section-label" style="margin:0">내 스케줄</div>
+        <span style="font-size:12px;font-weight:600;color:#0064FF;cursor:pointer" onclick="showPhone('trade')">전체 보기 →</span>
+      </div>
+      <div class="schedule-card">
+        <div class="sch-row">
+          <div>
+            <div class="sch-coin">BTC</div>
+            <div class="sch-meta">빗썸 · 매일 09:00 · 10,000원</div>
+          </div>
+          <span class="sch-status active">● 실행 중</span>
+        </div>
+        <div class="sch-row" style="border-bottom:none">
+          <div>
+            <div class="sch-coin">MOVE</div>
+            <div class="sch-meta">빗썸 · 05/10~05/15 · 5,100원</div>
+          </div>
+          <span class="sch-status active">● 실행 중</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 하단 탭 -->
+  <div class="bottom-nav">
+    <div class="nav-item active" onclick="showPhone('home')">
+      <span class="nav-icon">🏠</span>
+      <span class="nav-label" style="color:#0064FF">홈</span>
+    </div>
+    <div class="nav-item" onclick="showPhone('events')">
+      <span class="nav-icon">🎁</span>
+      <span class="nav-label">이벤트</span>
+      <span class="nav-badge">12</span>
+    </div>
+    <div class="nav-item" onclick="showPhone('trade')">
+      <span class="nav-icon">⚡</span>
+      <span class="nav-label">거래</span>
+    </div>
+    <div class="nav-item" onclick="showPhone('inquiry')">
+      <span class="nav-icon">📊</span>
+      <span class="nav-label">조회</span>
+    </div>
+    <div class="nav-item" onclick="showPhone('myinfo')">
+      <span class="nav-icon">👤</span>
+      <span class="nav-label">내정보</span>
+    </div>
+  </div>
+</div>
+
+<!-- ② 이벤트 화면 -->
+<div class="screen" id="screen-events">
+  <div class="topbar">
+    <span class="topbar-title">이벤트</span>
+    <div class="topbar-bell"><span class="topbar-icon">🔔</span></div>
+  </div>
+  <div class="scroll-area">
+    <!-- 거래소 필터 -->
+    <div class="filter-row">
+      <button class="filter-chip active">전체 12</button>
+      <button class="filter-chip">빗썸 5</button>
+      <button class="filter-chip">업비트 3</button>
+      <button class="filter-chip">코인원 2</button>
+      <button class="filter-chip">코빗 1</button>
+      <button class="filter-chip">고팍스 1</button>
+    </div>
+
+    <!-- 이벤트 카드 (CTA 버튼 포함) -->
+    <div class="event-card">
+      <div class="event-card-top">
+        <div style="display:flex;gap:6px;align-items:center">
+          <span class="badge badge-bithumb">빗썸</span>
+          <span class="badge badge-new">NEW</span>
+        </div>
+        <span style="font-size:12px;color:#B0B8C1">~ 05/15</span>
+      </div>
+      <div class="event-card-coin">MOVE</div>
+      <div class="event-card-amount">보유량 비례 에어드랍 · API 거래 허용</div>
+      <div class="event-card-cta">
+        <button class="btn-join">⚡ 즉시 매수</button>
+        <button class="btn-schedule">📅 스케줄 등록</button>
+      </div>
+    </div>
+
+    <div class="event-card">
+      <div class="event-card-top">
+        <div style="display:flex;gap:6px;align-items:center">
+          <span class="badge badge-upbit">업비트</span>
+        </div>
+        <span style="font-size:12px;color:#B0B8C1">~ 05/20</span>
+      </div>
+      <div class="event-card-coin">SOL</div>
+      <div class="event-card-amount">N빵 이벤트 · 5,100원 이상 매수</div>
+      <div class="event-card-cta">
+        <button class="btn-join">⚡ 즉시 매수</button>
+        <button class="btn-schedule">📅 스케줄 등록</button>
+      </div>
+    </div>
+
+    <div class="event-card">
+      <div class="event-card-top">
+        <div style="display:flex;gap:6px;align-items:center">
+          <span class="badge badge-coinone">코인원</span>
+          <span class="badge badge-apply">신청필요</span>
+        </div>
+        <span style="font-size:12px;color:#B0B8C1">~ 05/31</span>
+      </div>
+      <div class="event-card-coin">XRP</div>
+      <div class="event-card-amount">매수량 비례 보상 · 신청 후 참여</div>
+      <div class="event-card-cta">
+        <button class="btn-join" style="background:#6B7684">거래소 공지 보기</button>
+        <button class="btn-schedule">📅 스케줄 등록</button>
+      </div>
+    </div>
+
+    <div class="event-card">
+      <div class="event-card-top">
+        <div style="display:flex;gap:6px">
+          <span class="badge badge-korbit">코빗</span>
+        </div>
+        <span style="font-size:12px;color:#B0B8C1">~ 06/01</span>
+      </div>
+      <div class="event-card-coin">ETH</div>
+      <div class="event-card-amount">에어드랍 · 보유량 기준</div>
+      <div class="event-card-cta">
+        <button class="btn-join">⚡ 즉시 매수</button>
+        <button class="btn-schedule">📅 스케줄 등록</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom-nav">
+    <div class="nav-item" onclick="showPhone('home')"><span class="nav-icon">🏠</span><span class="nav-label">홈</span></div>
+    <div class="nav-item active" onclick="showPhone('events')"><span class="nav-icon">🎁</span><span class="nav-label" style="color:#0064FF">이벤트</span><span class="nav-badge">12</span></div>
+    <div class="nav-item" onclick="showPhone('trade')"><span class="nav-icon">⚡</span><span class="nav-label">거래</span></div>
+    <div class="nav-item" onclick="showPhone('inquiry')"><span class="nav-icon">📊</span><span class="nav-label">조회</span></div>
+    <div class="nav-item" onclick="showPhone('myinfo')"><span class="nav-icon">👤</span><span class="nav-label">내정보</span></div>
+  </div>
+</div>
+
+<!-- ③ 거래 화면 -->
+<div class="screen" id="screen-trade">
+  <div class="topbar">
+    <span class="topbar-title">거래</span>
+    <div class="topbar-bell"><span class="topbar-icon">🔔</span></div>
+  </div>
+  <div class="scroll-area">
+    <!-- 서브탭 -->
+    <div class="sub-tab-row">
+      <button class="sub-tab active" id="trade-sub-instant" onclick="showTradeSub('instant')">⚡ 즉시매수</button>
+      <button class="sub-tab" id="trade-sub-schedule" onclick="showTradeSub('schedule')">📅 스케줄</button>
+      <button class="sub-tab" id="trade-sub-list" onclick="showTradeSub('list')">📋 내 스케줄</button>
+    </div>
+
+    <!-- 즉시매수 폼 -->
+    <div id="trade-content-instant">
+      <div class="form-card">
+        <div class="form-label">거래소</div>
+        <select class="form-select"><option>빗썸</option><option>업비트</option><option>코인원</option></select>
+      </div>
+      <div class="form-card">
+        <div class="form-label">코인</div>
+        <input class="form-input" value="MOVE" style="margin-bottom:0">
+      </div>
+      <div class="form-card">
+        <div class="form-label">거래 방식</div>
+        <div class="trade-type-row">
+          <button class="trade-type-btn buy">매수</button>
+          <button class="trade-type-btn">매도</button>
+          <button class="trade-type-btn">사이클</button>
+        </div>
+        <div class="form-label" style="margin-top:8px">금액 (KRW)</div>
+        <input class="form-input" value="10,000" style="margin-bottom:0">
+      </div>
+
+      <!-- 다중 계정 선택 -->
+      <div class="section-label" style="padding:4px 18px 4px">계정 선택 <span style="font-size:10px;color:#B0B8C1">(복수 선택 가능)</span></div>
+      <div class="account-select-card">
+        <div class="account-group-header">
+          <span class="account-group-name">빗썸 (2개)</span>
+          <span class="acc-all">전체 선택</span>
+        </div>
+        <div class="account-row">
+          <div class="acc-check">✓</div>
+          <div style="flex:1">
+            <div class="acc-name">빗썸 메인계정</div>
+            <div class="acc-balance">KRW 잔고 · 248,000원</div>
+          </div>
+        </div>
+        <div class="account-row">
+          <div class="acc-check">✓</div>
+          <div style="flex:1">
+            <div class="acc-name">빗썸 서브계정</div>
+            <div class="acc-balance">KRW 잔고 · 115,000원</div>
+          </div>
+        </div>
+        <div class="account-group-header" style="border-top:1px solid #F2F4F6">
+          <span class="account-group-name">업비트 (1개)</span>
+          <span class="acc-all">전체 선택</span>
+        </div>
+        <div class="account-row" style="border-bottom:none">
+          <div class="acc-check-empty"></div>
+          <div style="flex:1">
+            <div class="acc-name">업비트 계정</div>
+            <div class="acc-balance">KRW 잔고 · 520,000원</div>
+          </div>
+        </div>
+      </div>
+      <button class="btn-execute">PIN 입력 후 실행</button>
+    </div>
+
+    <!-- 스케줄 등록 -->
+    <div id="trade-content-schedule" style="display:none">
+      <div class="form-card">
+        <div class="form-label">거래소</div>
+        <select class="form-select"><option>빗썸</option></select>
+      </div>
+      <div class="form-card">
+        <div class="form-label">코인</div>
+        <input class="form-input" placeholder="예: BTC" style="margin-bottom:8px">
+        <div class="form-label">거래 방식</div>
+        <div class="trade-type-row">
+          <button class="trade-type-btn buy">매수</button>
+          <button class="trade-type-btn">매도</button>
+          <button class="trade-type-btn">사이클</button>
+        </div>
+        <div class="form-label" style="margin-top:8px">금액 (KRW)</div>
+        <input class="form-input" placeholder="10000" style="margin-bottom:0">
+      </div>
+      <div class="form-card">
+        <div style="display:flex;justify-content:space-between;gap:8px">
+          <div style="flex:1"><div class="form-label">시작일</div><input class="form-input" type="date" value="2026-05-01" style="margin-bottom:0;padding:10px 8px;font-size:13px"></div>
+          <div style="flex:1"><div class="form-label">종료일</div><input class="form-input" type="date" value="2026-05-15" style="margin-bottom:0;padding:10px 8px;font-size:13px"></div>
+        </div>
+        <div class="form-label" style="margin-top:8px">실행 시간 (KST)</div>
+        <input class="form-input" type="time" value="09:00" style="margin-bottom:0">
+      </div>
+      <button class="btn-execute" style="background:#191F28">스케줄 등록</button>
+    </div>
+
+    <!-- 내 스케줄 목록 -->
+    <div id="trade-content-list" style="display:none">
+      <div class="section-label" style="padding:4px 18px">활성 스케줄 3건</div>
+      <div class="sch-full-card">
+        <div class="sch-full-row">
+          <div class="sch-info">
+            <div style="display:flex;gap:6px;margin-bottom:4px"><span class="badge badge-bithumb">빗썸</span><span class="badge badge-active">활성</span></div>
+            <div class="coin">MOVE</div>
+            <div class="amount">5,100원</div>
+            <div class="meta">05/10 ~ 05/15 · 매일 09:00</div>
+          </div>
+          <button class="sch-cancel">취소</button>
+        </div>
+        <div class="sch-full-row">
+          <div class="sch-info">
+            <div style="display:flex;gap:6px;margin-bottom:4px"><span class="badge badge-bithumb">빗썸</span><span class="badge badge-active">활성</span></div>
+            <div class="coin">BTC</div>
+            <div class="amount">10,000원</div>
+            <div class="meta">무기한 · 매일 09:00</div>
+          </div>
+          <button class="sch-cancel">취소</button>
+        </div>
+        <div class="sch-full-row" style="border-bottom:none">
+          <div class="sch-info">
+            <div style="display:flex;gap:6px;margin-bottom:4px"><span class="badge badge-upbit">업비트</span><span class="badge badge-active">활성</span></div>
+            <div class="coin">SOL</div>
+            <div class="amount">5,100원</div>
+            <div class="meta">05/01 ~ 05/20 · 매일 10:00</div>
+          </div>
+          <button class="sch-cancel">취소</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom-nav">
+    <div class="nav-item" onclick="showPhone('home')"><span class="nav-icon">🏠</span><span class="nav-label">홈</span></div>
+    <div class="nav-item" onclick="showPhone('events')"><span class="nav-icon">🎁</span><span class="nav-label">이벤트</span><span class="nav-badge">12</span></div>
+    <div class="nav-item active" onclick="showPhone('trade')"><span class="nav-icon">⚡</span><span class="nav-label" style="color:#0064FF">거래</span></div>
+    <div class="nav-item" onclick="showPhone('inquiry')"><span class="nav-icon">📊</span><span class="nav-label">조회</span></div>
+    <div class="nav-item" onclick="showPhone('myinfo')"><span class="nav-icon">👤</span><span class="nav-label">내정보</span></div>
+  </div>
+</div>
+
+<!-- ④ 조회 화면 -->
+<div class="screen" id="screen-inquiry">
+  <div class="topbar">
+    <span class="topbar-title">조회</span>
+    <div class="topbar-bell"><span class="topbar-icon">🔔</span></div>
+  </div>
+  <div class="scroll-area">
+    <div class="sub-tab-row">
+      <button class="sub-tab active" id="inq-sub-asset" onclick="showInquirySub('asset')">💰 자산 현황</button>
+      <button class="sub-tab" id="inq-sub-history" onclick="showInquirySub('history')">📜 거래 내역</button>
+    </div>
+
+    <!-- 자산 현황 -->
+    <div id="inq-content-asset">
+      <div class="total-asset-card">
+        <div class="asset-label-sm">전체 자산 (KRW 환산)</div>
+        <div class="asset-total">2,847,320원</div>
+        <div class="asset-sub">KRW 잔고 합산 · 코인 평가액 포함</div>
+        <button class="asset-refresh">🔄 새로고침</button>
+      </div>
+
+      <div class="exchange-asset-card">
+        <div class="exch-header">
+          <div class="exch-left">
+            <span class="badge badge-bithumb">빗썸</span>
+            <div>
+              <div class="exch-total">1,423,000원</div>
+              <div class="exch-sub">계정 2개 합산</div>
+            </div>
+          </div>
+          <span class="exch-expand">▼</span>
+        </div>
+        <div class="coin-list">
+          <div class="coin-row-item">
+            <div><div class="coin-name">KRW</div></div>
+            <div class="coin-value">363,000원</div>
+          </div>
+          <div class="coin-row-item">
+            <div><div class="coin-name">BTC</div><div class="coin-amount">0.003241 BTC</div></div>
+            <div class="coin-value">620,000원</div>
+          </div>
+          <div class="coin-row-item">
+            <div><div class="coin-name">MOVE</div><div class="coin-amount">1,240 MOVE</div></div>
+            <div class="coin-value">440,000원</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="exchange-asset-card">
+        <div class="exch-header">
+          <div class="exch-left">
+            <span class="badge badge-upbit">업비트</span>
+            <div>
+              <div class="exch-total">1,024,320원</div>
+              <div class="exch-sub">계정 1개</div>
+            </div>
+          </div>
+          <span class="exch-expand">▼</span>
+        </div>
+        <div class="coin-list">
+          <div class="coin-row-item">
+            <div><div class="coin-name">KRW</div></div>
+            <div class="coin-value">524,320원</div>
+          </div>
+          <div class="coin-row-item">
+            <div><div class="coin-name">SOL</div><div class="coin-amount">2.15 SOL</div></div>
+            <div class="coin-value">500,000원</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 거래 내역 -->
+    <div id="inq-content-history" style="display:none">
+      <div style="padding:4px 18px 8px"><span style="font-size:12px;color:#6B7684;font-weight:600">오늘 거래 5건 · 성공 5건</span></div>
+      <div class="trade-hist-card">
+        <div class="trade-hist-row">
+          <div class="th-info">
+            <div class="exch-coin"><span class="badge badge-bithumb" style="font-size:9px">빗썸</span> · 매수</div>
+            <div class="coin">MOVE</div>
+            <div class="amount">5,100원</div>
+          </div>
+          <div class="th-result">
+            <div class="result" style="color:#00C853">성공 ✓</div>
+            <div class="time">오늘 09:00</div>
+          </div>
+        </div>
+        <div class="trade-hist-row">
+          <div class="th-info">
+            <div class="exch-coin"><span class="badge badge-bithumb" style="font-size:9px">빗썸</span> · 매수</div>
+            <div class="coin">MOVE</div>
+            <div class="amount">5,100원</div>
+          </div>
+          <div class="th-result">
+            <div class="result" style="color:#00C853">성공 ✓</div>
+            <div class="time">오늘 09:00</div>
+          </div>
+        </div>
+        <div class="trade-hist-row">
+          <div class="th-info">
+            <div class="exch-coin"><span class="badge badge-upbit" style="font-size:9px">업비트</span> · 매수</div>
+            <div class="coin">SOL</div>
+            <div class="amount">5,100원</div>
+          </div>
+          <div class="th-result">
+            <div class="result" style="color:#00C853">성공 ✓</div>
+            <div class="time">오늘 10:00</div>
+          </div>
+        </div>
+        <div class="trade-hist-row">
+          <div class="th-info">
+            <div class="exch-coin"><span class="badge badge-bithumb" style="font-size:9px">빗썸</span> · 매수</div>
+            <div class="coin">BTC</div>
+            <div class="amount">10,000원</div>
+          </div>
+          <div class="th-result">
+            <div class="result" style="color:#00C853">성공 ✓</div>
+            <div class="time">오늘 09:00</div>
+          </div>
+        </div>
+        <div class="trade-hist-row" style="border-bottom:none">
+          <div class="th-info">
+            <div class="exch-coin"><span class="badge badge-korbit" style="font-size:9px">코빗</span> · 매수</div>
+            <div class="coin">ETH</div>
+            <div class="amount">5,100원</div>
+          </div>
+          <div class="th-result">
+            <div class="result" style="color:#FF4D4F">실패 ✕</div>
+            <div class="time">오늘 09:00</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom-nav">
+    <div class="nav-item" onclick="showPhone('home')"><span class="nav-icon">🏠</span><span class="nav-label">홈</span></div>
+    <div class="nav-item" onclick="showPhone('events')"><span class="nav-icon">🎁</span><span class="nav-label">이벤트</span><span class="nav-badge">12</span></div>
+    <div class="nav-item" onclick="showPhone('trade')"><span class="nav-icon">⚡</span><span class="nav-label">거래</span></div>
+    <div class="nav-item active" onclick="showPhone('inquiry')"><span class="nav-icon">📊</span><span class="nav-label" style="color:#0064FF">조회</span></div>
+    <div class="nav-item" onclick="showPhone('myinfo')"><span class="nav-icon">👤</span><span class="nav-label">내정보</span></div>
+  </div>
+</div>
+
+<!-- ⑤ 내정보 화면 -->
+<div class="screen" id="screen-myinfo">
+  <div class="topbar">
+    <span class="topbar-title">내정보</span>
+    <div class="topbar-bell"><span class="topbar-icon">🔔</span></div>
+  </div>
+  <div class="scroll-area">
+    <!-- 프로필 -->
+    <div class="profile-top">
+      <div class="profile-avatar">😊</div>
+      <div>
+        <div class="profile-name">김재한</div>
+        <div class="profile-sub">카카오 로그인 · API Key 2개 등록</div>
+      </div>
+    </div>
+
+    <!-- 시작 가이드 배너 -->
+    <div class="guide-banner">
+      <div class="guide-banner-text">
+        <div class="t">📚 시작 가이드 다시 보기</div>
+        <div class="s">거래소 가입 · API Key 발급 방법 안내</div>
+      </div>
+      <div class="guide-arrow">›</div>
+    </div>
+
+    <!-- 거래 관리 -->
+    <div class="menu-section">
+      <div class="menu-section-label">거래 관리</div>
+      <div class="menu-card">
+        <div class="menu-row">
+          <div class="menu-row-left">
+            <div class="menu-icon blue">🔑</div>
+            <div><div class="menu-row-title">API Key 관리</div><div class="menu-row-sub">빗썸 2개 · 업비트 1개 등록</div></div>
+          </div>
+          <span class="menu-row-arrow">›</span>
+        </div>
+        <div class="menu-row">
+          <div class="menu-row-left">
+            <div class="menu-icon green">💰</div>
+            <div><div class="menu-row-title">자산 현황</div><div class="menu-row-sub">전체 잔고 조회</div></div>
+          </div>
+          <span class="menu-row-arrow">›</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 알림 -->
+    <div class="menu-section">
+      <div class="menu-section-label">알림 · 연동</div>
+      <div class="menu-card">
+        <div class="menu-row">
+          <div class="menu-row-left">
+            <div class="menu-icon purple">🔔</div>
+            <div><div class="menu-row-title">알림 설정</div><div class="menu-row-sub">푸시 · 텔레그램 연동</div></div>
+          </div>
+          <span class="menu-row-badge">연결됨</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 보안 -->
+    <div class="menu-section">
+      <div class="menu-section-label">보안</div>
+      <div class="menu-card">
+        <div class="menu-row">
+          <div class="menu-row-left">
+            <div class="menu-icon blue">🛡️</div>
+            <div><div class="menu-row-title">PIN · 지문 인증</div><div class="menu-row-sub">API Key 접근 보안 설정</div></div>
+          </div>
+          <span class="menu-row-arrow">›</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 안내 -->
+    <div class="menu-section">
+      <div class="menu-section-label">안내 · 고객지원</div>
+      <div class="menu-card">
+        <div class="menu-row">
+          <div class="menu-row-left">
+            <div class="menu-icon green">📚</div>
+            <div><div class="menu-row-title">시작 가이드</div><div class="menu-row-sub">거래소 가입 · API 발급 방법</div></div>
+          </div>
+          <span class="menu-row-arrow">›</span>
+        </div>
+        <div class="menu-row">
+          <div class="menu-row-left">
+            <div class="menu-icon gray">💬</div>
+            <div><div class="menu-row-title">카카오 1:1 문의</div><div class="menu-row-sub">오픈채팅 바로가기</div></div>
+          </div>
+          <span class="menu-row-arrow">›</span>
+        </div>
+        <div class="menu-row">
+          <div class="menu-row-left">
+            <div class="menu-icon gray">📄</div>
+            <div><div class="menu-row-title">개인정보처리방침</div></div>
+          </div>
+          <span class="menu-row-arrow">›</span>
+        </div>
+      </div>
+    </div>
+
+    <button class="logout-btn">
+      <span style="font-size:14px;font-weight:600;color:#FF4D4F">로그아웃</span>
+      <span style="color:#B0B8C1">›</span>
+    </button>
+  </div>
+
+  <div class="bottom-nav">
+    <div class="nav-item" onclick="showPhone('home')"><span class="nav-icon">🏠</span><span class="nav-label">홈</span></div>
+    <div class="nav-item" onclick="showPhone('events')"><span class="nav-icon">🎁</span><span class="nav-label">이벤트</span><span class="nav-badge">12</span></div>
+    <div class="nav-item" onclick="showPhone('trade')"><span class="nav-icon">⚡</span><span class="nav-label">거래</span></div>
+    <div class="nav-item" onclick="showPhone('inquiry')"><span class="nav-icon">📊</span><span class="nav-label">조회</span></div>
+    <div class="nav-item active" onclick="showPhone('myinfo')"><span class="nav-icon">👤</span><span class="nav-label" style="color:#0064FF">내정보</span></div>
+  </div>
+</div>
+
+</div><!-- phone-screen -->
+</div><!-- phone -->
+</div><!-- flex -->
+</div><!-- wrap -->
+
+<script>
+function showPhone(tab) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'))
+  document.getElementById('screen-' + tab).classList.add('active')
+  document.querySelectorAll('.nav-tab-btn').forEach((b,i) => {
+    const tabs = ['home','events','trade','inquiry','myinfo']
+    b.classList.toggle('active', tabs[i] === tab)
+  })
+}
+function showTradeSub(sub) {
+  ['instant','schedule','list'].forEach(s => {
+    document.getElementById('trade-content-' + s).style.display = s === sub ? 'block' : 'none'
+    document.getElementById('trade-sub-' + s).classList.toggle('active', s === sub)
+  })
+}
+function showInquirySub(sub) {
+  ['asset','history'].forEach(s => {
+    document.getElementById('inq-content-' + s).style.display = s === sub ? 'block' : 'none'
+    document.getElementById('inq-sub-' + s).classList.toggle('active', s === sub)
+  })
+}
+</script>
+</body>
+</html>
