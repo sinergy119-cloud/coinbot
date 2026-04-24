@@ -1,24 +1,64 @@
 @import "tailwindcss";
 
+/* ── 토스 디자인 시스템 CSS 변수 ── */
 :root {
   color-scheme: light;
+
+  /* Brand */
+  --toss-blue: #0064FF;
+  --toss-blue-light: #EBF3FF;
+
+  /* Text */
+  --text-primary:   #191F28;
+  --text-secondary: #6B7684;
+  --text-tertiary:  #B0B8C1;
+
+  /* Background */
+  --bg-primary:   #FFFFFF;
+  --bg-secondary: #F9FAFB;
+  --bg-tertiary:  #F2F4F6;
+
+  /* Status */
+  --color-success: #00C853;
+  --color-error:   #FF4D4F;
+  --color-warning: #FF8A00;
+  --color-border:  #E5E8EB;
+
+  /* Legacy (점진 교체) */
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #191F28;
 }
 
+/* ── Tailwind v4 커스텀 컬러 등록 ── */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-toss-blue:       var(--toss-blue);
+  --color-toss-blue-light: var(--toss-blue-light);
+  --color-text-primary:    var(--text-primary);
+  --color-text-secondary:  var(--text-secondary);
+  --color-text-tertiary:   var(--text-tertiary);
+  --color-bg-secondary:    var(--bg-secondary);
+  --color-bg-tertiary:     var(--bg-tertiary);
+  --color-success:         var(--color-success);
+  --color-error:           var(--color-error);
+  --color-warning:         var(--color-warning);
+  --color-border:          var(--color-border);
 }
 
+/* ── 전역 기본 스타일 ── */
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  /* Pretendard → 시스템 폰트 순서로 폴백 */
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont,
+    'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic',
+    'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
+/* ── 유틸리티 ── */
 @keyframes fade-in-down {
   from { opacity: 0; transform: translate(-50%, -16px); }
   to   { opacity: 1; transform: translate(-50%, 0); }
