@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import WithdrawModal from '@/components/WithdrawModal'
 import PinPad from '../../_components/PinPad'
@@ -118,6 +119,7 @@ function ProfileCard({ profile }: { profile: Profile }) {
 }
 
 export default function ProfilePage() {
+  const router = useRouter()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [settings, setSettings] = useState<Settings | null>(null)
   const [loading, setLoading] = useState(true)
@@ -205,6 +207,11 @@ export default function ProfilePage() {
     } finally {
       setBioSubmitting(false)
     }
+  }
+
+  function handleRestartOnboarding() {
+    try { localStorage.removeItem('mcb_onboarding_v1') } catch { /* ignore */ }
+    router.push('/app/onboarding')
   }
 
   async function logout() {
@@ -303,6 +310,15 @@ export default function ProfilePage() {
       {/* 기타 */}
       <section className="px-4">
         <div className="rounded-2xl overflow-hidden" style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+          <button type="button" onClick={handleRestartOnboarding}
+            className="w-full flex items-center justify-between p-4 active:bg-gray-50 text-left transition-colors">
+            <div className="break-keep pr-3">
+              <p className="text-[15px] font-semibold" style={{ color: '#191F28' }}>📘 시작 가이드</p>
+              <p className="text-[12px] mt-0.5" style={{ color: '#6B7684' }}>거래소 가입 · API Key 등록 안내</p>
+            </div>
+            <span className="text-[14px]" style={{ color: '#B0B8C1' }}>›</span>
+          </button>
+          <Divider />
           <button type="button" onClick={logout}
             className="w-full flex items-center justify-between p-4 active:bg-gray-50 text-left transition-colors">
             <span className="text-[15px] font-semibold" style={{ color: '#FF4D4F' }}>로그아웃</span>
