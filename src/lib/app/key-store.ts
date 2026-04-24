@@ -358,6 +358,44 @@ export async function removeBiometric(): Promise<void> {
   await tx<IDBValidKey>(STORE_META, 'readwrite', (s) => s.put(updated))
 }
 
+// PIN 없이 device key로 전체 복호화 (자산조회·SW 자동실행용)
+export async function decryptAllByDeviceKey(): Promise<Array<{
+  id: string; exchange: Exchange; label: string; accessKey: string; secretKey: string
+}>> {
+  try {
+    const meta = await tx<MetaRow | undefined>(STORE_META, 'readonly', (s) => s.get('meta') as IDBRequest<MetaRow | undefined>)
+    if (!meta?.deviceKey) return []
+
+    const deviceKey = await crypto.subtle.importKey(
+      'jwk', meta.deviceKey, { name: 'AES-GCM', length: 256 }, false, ['decrypt'],
+    )
+
+    const db = await openDB()
+    const autoKeys: AutoKeyRow[] = await new Promise((resolve, reject) => {
+      const t = db.transaction(STORE_AUTO, 'readonly')
+      const req = t.objectStore(STORE_AUTO).getAll()
+      req.onsuccess = () => resolve(req.result as AutoKeyRow[])
+      req.onerror = () => reject(req.error)
+    })
+
+    const results = await Promise.allSettled(
+      autoKeys.map(async (row) => {
+        const iv      = b64ToU8(row.iv).buffer as ArrayBuffer
+        const cipher  = b64ToU8(row.ciphertext).buffer as ArrayBuffer
+        const plainBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, deviceKey, cipher)
+        const { accessKey, secretKey } = JSON.parse(new TextDecoder().decode(plainBuf))
+        return { id: row.id, exchange: row.exchange, label: row.label, accessKey, secretKey }
+      }),
+    )
+
+    return results
+      .filter((r): r is PromiseFulfilledResult<{ id: string; exchange: Exchange; label: string; accessKey: string; secretKey: string }> => r.status === 'fulfilled')
+      .map((r) => r.value)
+  } catch {
+    return []
+  }
+}
+
 // 모든 키를 특정 PIN으로 일괄 복호화 (실행 시)
 // 복호화 성공 시 auto_keys 복사본도 업서트 (기존 키 자동 마이그레이션)
 export async function decryptAllByIds(pin: string, ids: string[]): Promise<Array<{ id: string; exchange: Exchange; label: string; accessKey: string; secretKey: string }>> {
