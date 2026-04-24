@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import PinPad from '../../_components/PinPad'
 import KeySelector from '../../_components/KeySelector'
@@ -540,6 +540,36 @@ function ScheduleForm({ initCoin, initExchange, onDone }: { initCoin: string; in
 }
 
 // ────────────────────────────────────────
+// 코인 자동완성 훅
+// ────────────────────────────────────────
+
+function useCoinAutocomplete(exchange: Exchange, coin: string) {
+  const [allCoins, setAllCoins] = useState<{ code: string; name: string }[]>([])
+  const [coinsLoading, setCoinsLoading] = useState(false)
+  const [coinFocused, setCoinFocused] = useState(false)
+
+  useEffect(() => {
+    setAllCoins([])
+    setCoinsLoading(true)
+    fetch(`/api/markets?exchange=${exchange}`)
+      .then((r) => r.json())
+      .then((data) => { if (Array.isArray(data)) setAllCoins(data) })
+      .catch(() => null)
+      .finally(() => setCoinsLoading(false))
+  }, [exchange])
+
+  const suggestions = useMemo(() => {
+    if (coin.length < 1 || allCoins.length === 0) return []
+    const upper = coin.toUpperCase()
+    return allCoins
+      .filter((c) => c.code.startsWith(upper) || c.name.includes(coin))
+      .slice(0, 8)
+  }, [coin, allCoins])
+
+  return { allCoins, coinsLoading, coinFocused, setCoinFocused, suggestions }
+}
+
+// ────────────────────────────────────────
 // 공통 폼 필드
 // ────────────────────────────────────────
 
@@ -553,6 +583,10 @@ function FormFields({ exchange, setExchange, coin, setCoin, tradeType, setTradeT
   amountKrw: string
   setAmountKrw: (v: string) => void
 }) {
+  const { coinsLoading, coinFocused, setCoinFocused, suggestions } =
+    useCoinAutocomplete(exchange, coin)
+  const listRef = useRef<HTMLUListElement>(null)
+
   return (
     <>
       {/* 거래소 */}
@@ -561,7 +595,7 @@ function FormFields({ exchange, setExchange, coin, setCoin, tradeType, setTradeT
         <div className="rounded-2xl" style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
           <select
             value={exchange}
-            onChange={(e) => setExchange(e.target.value as Exchange)}
+            onChange={(e) => { setExchange(e.target.value as Exchange); setCoin('') }}
             className="w-full px-4 py-3.5 rounded-2xl text-[15px] font-semibold bg-transparent outline-none appearance-none"
             style={{ color: '#191F28' }}
           >
@@ -573,19 +607,48 @@ function FormFields({ exchange, setExchange, coin, setCoin, tradeType, setTradeT
       </div>
 
       {/* 코인 */}
-      <div>
-        <p className="text-[13px] font-semibold mb-2" style={{ color: '#6B7684' }}>코인</p>
+      <div className="relative">
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-[13px] font-semibold" style={{ color: '#6B7684' }}>코인</p>
+          {coinsLoading && (
+            <p className="text-[11px] animate-pulse" style={{ color: '#B0B8C1' }}>목록 로딩 중...</p>
+          )}
+        </div>
         <div className="rounded-2xl" style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
           <input
             type="text"
             value={coin}
             onChange={(e) => setCoin(e.target.value.toUpperCase())}
-            placeholder="예: BTC"
+            onFocus={() => setCoinFocused(true)}
+            onBlur={() => setTimeout(() => setCoinFocused(false), 150)}
+            placeholder={coinsLoading ? '코인 목록 로딩 중...' : '코드(BTC) 또는 이름(비트코인)'}
             maxLength={20}
-            className="w-full px-4 py-3.5 rounded-2xl text-[15px] font-semibold bg-transparent outline-none uppercase placeholder-gray-400"
+            disabled={coinsLoading}
+            className="w-full px-4 py-3.5 rounded-2xl text-[15px] font-semibold bg-transparent outline-none uppercase placeholder-gray-400 disabled:opacity-50"
             style={{ color: '#191F28' }}
           />
         </div>
+
+        {/* 자동완성 드롭다운 */}
+        {coinFocused && suggestions.length > 0 && (
+          <ul
+            ref={listRef}
+            className="absolute z-50 left-0 right-0 rounded-2xl overflow-hidden mt-1"
+            style={{ background: '#fff', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', border: '1px solid #F2F4F6' }}
+          >
+            {suggestions.map((c) => (
+              <li
+                key={c.code}
+                onMouseDown={(e) => { e.preventDefault(); setCoin(c.code); setCoinFocused(false) }}
+                className="flex items-center gap-3 px-4 py-3 active:bg-blue-50 cursor-pointer break-keep"
+                style={{ borderBottom: '1px solid #F9FAFB' }}
+              >
+                <span className="text-[15px] font-bold w-16 shrink-0" style={{ color: '#191F28' }}>{c.code}</span>
+                <span className="text-[13px]" style={{ color: '#6B7684' }}>{c.name}</span>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       {/* 거래 방식 */}
