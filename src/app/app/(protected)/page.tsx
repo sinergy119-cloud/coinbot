@@ -13,14 +13,16 @@ interface EventItem {
   end_date: string
 }
 
-interface TradeLog {
+interface ScheduleItem {
   id: string
   exchange: string
   coin: string
   trade_type: string
   amount_krw: number
-  success: boolean
-  executed_at: string
+  schedule_from: string
+  schedule_to: string
+  schedule_time: string
+  status: string
 }
 
 function kstToday(): string {
@@ -31,6 +33,13 @@ function kstToday(): string {
   return `${y}-${m}-${d}`
 }
 
+// KST 오늘 00:00 ISO string
+function kstTodayStart(): string {
+  const kst = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul' }))
+  kst.setHours(0, 0, 0, 0)
+  return new Date(kst.getTime() - 9 * 60 * 60 * 1000).toISOString() // UTC로 변환
+}
+
 const EXCHANGE_BADGE: Record<string, { bg: string; text: string }> = {
   BITHUMB: { bg: '#FFF0E6', text: '#C94B00' },
   UPBIT:   { bg: '#E6F0FF', text: '#0050CC' },
@@ -39,14 +48,23 @@ const EXCHANGE_BADGE: Record<string, { bg: string; text: string }> = {
   GOPAX:   { bg: '#FFFBE6', text: '#946200' },
 }
 
+const STATUS_LABEL: Record<string, string> = {
+  active:    '진행 중',
+  paused:    '일시정지',
+  completed: '완료',
+  cancelled: '취소됨',
+}
+
 export default async function AppHomePage() {
   const session = await getSession()
   const db = createServerClient()
   const today = kstToday()
+  const todayStartUtc = kstTodayStart()
 
   const [
     { data: events },
-    { data: trades },
+    { data: schedules },
+    { data: todayTrades },
     { data: user },
   ] = await Promise.all([
     db.from('announcements')
@@ -56,11 +74,18 @@ export default async function AppHomePage() {
       .order('created_at', { ascending: false })
       .limit(3),
 
-    db.from('trade_logs')
-      .select('id, exchange, coin, trade_type, amount_krw, success, executed_at')
+    db.from('trade_jobs')
+      .select('id, exchange, coin, trade_type, amount_krw, schedule_from, schedule_to, schedule_time, status')
       .eq('user_id', session!.userId)
-      .order('executed_at', { ascending: false })
+      .in('status', ['active', 'paused'])
+      .order('created_at', { ascending: false })
       .limit(3),
+
+    db.from('trade_logs')
+      .select('id, success')
+      .eq('user_id', session!.userId)
+      .eq('success', true)
+      .gte('executed_at', todayStartUtc),
 
     db.from('users')
       .select('name, user_id')
@@ -68,97 +93,99 @@ export default async function AppHomePage() {
       .single(),
   ])
 
-  // 카카오 닉네임(name) 우선, 없으면 user_id에서 소셜 접두사 제거
   const rawId = user?.user_id ?? ''
   const fallbackName = rawId.startsWith('kakao_') || rawId.startsWith('naver_') || rawId.startsWith('google_')
-    ? rawId.split('_')[0] === 'kakao' ? '회원' : rawId.split('_')[0]
+    ? '회원'
     : rawId
   const displayName = user?.name || fallbackName || '회원'
 
+  const activeScheduleCount = schedules?.length ?? 0
+  const todaySuccessCount = todayTrades?.length ?? 0
+
   return (
-    <div className="flex flex-col gap-5 pb-2" style={{ background: '#F9FAFB', minHeight: '100%' }}>
+    <div className="flex flex-col gap-4 pb-2" style={{ background: '#F9FAFB', minHeight: '100%' }}>
 
       {/* 인사 */}
-      <header className="px-4 pt-6 pb-0 break-keep">
-        <p className="text-[14px]" style={{ color: '#6B7684' }}>안녕하세요</p>
-        <h1 className="text-[24px] font-bold mt-0.5" style={{ color: '#191F28' }}>
+      <header className="px-4 pt-5 pb-0 break-keep">
+        <p className="text-[13px]" style={{ color: '#6B7684' }}>안녕하세요</p>
+        <h1 className="text-[22px] font-bold mt-0.5" style={{ color: '#191F28' }}>
           {displayName}님 👋
         </h1>
       </header>
 
-      {/* 온보딩 배너 — 클라이언트 컴포넌트 (PIN·키 로컬 확인) */}
+      {/* 온보딩 배너 */}
       <OnboardingBanner />
 
-      {/* 현황 요약 카드 */}
+      {/* 현황 요약 카드 — 높이 축소 */}
       <section className="px-4">
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-2.5">
           <Link
             href="/app/events"
-            className="rounded-2xl p-4 text-center active:opacity-80 transition-opacity"
+            className="rounded-2xl p-3 text-center active:opacity-80 transition-opacity"
             style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
           >
-            <p className="text-[22px] font-bold" style={{ color: '#0064FF' }}>
+            <p className="text-[18px] font-bold leading-none" style={{ color: '#0064FF' }}>
               {(events ?? []).length}
             </p>
-            <p className="text-[11px] mt-0.5 break-keep" style={{ color: '#6B7684' }}>진행 이벤트</p>
+            <p className="text-[10px] mt-1 break-keep" style={{ color: '#6B7684' }}>진행 이벤트</p>
           </Link>
           <Link
             href="/app/trade?tab=list"
-            className="rounded-2xl p-4 text-center active:opacity-80 transition-opacity"
+            className="rounded-2xl p-3 text-center active:opacity-80 transition-opacity"
             style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
           >
-            <p className="text-[22px] font-bold" style={{ color: '#FF9500' }}>
-              —
+            <p className="text-[18px] font-bold leading-none" style={{ color: '#FF9500' }}>
+              {activeScheduleCount > 0 ? activeScheduleCount : '—'}
             </p>
-            <p className="text-[11px] mt-0.5 break-keep" style={{ color: '#6B7684' }}>활성 스케줄</p>
+            <p className="text-[10px] mt-1 break-keep" style={{ color: '#6B7684' }}>활성 스케줄</p>
           </Link>
           <Link
             href="/app/browse?tab=history"
-            className="rounded-2xl p-4 text-center active:opacity-80 transition-opacity"
+            className="rounded-2xl p-3 text-center active:opacity-80 transition-opacity"
             style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
           >
-            <p className="text-[22px] font-bold" style={{ color: '#00C853' }}>
-              {(trades ?? []).filter((t) => (t as TradeLog).success).length}
+            <p className="text-[18px] font-bold leading-none" style={{ color: '#00C853' }}>
+              {todaySuccessCount}
             </p>
-            <p className="text-[11px] mt-0.5 break-keep" style={{ color: '#6B7684' }}>오늘 거래 성공</p>
+            <p className="text-[10px] mt-1 break-keep" style={{ color: '#6B7684' }}>오늘 거래 성공</p>
           </Link>
         </div>
       </section>
 
-      {/* 빠른 거래 */}
+      {/* 빠른 거래 — 높이 축소 */}
       <section className="px-4">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2.5">
           <Link
             href="/app/trade?tab=instant"
-            className="rounded-2xl p-4 flex flex-col items-center gap-1.5 active:opacity-80 transition-opacity"
+            className="rounded-2xl p-3 flex items-center gap-2.5 active:opacity-80 transition-opacity"
             style={{ background: '#191F28' }}
           >
-            <span className="text-[26px]">⚡</span>
-            <span className="text-[14px] font-semibold" style={{ color: '#fff' }}>즉시 매수</span>
+            <span className="text-[22px]">⚡</span>
+            <span className="text-[13px] font-semibold" style={{ color: '#fff' }}>즉시 거래</span>
           </Link>
           <Link
             href="/app/trade?tab=schedule"
-            className="rounded-2xl p-4 flex flex-col items-center gap-1.5 active:opacity-80 transition-opacity"
+            className="rounded-2xl p-3 flex items-center gap-2.5 active:opacity-80 transition-opacity"
             style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
           >
-            <span className="text-[26px]">📅</span>
-            <span className="text-[14px] font-semibold" style={{ color: '#191F28' }}>스케줄 등록</span>
+            <span className="text-[22px]">📅</span>
+            <span className="text-[13px] font-semibold" style={{ color: '#191F28' }}>스케줄 등록</span>
           </Link>
         </div>
       </section>
 
       {/* 진행 중인 이벤트 */}
       <section className="px-4">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-[16px] font-bold" style={{ color: '#191F28' }}>진행 중인 이벤트</h2>
-          <Link href="/app/events" className="text-[13px] font-semibold" style={{ color: '#6B7684' }}>
+        <div className="flex items-center justify-between mb-2.5">
+          <h2 className="text-[15px] font-bold" style={{ color: '#191F28' }}>진행 중인 이벤트</h2>
+          <Link href="/app/events" className="text-[12px] font-semibold" style={{ color: '#6B7684' }}>
             모두 보기 →
           </Link>
         </div>
 
         {(events ?? []).length === 0 ? (
           <div
-            className="rounded-2xl p-5 text-center text-[14px] break-keep"
+            className="rounded-2xl p-4 text-center text-[13px] break-keep"
             style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', color: '#6B7684' }}
           >
             진행 중인 이벤트가 없습니다.
@@ -175,7 +202,7 @@ export default async function AppHomePage() {
                 <Link
                   key={e.id}
                   href={`/app/events/${e.id}`}
-                  className="flex items-center justify-between px-5 py-4 active:bg-gray-50 transition-colors break-keep"
+                  className="flex items-center justify-between px-4 py-3.5 active:bg-gray-50 transition-colors break-keep"
                   style={idx < arr.length - 1 ? { borderBottom: '1px solid #F2F4F6' } : undefined}
                 >
                   <div className="flex items-center gap-3 min-w-0">
@@ -186,15 +213,15 @@ export default async function AppHomePage() {
                       {label}
                     </span>
                     <div className="min-w-0">
-                      <p className="text-[15px] font-semibold truncate" style={{ color: '#191F28' }}>
+                      <p className="text-[14px] font-semibold truncate" style={{ color: '#191F28' }}>
                         {e.coin}
                       </p>
                       {e.amount && (
-                        <p className="text-[12px] mt-0.5" style={{ color: '#6B7684' }}>{e.amount}</p>
+                        <p className="text-[11px] mt-0.5" style={{ color: '#6B7684' }}>{e.amount}</p>
                       )}
                     </div>
                   </div>
-                  <span className="text-[12px] shrink-0 ml-3" style={{ color: '#B0B8C1' }}>
+                  <span className="text-[11px] shrink-0 ml-3" style={{ color: '#B0B8C1' }}>
                     ~ {e.end_date.slice(5).replace('-', '/')}
                   </span>
                 </Link>
@@ -204,56 +231,79 @@ export default async function AppHomePage() {
         )}
       </section>
 
-      {/* 최근 거래 */}
+      {/* 등록된 스케줄 */}
       <section className="px-4 pb-2">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-[16px] font-bold" style={{ color: '#191F28' }}>최근 거래</h2>
-          <Link href="/app/browse?tab=history" className="text-[13px] font-semibold" style={{ color: '#6B7684' }}>
+        <div className="flex items-center justify-between mb-2.5">
+          <h2 className="text-[15px] font-bold" style={{ color: '#191F28' }}>등록된 스케줄</h2>
+          <Link href="/app/trade?tab=list" className="text-[12px] font-semibold" style={{ color: '#6B7684' }}>
             전체 보기 →
           </Link>
         </div>
 
-        {(trades ?? []).length === 0 ? (
+        {(schedules ?? []).length === 0 ? (
           <div
-            className="rounded-2xl p-5 text-center text-[14px] break-keep"
+            className="rounded-2xl p-4 text-center text-[13px] break-keep"
             style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', color: '#6B7684' }}
           >
-            아직 거래 내역이 없어요.
+            <p>등록된 스케줄이 없어요.</p>
+            <Link
+              href="/app/trade?tab=schedule"
+              className="inline-block mt-2 text-[12px] font-semibold"
+              style={{ color: '#0064FF' }}
+            >
+              스케줄 등록하기 →
+            </Link>
           </div>
         ) : (
           <div
             className="rounded-2xl overflow-hidden"
             style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
           >
-            {((trades as TradeLog[]) ?? []).map((t, idx, arr) => (
-              <div
-                key={t.id}
-                className="flex items-center justify-between px-5 py-4 break-keep"
-                style={idx < arr.length - 1 ? { borderBottom: '1px solid #F2F4F6' } : undefined}
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="text-[12px] font-medium" style={{ color: '#B0B8C1' }}>
-                    {EXCHANGE_LABELS[t.exchange as Exchange] ?? t.exchange}
-                    {' · '}
-                    {TRADE_TYPE_LABELS[t.trade_type as TradeType] ?? t.trade_type}
-                  </p>
-                  <p className="text-[15px] font-semibold mt-0.5" style={{ color: '#191F28' }}>
-                    {t.coin}
-                  </p>
-                  {t.trade_type !== 'SELL' && (
-                    <p className="text-[12px] mt-0.5" style={{ color: '#6B7684' }}>
-                      {t.amount_krw.toLocaleString()}원
-                    </p>
-                  )}
-                </div>
-                <span
-                  className="text-[13px] font-semibold shrink-0"
-                  style={{ color: t.success ? '#00C853' : '#FF4D4F' }}
+            {((schedules as ScheduleItem[]) ?? []).map((s, idx, arr) => {
+              const badge = EXCHANGE_BADGE[s.exchange] ?? { bg: '#F2F4F6', text: '#6B7684' }
+              const label = EXCHANGE_LABELS[s.exchange as Exchange] ?? s.exchange
+              const statusLabel = STATUS_LABEL[s.status] ?? s.status
+              const isActive = s.status === 'active'
+              return (
+                <Link
+                  key={s.id}
+                  href="/app/trade?tab=list"
+                  className="flex items-center justify-between px-4 py-3.5 active:bg-gray-50 transition-colors break-keep"
+                  style={idx < arr.length - 1 ? { borderBottom: '1px solid #F2F4F6' } : undefined}
                 >
-                  {t.success ? '성공' : '실패'}
-                </span>
-              </div>
-            ))}
+                  <div className="flex items-start gap-3 min-w-0 flex-1">
+                    <span
+                      className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full mt-0.5"
+                      style={{ background: badge.bg, color: badge.text }}
+                    >
+                      {label}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-[14px] font-semibold" style={{ color: '#191F28' }}>{s.coin}</p>
+                        <span className="text-[11px]" style={{ color: '#6B7684' }}>
+                          {TRADE_TYPE_LABELS[s.trade_type as TradeType] ?? s.trade_type}
+                        </span>
+                      </div>
+                      {s.trade_type !== 'SELL' && (
+                        <p className="text-[11px] mt-0.5" style={{ color: '#6B7684' }}>
+                          {s.amount_krw.toLocaleString()}원
+                        </p>
+                      )}
+                      <p className="text-[10px] mt-0.5" style={{ color: '#B0B8C1' }}>
+                        {s.schedule_from.slice(5)} ~ {s.schedule_to.slice(5)} · {s.schedule_time}
+                      </p>
+                    </div>
+                  </div>
+                  <span
+                    className="text-[11px] font-semibold shrink-0 ml-2"
+                    style={{ color: isActive ? '#00C853' : '#FF9500' }}
+                  >
+                    {statusLabel}
+                  </span>
+                </Link>
+              )
+            })}
           </div>
         )}
       </section>

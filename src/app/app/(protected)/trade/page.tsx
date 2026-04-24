@@ -39,7 +39,7 @@ const TRADE_TYPES: TradeType[] = ['BUY', 'SELL', 'CYCLE']
 
 function SubTabs({ active, onChange }: { active: Tab; onChange: (t: Tab) => void }) {
   const tabs: { key: Tab; label: string }[] = [
-    { key: 'instant',  label: '⚡ 즉시매수' },
+    { key: 'instant',  label: '⚡ 즉시거래' },
     { key: 'schedule', label: '📅 스케줄' },
     { key: 'list',     label: '📋 내스케줄' },
   ]

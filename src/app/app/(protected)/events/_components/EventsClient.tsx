@@ -143,7 +143,7 @@ export default function EventsClient({ items }: { items: AnnouncementRow[] }) {
                       className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold text-center active:opacity-80 transition-opacity"
                       style={{ background: '#0064FF', color: '#fff' }}
                     >
-                      ⚡ 즉시 매수
+                      ⚡ 즉시 거래
                     </Link>
                   ) : (
                     <Link

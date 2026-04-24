@@ -159,15 +159,15 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
         </section>
       )}
 
-      {/* 즉시 매수 바로가기 */}
+      {/* 즉시 거래 바로가기 */}
       {e.api_allowed && (
         <section className="px-4">
           <Link
-            href={`/app/schedule?mode=instant`}
+            href={`/app/trade?tab=instant&coin=${e.coin}`}
             className="block rounded-2xl p-4 text-center text-[15px] font-semibold active:opacity-80 transition-opacity break-keep"
             style={{ background: '#191F28', color: '#fff' }}
           >
-            ⚡ {e.coin} 즉시 매수하기
+            ⚡ {e.coin} 즉시 거래하기
           </Link>
         </section>
       )}
