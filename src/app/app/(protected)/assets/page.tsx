@@ -27,6 +27,15 @@ interface BalanceRow {
 
 type Phase = 'loading' | 'no_pin' | 'no_keys' | 'pin' | 'fetching' | 'result'
 
+// 거래소별 뱃지 색상
+const EXCHANGE_BADGE: Record<string, { bg: string; text: string }> = {
+  BITHUMB: { bg: '#FFF0E6', text: '#C94B00' },
+  UPBIT:   { bg: '#E6F0FF', text: '#0050CC' },
+  COINONE: { bg: '#E6F9EE', text: '#007A30' },
+  KORBIT:  { bg: '#F3EEFF', text: '#5B21B6' },
+  GOPAX:   { bg: '#FFFBE6', text: '#946200' },
+}
+
 export default function AssetsPage() {
   const [phase, setPhase] = useState<Phase>('loading')
   const [pinError, setPinError] = useState<string | null>(null)
@@ -93,42 +102,51 @@ export default function AssetsPage() {
   }
 
   if (phase === 'loading') {
-    return <div className="p-8 text-center text-sm text-gray-600">불러오는 중...</div>
+    return (
+      <div className="p-8 text-center text-[14px] break-keep" style={{ color: '#6B7684' }}>
+        불러오는 중...
+      </div>
+    )
   }
 
   return (
-    <div className="flex flex-col">
-      <header className="px-4 pt-6 pb-2 break-keep">
-        <Link href="/app" className="text-xs text-gray-600 font-semibold">← 홈</Link>
-        <h1 className="text-2xl font-bold text-gray-900 mt-3">내 자산</h1>
+    <div className="flex flex-col gap-5 pb-6" style={{ background: '#F9FAFB', minHeight: '100%' }}>
+
+      {/* 헤더 */}
+      <header className="px-4 pt-6 pb-0 break-keep">
+        <Link
+          href="/app"
+          className="inline-flex items-center gap-1 text-[13px] font-semibold"
+          style={{ color: '#6B7684' }}
+        >
+          ← 홈
+        </Link>
+        <h1 className="text-[22px] font-bold mt-3" style={{ color: '#191F28' }}>내 자산</h1>
       </header>
 
-      {phase === 'no_pin' && (
-        <div className="p-8 text-center break-keep">
-          <p className="text-3xl mb-3">🔒</p>
-          <p className="text-base font-semibold text-gray-900">먼저 API Key를 등록해주세요.</p>
-          <Link
-            href="/app/profile/api-keys"
-            className="inline-block mt-4 bg-gray-900 text-white px-5 py-2.5 rounded-lg text-sm font-semibold"
+      {/* API 키 미등록 */}
+      {(phase === 'no_pin' || phase === 'no_keys') && (
+        <div className="px-4">
+          <div
+            className="rounded-2xl p-8 flex flex-col items-center text-center break-keep"
+            style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
           >
-            API Key 등록하기
-          </Link>
+            <p className="text-[32px] mb-3">{phase === 'no_pin' ? '🔒' : '🔑'}</p>
+            <p className="text-[15px] font-semibold" style={{ color: '#191F28' }}>
+              {phase === 'no_pin' ? '먼저 API Key를 등록해주세요.' : '등록된 API Key가 없습니다.'}
+            </p>
+            <Link
+              href="/app/profile/api-keys"
+              className="inline-block mt-4 px-5 py-3 rounded-2xl text-[14px] font-semibold"
+              style={{ background: '#0064FF', color: '#fff' }}
+            >
+              API Key 등록하기
+            </Link>
+          </div>
         </div>
       )}
 
-      {phase === 'no_keys' && (
-        <div className="p-8 text-center break-keep">
-          <p className="text-3xl mb-3">🔑</p>
-          <p className="text-base font-semibold text-gray-900">등록된 API Key가 없습니다.</p>
-          <Link
-            href="/app/profile/api-keys"
-            className="inline-block mt-4 bg-gray-900 text-white px-5 py-2.5 rounded-lg text-sm font-semibold"
-          >
-            API Key 등록하기
-          </Link>
-        </div>
-      )}
-
+      {/* PIN 입력 */}
       {phase === 'pin' && (
         <PinPad
           title="PIN 입력"
@@ -139,80 +157,130 @@ export default function AssetsPage() {
         />
       )}
 
+      {/* 조회 중 */}
       {phase === 'fetching' && (
-        <div className="p-8 text-center">
-          <p className="text-3xl">⏳</p>
-          <p className="text-sm text-gray-900 font-semibold mt-3">잔고 조회 중...</p>
-          <p className="text-xs text-gray-600 mt-1">거래소별 조회에 시간이 걸릴 수 있어요.</p>
+        <div className="flex flex-col items-center justify-center gap-3 p-12" style={{ minHeight: '50vh' }}>
+          <p className="text-[32px]">⏳</p>
+          <p className="text-[16px] font-semibold break-keep" style={{ color: '#191F28' }}>잔고 조회 중...</p>
+          <p className="text-[13px] break-keep" style={{ color: '#6B7684' }}>거래소별 조회에 시간이 걸릴 수 있어요.</p>
         </div>
       )}
 
+      {/* 결과 */}
       {phase === 'result' && (
-        <div className="flex flex-col gap-4 px-4 pb-4">
+        <>
           {/* 총합 카드 */}
-          <div className="bg-gray-900 text-white rounded-2xl p-5">
-            <p className="text-xs text-gray-300">전체 자산 (KRW + 코인 평가액)</p>
-            <p className="text-3xl font-bold mt-1">{Math.floor(grandTotal).toLocaleString()}원</p>
-          </div>
+          <section className="px-4">
+            <div
+              className="rounded-2xl p-5 break-keep"
+              style={{ background: '#191F28' }}
+            >
+              <p className="text-[12px]" style={{ color: '#B0B8C1' }}>전체 자산 (KRW + 코인 평가액)</p>
+              <p className="text-[30px] font-bold mt-1.5" style={{ color: '#fff' }}>
+                {Math.floor(grandTotal).toLocaleString()}원
+              </p>
+            </div>
+          </section>
 
-          {/* 계정별 */}
-          {balances.map((b, i) => (
-            <div key={i} className="bg-white rounded-2xl p-4 break-keep">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs text-gray-600 font-semibold">{EXCHANGE_LABELS[b.exchange as Exchange] ?? b.exchange}</p>
-                  <p className="text-sm font-bold text-gray-900 mt-0.5 truncate">{b.label ?? '-'}</p>
-                </div>
-                {b.ok ? (
-                  <div className="text-right shrink-0">
-                    <p className="text-lg font-bold text-gray-900">{Math.floor(b.totalKrw).toLocaleString()}원</p>
-                    <p className="text-[10px] text-gray-600 mt-0.5">KRW {Math.floor(b.krw).toLocaleString()}</p>
-                  </div>
-                ) : (
-                  <p className="text-xs text-red-600">실패</p>
-                )}
-              </div>
-              {!b.ok && b.error && (
-                <p className="text-xs text-red-700 mt-2 break-keep">{b.error}</p>
-              )}
-              {b.ok && b.coins.length > 0 && (
-                <div className="mt-3 pt-3 border-t border-gray-100">
-                  <p className="text-[10px] text-gray-600 font-semibold mb-2">보유 코인</p>
-                  <div className="flex flex-col gap-1">
-                    {b.coins
-                      .filter((c) => c.amount > 0)
-                      .sort((x, y) => y.valueKrw - x.valueKrw)
-                      .slice(0, 10)
-                      .map((c) => (
-                        <div key={c.coin} className="flex items-center justify-between">
-                          <div>
-                            <span className="text-xs font-semibold text-gray-900">{c.coin}</span>
-                            <span className="text-[10px] text-gray-600 ml-2">
-                              {c.amount.toFixed(c.amount < 1 ? 6 : 2)}
-                            </span>
-                          </div>
-                          <span className="text-xs text-gray-900 font-medium">
-                            {c.valueKrw > 0 ? `${c.valueKrw.toLocaleString()}원` : '-'}
-                          </span>
+          {/* 계정별 잔고 */}
+          <section className="px-4">
+            <p className="text-[13px] font-semibold mb-2 px-1" style={{ color: '#6B7684' }}>계정별 잔고</p>
+            <div className="flex flex-col gap-3">
+              {balances.map((b, i) => {
+                const badge = EXCHANGE_BADGE[b.exchange] ?? { bg: '#F2F4F6', text: '#6B7684' }
+                const exchangeLabel = EXCHANGE_LABELS[b.exchange as Exchange] ?? b.exchange
+                return (
+                  <div
+                    key={i}
+                    className="rounded-2xl p-5 break-keep"
+                    style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
+                  >
+                    {/* 거래소 + 계정명 + 총액 */}
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <div className="min-w-0 flex-1">
+                        <span
+                          className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                          style={{ background: badge.bg, color: badge.text }}
+                        >
+                          {exchangeLabel}
+                        </span>
+                        <p className="text-[15px] font-bold mt-1.5 truncate" style={{ color: '#191F28' }}>
+                          {b.label ?? '-'}
+                        </p>
+                      </div>
+                      {b.ok ? (
+                        <div className="text-right shrink-0">
+                          <p className="text-[18px] font-bold" style={{ color: '#191F28' }}>
+                            {Math.floor(b.totalKrw).toLocaleString()}원
+                          </p>
+                          <p className="text-[11px] mt-0.5" style={{ color: '#B0B8C1' }}>
+                            KRW {Math.floor(b.krw).toLocaleString()}
+                          </p>
                         </div>
-                      ))}
-                    {b.coins.length > 10 && (
-                      <span className="text-[10px] text-gray-600">+{b.coins.length - 10}개 더</span>
+                      ) : (
+                        <span
+                          className="text-[12px] font-semibold px-2 py-1 rounded-lg"
+                          style={{ background: '#FFF0F0', color: '#FF4D4F' }}
+                        >
+                          조회 실패
+                        </span>
+                      )}
+                    </div>
+
+                    {/* 오류 메시지 */}
+                    {!b.ok && b.error && (
+                      <p className="text-[12px] break-keep" style={{ color: '#FF4D4F' }}>{b.error}</p>
+                    )}
+
+                    {/* 코인 목록 */}
+                    {b.ok && b.coins.filter((c) => c.amount > 0).length > 0 && (
+                      <div
+                        className="mt-3 pt-3"
+                        style={{ borderTop: '1px solid #F2F4F6' }}
+                      >
+                        <p className="text-[11px] font-semibold mb-2" style={{ color: '#B0B8C1' }}>보유 코인</p>
+                        <div className="flex flex-col gap-1.5">
+                          {b.coins
+                            .filter((c) => c.amount > 0)
+                            .sort((x, y) => y.valueKrw - x.valueKrw)
+                            .slice(0, 10)
+                            .map((c) => (
+                              <div key={c.coin} className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[13px] font-semibold" style={{ color: '#191F28' }}>{c.coin}</span>
+                                  <span className="text-[11px]" style={{ color: '#B0B8C1' }}>
+                                    {c.amount.toFixed(c.amount < 1 ? 6 : 2)}
+                                  </span>
+                                </div>
+                                <span className="text-[13px] font-medium" style={{ color: '#191F28' }}>
+                                  {c.valueKrw > 0 ? `${c.valueKrw.toLocaleString()}원` : '-'}
+                                </span>
+                              </div>
+                            ))}
+                          {b.coins.length > 10 && (
+                            <p className="text-[11px]" style={{ color: '#B0B8C1' }}>+{b.coins.length - 10}개 더</p>
+                          )}
+                        </div>
+                      </div>
                     )}
                   </div>
-                </div>
-              )}
+                )
+              })}
             </div>
-          ))}
+          </section>
 
-          <button
-            type="button"
-            onClick={() => setPhase('pin')}
-            className="text-xs text-gray-700 py-3 underline"
-          >
-            다시 조회
-          </button>
-        </div>
+          {/* 재조회 */}
+          <div className="px-4 text-center">
+            <button
+              type="button"
+              onClick={() => setPhase('pin')}
+              className="text-[13px] font-semibold px-4 py-2 rounded-xl"
+              style={{ color: '#6B7684', background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
+            >
+              🔄 다시 조회
+            </button>
+          </div>
+        </>
       )}
     </div>
   )

@@ -19,7 +19,6 @@ import {
 } from '@/lib/app/key-store'
 import { EXCHANGE_LABELS, type Exchange } from '@/types/database'
 import { SignupGuideModal, ApiKeyGuideModal } from '@/components/GuideModals'
-import { X } from 'lucide-react'
 
 type Phase =
   | 'loading'
@@ -38,13 +37,21 @@ interface KeySummary {
 
 const EXCHANGES: Exchange[] = ['BITHUMB', 'UPBIT', 'COINONE', 'KORBIT', 'GOPAX']
 
+// 거래소별 뱃지 색상
+const EXCHANGE_BADGE: Record<string, { bg: string; text: string }> = {
+  BITHUMB: { bg: '#FFF0E6', text: '#C94B00' },
+  UPBIT:   { bg: '#E6F0FF', text: '#0050CC' },
+  COINONE: { bg: '#E6F9EE', text: '#007A30' },
+  KORBIT:  { bg: '#F3EEFF', text: '#5B21B6' },
+  GOPAX:   { bg: '#FFFBE6', text: '#946200' },
+}
+
 // ── 지문 아이콘 ──────────────────────────────────────────────
-function FingerprintIcon({ size = 40, className = '' }: { size?: number; className?: string }) {
+function FingerprintIcon({ size = 40, color = 'currentColor' }: { size?: number; color?: string }) {
   return (
     <svg
       width={size} height={size} viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
-      className={className}
+      stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
     >
       <path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4" />
       <path d="M14 13.12c0 2.38 0 6.38-1 8.88" />
@@ -61,9 +68,7 @@ function FingerprintIcon({ size = 40, className = '' }: { size?: number; classNa
 
 // ── 생체 인증 잠금 해제 화면 ────────────────────────────────
 function BiometricUnlockScreen({
-  onSuccess,
-  onUsePinInstead,
-  submitting,
+  onSuccess, onUsePinInstead, submitting,
 }: {
   onSuccess: (pin: string) => Promise<void>
   onUsePinInstead: () => void
@@ -76,14 +81,11 @@ function BiometricUnlockScreen({
 
   useEffect(() => {
     mountedRef.current = true
-    // 화면 진입 시 자동으로 생체 인증 프롬프트 표시
     ;(async () => {
       try {
         const pin = await authenticateWithBiometric()
         if (mountedRef.current) await onSuccess(pin)
-      } catch {
-        // 자동 시도 실패는 조용히 무시 — 사용자가 수동으로 탭 가능
-      }
+      } catch { /* 자동 시도 실패는 조용히 무시 */ }
     })()
     return () => { mountedRef.current = false }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -95,13 +97,10 @@ function BiometricUnlockScreen({
     try {
       const pin = await authenticateWithBiometric()
       await onSuccess(pin)
-    } catch (err) {
+    } catch {
       const next = failCount + 1
       setFailCount(next)
-      if (next >= 3) {
-        onUsePinInstead()
-        return
-      }
+      if (next >= 3) { onUsePinInstead(); return }
       setError('인증에 실패했습니다. 다시 시도해주세요.')
     } finally {
       if (mountedRef.current) setTrying(false)
@@ -111,31 +110,34 @@ function BiometricUnlockScreen({
   return (
     <div className="flex flex-col items-center px-4 py-10 gap-6 break-keep">
       <div className="text-center">
-        <h2 className="text-lg font-bold text-gray-900">지문 인증</h2>
-        <p className="text-sm text-gray-700 mt-1">지문을 인식하여 잠금을 해제하세요</p>
+        <h2 className="text-[18px] font-bold" style={{ color: '#191F28' }}>지문 인증</h2>
+        <p className="text-[14px] mt-1" style={{ color: '#6B7684' }}>지문을 인식하여 잠금을 해제하세요</p>
       </div>
 
-      {/* 지문 아이콘 버튼 */}
       <button
         type="button"
         onClick={handleTap}
         disabled={trying || submitting}
-        className="w-24 h-24 rounded-full bg-gray-900 flex items-center justify-center text-white active:scale-95 transition-transform disabled:opacity-60 shadow-lg"
+        className="w-24 h-24 rounded-full flex items-center justify-center active:scale-95 transition-transform disabled:opacity-60"
+        style={{ background: '#0064FF', boxShadow: '0 8px 24px rgba(0,100,255,0.35)' }}
       >
         {trying ? (
           <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
         ) : (
-          <FingerprintIcon size={44} />
+          <FingerprintIcon size={44} color="white" />
         )}
       </button>
 
-      {error && <p className="text-xs text-red-600 text-center">{error}</p>}
+      {error && (
+        <p className="text-[13px] text-center break-keep" style={{ color: '#FF4D4F' }}>{error}</p>
+      )}
 
       <button
         type="button"
         onClick={onUsePinInstead}
         disabled={submitting}
-        className="text-sm font-semibold text-gray-600 underline"
+        className="text-[13px] font-semibold"
+        style={{ color: '#6B7684' }}
       >
         PIN으로 인증하기
       </button>
@@ -144,13 +146,7 @@ function BiometricUnlockScreen({
 }
 
 // ── 생체 인증 등록 권유 모달 (PIN 설정 직후) ─────────────────
-function BiometricSetupModal({
-  pin,
-  onDone,
-}: {
-  pin: string
-  onDone: (registered: boolean) => void
-}) {
+function BiometricSetupModal({ pin, onDone }: { pin: string; onDone: (registered: boolean) => void }) {
   const [registering, setRegistering] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -172,25 +168,30 @@ function BiometricSetupModal({
       style={{ background: 'rgba(0,0,0,0.55)' }}
     >
       <div className="w-full max-w-sm bg-white rounded-t-3xl px-5 pt-6 pb-10 shadow-2xl">
-        {/* 아이콘 + 제목 */}
         <div className="flex flex-col items-center mb-5">
-          <div className="w-16 h-16 rounded-full bg-gray-900 flex items-center justify-center mb-3 shadow-md">
-            <FingerprintIcon size={40} className="text-white" />
+          <div
+            className="w-16 h-16 rounded-full flex items-center justify-center mb-3"
+            style={{ background: '#0064FF', boxShadow: '0 8px 24px rgba(0,100,255,0.35)' }}
+          >
+            <FingerprintIcon size={40} color="white" />
           </div>
-          <h2 className="text-lg font-bold text-gray-900">지문 인증 등록</h2>
-          <p className="text-xs text-gray-600 mt-1 text-center break-keep">
+          <h2 className="text-[18px] font-bold" style={{ color: '#191F28' }}>지문 인증 등록</h2>
+          <p className="text-[13px] mt-1 text-center break-keep" style={{ color: '#6B7684' }}>
             다음부터 지문만으로 빠르게 잠금을 해제할 수 있습니다
           </p>
         </div>
 
-        {error && <p className="text-xs text-red-600 text-center mb-4 break-keep">{error}</p>}
+        {error && (
+          <p className="text-[12px] text-center mb-4 break-keep" style={{ color: '#FF4D4F' }}>{error}</p>
+        )}
 
         <div className="flex gap-3">
           <button
             type="button"
             onClick={() => onDone(false)}
             disabled={registering}
-            className="flex-1 py-3.5 rounded-2xl border border-gray-200 text-sm font-semibold text-gray-700 bg-white active:scale-95 transition-transform"
+            className="flex-1 py-4 rounded-2xl text-[14px] font-semibold"
+            style={{ background: '#F2F4F6', color: '#6B7684' }}
           >
             나중에
           </button>
@@ -198,7 +199,8 @@ function BiometricSetupModal({
             type="button"
             onClick={handleRegister}
             disabled={registering}
-            className="flex-[2] py-3.5 rounded-2xl bg-gray-900 text-sm font-semibold text-white disabled:opacity-50 active:scale-95 transition-transform"
+            className="flex-[2] py-4 rounded-2xl text-[15px] font-semibold disabled:opacity-50"
+            style={{ background: '#0064FF', color: '#fff' }}
           >
             {registering ? '등록 중...' : '지문 등록하기'}
           </button>
@@ -218,12 +220,10 @@ export default function ApiKeysPage() {
   const [keys, setKeys] = useState<KeySummary[]>([])
   const [showResetModal, setShowResetModal] = useState(false)
   const [resetConfirmText, setResetConfirmText] = useState('')
-
-  // 생체 인증 상태
   const [bioAvailable, setBioAvailable] = useState(false)
   const [bioRegistered, setBioRegistered] = useState(false)
-  const [showBioSetup, setShowBioSetup] = useState(false) // PIN 설정 직후 등록 권유
-  const [usePinInstead, setUsePinInstead] = useState(false) // 생체 실패 → PIN으로 전환
+  const [showBioSetup, setShowBioSetup] = useState(false)
+  const [usePinInstead, setUsePinInstead] = useState(false)
 
   useEffect(() => {
     (async () => {
@@ -259,10 +259,7 @@ export default function ApiKeysPage() {
       setVerifiedPin(pin)
       await refreshKeys()
       setPhase('unlocked')
-      // 생체 인증 지원 기기면 등록 권유
-      if (bioAvailable) {
-        setShowBioSetup(true)
-      }
+      if (bioAvailable) setShowBioSetup(true)
     } catch (err) {
       setPinError(err instanceof Error ? err.message : '오류가 발생했습니다.')
       setPhase('no_pin')
@@ -298,22 +295,13 @@ export default function ApiKeysPage() {
     setSubmitting(true)
     try {
       const r = await verifyPin(pin)
-      if (!r.ok) {
-        // 등록된 PIN과 불일치 (극히 드문 케이스)
-        setUsePinInstead(true)
-        return
-      }
+      if (!r.ok) { setUsePinInstead(true); return }
       setVerifiedPin(pin)
       await refreshKeys()
       setPhase('unlocked')
     } finally {
       setSubmitting(false)
     }
-  }
-
-  function handleResetAll() {
-    setResetConfirmText('')
-    setShowResetModal(true)
   }
 
   async function doResetAll() {
@@ -330,18 +318,29 @@ export default function ApiKeysPage() {
   }
 
   if (phase === 'loading') {
-    return <div className="p-8 text-center text-sm text-gray-600">불러오는 중...</div>
+    return (
+      <div className="p-8 text-center text-[14px] break-keep" style={{ color: '#6B7684' }}>
+        불러오는 중...
+      </div>
+    )
   }
 
-  // 잠금 화면 — 생체 인증 or PIN
   const showBioUnlock = phase === 'locked' && bioRegistered && !usePinInstead
 
   return (
-    <div className="flex flex-col">
-      <header className="px-4 pt-6 pb-2 break-keep">
-        <Link href="/app/profile" className="text-xs text-gray-600 font-semibold">← 내 정보</Link>
-        <h1 className="text-2xl font-bold text-gray-900 mt-3">API Key 관리</h1>
-        <p className="text-sm text-gray-700 mt-1 leading-relaxed break-keep">
+    <div className="flex flex-col gap-0 pb-6" style={{ background: '#F9FAFB', minHeight: '100%' }}>
+
+      {/* 헤더 */}
+      <header className="px-4 pt-6 pb-4 break-keep">
+        <Link
+          href="/app/profile"
+          className="inline-flex items-center gap-1 text-[13px] font-semibold"
+          style={{ color: '#6B7684' }}
+        >
+          ← 내 정보
+        </Link>
+        <h1 className="text-[22px] font-bold mt-3" style={{ color: '#191F28' }}>API Key 관리</h1>
+        <p className="text-[13px] mt-1 leading-relaxed" style={{ color: '#6B7684' }}>
           거래소 API Key는 이 기기에만 저장되며 PIN으로 암호화됩니다.
           서버는 키를 절대 저장하지 않습니다.
         </p>
@@ -394,7 +393,7 @@ export default function ApiKeysPage() {
           onBioRegistered={() => setBioRegistered(true)}
           onBioRemoved={() => setBioRegistered(false)}
           onChange={refreshKeys}
-          onReset={handleResetAll}
+          onReset={() => { setResetConfirmText(''); setShowResetModal(true) }}
           onAdd={() => setPhase('adding')}
         />
       )}
@@ -407,7 +406,6 @@ export default function ApiKeysPage() {
         />
       )}
 
-      {/* PIN 설정 직후 생체 인증 등록 권유 모달 */}
       {showBioSetup && verifiedPin && (
         <BiometricSetupModal
           pin={verifiedPin}
@@ -430,6 +428,7 @@ export default function ApiKeysPage() {
   )
 }
 
+// ── 키 목록 ──────────────────────────────────────────────────
 function KeysList({ pin: _pin, keys, bioAvailable, bioRegistered, onBioRegistered, onBioRemoved, onChange, onReset, onAdd }: {
   pin: string
   keys: KeySummary[]
@@ -456,7 +455,6 @@ function KeysList({ pin: _pin, keys, bioAvailable, bioRegistered, onBioRegistere
       await removeBiometric()
       onBioRemoved()
     } else {
-      // 지문 등록은 BiometricSetupModal로 처리 — 여기선 직접 등록
       setBioSubmitting(true)
       try {
         await registerBiometric(_pin)
@@ -470,90 +468,127 @@ function KeysList({ pin: _pin, keys, bioAvailable, bioRegistered, onBioRegistere
   }
 
   return (
-    <>
-      <section className="px-4 py-2">
-        <button
-          type="button"
-          onClick={onAdd}
-          className="w-full bg-gray-900 text-white py-3 rounded-2xl font-semibold text-sm active:scale-95 transition-transform"
-        >
-          + 새 API Key 등록
-        </button>
-      </section>
+    <div className="flex flex-col gap-4 px-4">
+      {/* 키 추가 버튼 */}
+      <button
+        type="button"
+        onClick={onAdd}
+        className="w-full py-4 rounded-2xl text-[15px] font-semibold"
+        style={{ background: '#0064FF', color: '#fff' }}
+      >
+        + 새 API Key 등록
+      </button>
 
-      {/* 생체 인증 설정 */}
+      {/* 생체 인증 */}
       {bioAvailable && (
-        <section className="px-4 mt-1">
-          <div className="bg-white rounded-2xl px-4 py-3.5 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${bioRegistered ? 'bg-gray-900' : 'bg-gray-100'}`}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={bioRegistered ? 'white' : '#6b7280'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4" />
-                  <path d="M14 13.12c0 2.38 0 6.38-1 8.88" />
-                  <path d="M17.29 21.02c.12-.6.43-2.3.5-3.02" />
-                  <path d="M2 12a10 10 0 0 1 18-6" />
-                  <path d="M2 16h.01" />
-                  <path d="M21.8 16c.2-2 .131-5.354 0-6" />
-                  <path d="M5 19.5C5.5 18 6 15 6 12a6 6 0 0 1 .34-2" />
-                  <path d="M8.65 22c.21-.66.45-1.32.57-2" />
-                  <path d="M9 6.8a6 6 0 0 1 9 5.2v2" />
-                </svg>
-              </div>
-              <div className="break-keep">
-                <p className="text-sm font-semibold text-gray-900">지문 인증</p>
-                <p className="text-xs text-gray-600 mt-0.5">{bioRegistered ? '등록됨 — 잠금 해제 시 지문 사용' : 'PIN 대신 지문으로 잠금 해제'}</p>
-              </div>
-            </div>
-            <button
-              type="button"
-              disabled={bioSubmitting}
-              onClick={handleToggleBio}
-              className={`shrink-0 w-12 h-7 rounded-full transition-colors duration-200 disabled:opacity-50 ${bioRegistered ? 'bg-gray-900' : 'bg-gray-200'}`}
-            >
-              <span className={`block w-5 h-5 bg-white rounded-full shadow-sm transform transition-transform duration-200 ${bioRegistered ? 'translate-x-6' : 'translate-x-1'}`} />
-            </button>
-          </div>
-        </section>
-      )}
-
-      <section className="px-4 flex flex-col gap-2 mt-2">
-        {keys.length === 0 ? (
-          <div className="bg-white rounded-2xl p-6 text-center text-sm text-gray-600 break-keep">
-            등록된 API Key가 없습니다.
-          </div>
-        ) : (
-          keys.map((k) => (
-            <div key={k.id} className="bg-white rounded-2xl p-4 flex items-center justify-between break-keep">
-              <div className="min-w-0 flex-1">
-                <p className="text-xs text-gray-600 font-semibold">{EXCHANGE_LABELS[k.exchange]}</p>
-                <p className="text-sm font-semibold text-gray-900 mt-0.5 truncate">{k.label}</p>
-                <p className="text-[10px] text-gray-600 mt-1">{k.createdAt.slice(0, 10)} 등록</p>
+        <div>
+          <p className="text-[13px] font-semibold mb-2 px-1" style={{ color: '#6B7684' }}>보안</p>
+          <div
+            className="rounded-2xl"
+            style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
+          >
+            <div className="flex items-center justify-between px-4 py-4">
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+                  style={{ background: bioRegistered ? '#0064FF' : '#F2F4F6' }}
+                >
+                  <FingerprintIcon size={18} color={bioRegistered ? 'white' : '#B0B8C1'} />
+                </div>
+                <div className="break-keep">
+                  <p className="text-[14px] font-semibold" style={{ color: '#191F28' }}>지문 인증</p>
+                  <p className="text-[12px] mt-0.5" style={{ color: '#6B7684' }}>
+                    {bioRegistered ? '등록됨 — 잠금 해제 시 지문 사용' : 'PIN 대신 지문으로 잠금 해제'}
+                  </p>
+                </div>
               </div>
               <button
                 type="button"
-                onClick={() => handleDelete(k.id, k.label)}
-                className="shrink-0 text-xs text-red-600 font-semibold px-3 py-1.5"
+                disabled={bioSubmitting}
+                onClick={handleToggleBio}
+                className="shrink-0 w-12 h-7 rounded-full transition-colors duration-200 disabled:opacity-50"
+                style={{ background: bioRegistered ? '#0064FF' : '#E5E8EB' }}
               >
-                삭제
+                <span
+                  className="block w-5 h-5 bg-white rounded-full shadow-sm transform transition-transform duration-200"
+                  style={{ transform: bioRegistered ? 'translateX(22px)' : 'translateX(4px)' }}
+                />
               </button>
             </div>
-          ))
-        )}
-      </section>
+          </div>
+        </div>
+      )}
 
-      <section className="px-4 mt-6">
+      {/* 키 목록 */}
+      <div>
+        <p className="text-[13px] font-semibold mb-2 px-1" style={{ color: '#6B7684' }}>
+          등록된 API Key {keys.length > 0 ? `(${keys.length}개)` : ''}
+        </p>
+        {keys.length === 0 ? (
+          <div
+            className="rounded-2xl p-6 text-center text-[14px] break-keep"
+            style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', color: '#6B7684' }}
+          >
+            등록된 API Key가 없습니다.
+          </div>
+        ) : (
+          <div
+            className="rounded-2xl overflow-hidden"
+            style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
+          >
+            {keys.map((k, idx, arr) => {
+              const badge = EXCHANGE_BADGE[k.exchange] ?? { bg: '#F2F4F6', text: '#6B7684' }
+              return (
+                <div
+                  key={k.id}
+                  className="flex items-center justify-between px-4 py-4 break-keep"
+                  style={idx < arr.length - 1 ? { borderBottom: '1px solid #F2F4F6' } : undefined}
+                >
+                  <div className="min-w-0 flex-1">
+                    <span
+                      className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                      style={{ background: badge.bg, color: badge.text }}
+                    >
+                      {EXCHANGE_LABELS[k.exchange]}
+                    </span>
+                    <p className="text-[14px] font-semibold mt-1.5 truncate" style={{ color: '#191F28' }}>
+                      {k.label}
+                    </p>
+                    <p className="text-[11px] mt-0.5" style={{ color: '#B0B8C1' }}>
+                      {k.createdAt.slice(0, 10)} 등록
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(k.id, k.label)}
+                    className="shrink-0 ml-3 text-[12px] font-semibold px-3 py-1.5 rounded-lg"
+                    style={{ color: '#FF4D4F', background: '#FFF0F0' }}
+                  >
+                    삭제
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* 초기화 */}
+      <div className="text-center pb-2">
         <button
           type="button"
           onClick={onReset}
-          className="w-full text-xs text-gray-600 py-3 underline"
+          className="text-[12px]"
+          style={{ color: '#B0B8C1' }}
         >
           PIN 분실 — 전체 초기화
         </button>
-      </section>
-    </>
+      </div>
+    </div>
   )
 }
 
+// ── 초기화 확인 모달 ─────────────────────────────────────────
 const RESET_CONFIRM_WORD = '전체 초기화'
 
 function ResetConfirmModal({ confirmText, onChangeText, onCancel, onConfirm }: {
@@ -566,7 +601,6 @@ function ResetConfirmModal({ confirmText, onChangeText, onCancel, onConfirm }: {
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    // 모달 열릴 때 키보드 자동 포커스
     const t = setTimeout(() => inputRef.current?.focus(), 120)
     return () => clearTimeout(t)
   }, [])
@@ -578,8 +612,6 @@ function ResetConfirmModal({ confirmText, onChangeText, onCancel, onConfirm }: {
       onClick={(e) => { if (e.target === e.currentTarget) onCancel() }}
     >
       <div className="w-full max-w-sm bg-white rounded-t-3xl px-5 pt-6 pb-10 shadow-2xl">
-
-        {/* 경고 아이콘 + 제목 */}
         <div className="flex flex-col items-center mb-5">
           <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center mb-3">
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
@@ -589,32 +621,32 @@ function ResetConfirmModal({ confirmText, onChangeText, onCancel, onConfirm }: {
               />
             </svg>
           </div>
-          <h2 className="text-lg font-bold text-gray-900">전체 초기화</h2>
-          <p className="text-xs text-gray-600 mt-0.5">PIN 분실 시에만 사용하세요</p>
+          <h2 className="text-[18px] font-bold" style={{ color: '#191F28' }}>전체 초기화</h2>
+          <p className="text-[12px] mt-0.5" style={{ color: '#6B7684' }}>PIN 분실 시에만 사용하세요</p>
         </div>
 
-        {/* 경고 내용 */}
-        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-5">
-          <ul className="space-y-1.5">
-            <li className="flex items-start gap-2 text-sm text-red-700">
-              <span className="mt-0.5 text-red-500 shrink-0">•</span>
-              <span className="break-keep">등록된 <strong>모든 API Key</strong>가 삭제됩니다.</span>
-            </li>
-            <li className="flex items-start gap-2 text-sm text-red-700">
-              <span className="mt-0.5 text-red-500 shrink-0">•</span>
-              <span className="break-keep"><strong>PIN 및 지문 인증</strong>이 초기화됩니다.</span>
-            </li>
-            <li className="flex items-start gap-2 text-sm text-red-700">
-              <span className="mt-0.5 text-red-500 shrink-0">•</span>
-              <span className="break-keep font-semibold">이 작업은 되돌릴 수 없습니다.</span>
-            </li>
+        <div
+          className="rounded-2xl p-4 mb-5"
+          style={{ background: '#FFF5F5', border: '1px solid #FFCDD2' }}
+        >
+          <ul className="space-y-2">
+            {[
+              <>등록된 <strong>모든 API Key</strong>가 삭제됩니다.</>,
+              <><strong>PIN 및 지문 인증</strong>이 초기화됩니다.</>,
+              <strong>이 작업은 되돌릴 수 없습니다.</strong>,
+            ].map((item, i) => (
+              <li key={i} className="flex items-start gap-2 text-[13px] break-keep" style={{ color: '#DC2626' }}>
+                <span className="shrink-0 mt-0.5">•</span>
+                <span>{item}</span>
+              </li>
+            ))}
           </ul>
         </div>
 
-        {/* 인증 텍스트 입력 */}
         <div className="mb-5">
-          <p className="text-sm text-gray-700 mb-2 break-keep">
-            계속하려면 아래에 <strong className="text-gray-900">&ldquo;전체 초기화&rdquo;</strong>를 입력하세요.
+          <p className="text-[13px] mb-2 break-keep" style={{ color: '#6B7684' }}>
+            계속하려면 아래에{' '}
+            <strong style={{ color: '#191F28' }}>&ldquo;전체 초기화&rdquo;</strong>를 입력하세요.
           </p>
           <input
             ref={inputRef}
@@ -622,16 +654,20 @@ function ResetConfirmModal({ confirmText, onChangeText, onCancel, onConfirm }: {
             value={confirmText}
             onChange={(e) => onChangeText(e.target.value)}
             placeholder="전체 초기화"
-            className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-sm font-medium text-gray-900 placeholder-gray-400 focus:outline-none focus:border-red-400 transition-colors"
+            className="w-full rounded-2xl px-4 py-3.5 text-[14px] font-medium outline-none transition-colors"
+            style={{
+              border: `2px solid ${matched ? '#FF4D4F' : '#E5E8EB'}`,
+              color: '#191F28',
+            }}
           />
         </div>
 
-        {/* 버튼 */}
         <div className="flex gap-3">
           <button
             type="button"
             onClick={onCancel}
-            className="flex-1 py-3.5 rounded-2xl border border-gray-200 text-sm font-semibold text-gray-700 bg-white active:scale-95 transition-transform"
+            className="flex-1 py-4 rounded-2xl text-[14px] font-semibold"
+            style={{ background: '#F2F4F6', color: '#6B7684' }}
           >
             취소
           </button>
@@ -639,8 +675,8 @@ function ResetConfirmModal({ confirmText, onChangeText, onCancel, onConfirm }: {
             type="button"
             disabled={!matched}
             onClick={onConfirm}
-            className="flex-1 py-3.5 rounded-2xl text-sm font-semibold text-white active:scale-95 transition-all"
-            style={{ background: matched ? '#DC2626' : '#d1d5db', cursor: matched ? 'pointer' : 'not-allowed' }}
+            className="flex-1 py-4 rounded-2xl text-[14px] font-semibold disabled:opacity-40"
+            style={{ background: '#FF4D4F', color: '#fff' }}
           >
             초기화 진행
           </button>
@@ -650,6 +686,7 @@ function ResetConfirmModal({ confirmText, onChangeText, onCancel, onConfirm }: {
   )
 }
 
+// ── API Key 등록 폼 ──────────────────────────────────────────
 function AddKeyForm({ pin, onDone, onCancel }: { pin: string; onDone: () => void | Promise<void>; onCancel: () => void }) {
   const [exchange, setExchange] = useState<Exchange>('BITHUMB')
   const [label, setLabel] = useState('')
@@ -669,7 +706,6 @@ function AddKeyForm({ pin, onDone, onCancel }: { pin: string; onDone: () => void
     setSubmitting(true)
     try {
       await saveKey(pin, exchange, label.trim(), accessKey.trim(), secretKey.trim())
-      // 평문 변수 즉시 폐기
       setAccessKey('')
       setSecretKey('')
       await onDone()
@@ -681,122 +717,165 @@ function AddKeyForm({ pin, onDone, onCancel }: { pin: string; onDone: () => void
   }
 
   return (
-    <form onSubmit={handleSave} className="flex flex-col gap-4 px-4 py-2">
-
-      {/* 거래소 가입 / API Key 가이드 */}
-      <div className="rounded-xl border border-gray-200 bg-gray-50 overflow-hidden">
+    <form
+      onSubmit={handleSave}
+      className="flex flex-col gap-5 px-4 py-2"
+      style={{ background: '#F9FAFB' }}
+    >
+      {/* 처음 등록 가이드 */}
+      <div
+        className="rounded-2xl overflow-hidden"
+        style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
+      >
         <button
           type="button"
           onClick={() => setGuideOpen((v) => !v)}
-          className="flex w-full items-center justify-between px-4 py-2.5 text-xs font-semibold text-gray-700"
+          className="flex w-full items-center justify-between px-4 py-3.5"
         >
-          <span>📌 처음 등록하시나요?</span>
-          <span className="text-gray-500">{guideOpen ? '접기 ▲' : '펼치기 ▼'}</span>
+          <span className="text-[13px] font-semibold" style={{ color: '#191F28' }}>📌 처음 등록하시나요?</span>
+          <span className="text-[12px]" style={{ color: '#B0B8C1' }}>{guideOpen ? '접기 ▲' : '펼치기 ▼'}</span>
         </button>
         {guideOpen && (
-          <div className="border-t border-gray-200 px-3 py-3 flex flex-col gap-2">
+          <div
+            className="px-3 pb-3 flex flex-col gap-2"
+            style={{ borderTop: '1px solid #F2F4F6' }}
+          >
             <button
               type="button"
               onClick={() => setGuideModal('signup')}
-              className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-xs font-medium text-green-700 text-left"
+              className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-left"
+              style={{ background: '#E6F9EE', border: '1px solid #C8F0D8' }}
             >
-              <span>🏦</span>
+              <span className="text-[18px]">🏦</span>
               <div>
-                <p className="font-semibold">거래소 가입</p>
-                <p className="font-normal text-green-600 break-keep">친구 추천 가입 링크 확인</p>
+                <p className="text-[13px] font-semibold" style={{ color: '#007A30' }}>거래소 가입</p>
+                <p className="text-[11px] break-keep" style={{ color: '#007A30' }}>친구 추천 가입 링크 확인</p>
               </div>
             </button>
             <button
               type="button"
               onClick={() => setGuideModal('apikey')}
-              className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700 text-left"
+              className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-left"
+              style={{ background: '#FFFBE6', border: '1px solid #FFF0A8' }}
             >
-              <span>🔑</span>
+              <span className="text-[18px]">🔑</span>
               <div>
-                <p className="font-semibold">API Key 발급 가이드</p>
-                <p className="font-normal text-amber-600 break-keep">거래소별 발급 방법 확인</p>
+                <p className="text-[13px] font-semibold" style={{ color: '#946200' }}>API Key 발급 가이드</p>
+                <p className="text-[11px] break-keep" style={{ color: '#946200' }}>거래소별 발급 방법 확인</p>
               </div>
             </button>
           </div>
         )}
       </div>
 
+      {/* 거래소 */}
       <div>
-        <label className="text-xs text-gray-700 font-semibold">거래소</label>
-        <select
-          value={exchange}
-          onChange={(e) => setExchange(e.target.value as Exchange)}
-          className="w-full mt-1 p-3 bg-white rounded-xl text-sm text-gray-900 font-medium"
+        <p className="text-[13px] font-semibold mb-2" style={{ color: '#6B7684' }}>거래소</p>
+        <div
+          className="rounded-2xl"
+          style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
         >
-          {EXCHANGES.map((ex) => (
-            <option key={ex} value={ex}>{EXCHANGE_LABELS[ex]}</option>
-          ))}
-        </select>
-      </div>
-      <div>
-        <label className="text-xs text-gray-700 font-semibold">라벨 (메모용)</label>
-        <input
-          value={label}
-          onChange={(e) => setLabel(e.target.value)}
-          placeholder="예: 내 주계정"
-          maxLength={50}
-          className="w-full mt-1 p-3 bg-white rounded-xl text-sm text-gray-900 placeholder-gray-400"
-        />
-      </div>
-      <div>
-        <label className="text-xs text-gray-700 font-semibold">Access Key</label>
-        <input
-          type="text"
-          value={accessKey}
-          onChange={(e) => setAccessKey(e.target.value)}
-          autoComplete="off"
-          spellCheck={false}
-          className="w-full mt-1 p-3 bg-white rounded-xl text-sm text-gray-900 font-mono"
-        />
-      </div>
-      <div>
-        <label className="text-xs text-gray-700 font-semibold">Secret Key</label>
-        <input
-          type="password"
-          value={secretKey}
-          onChange={(e) => setSecretKey(e.target.value)}
-          autoComplete="off"
-          spellCheck={false}
-          className="w-full mt-1 p-3 bg-white rounded-xl text-sm text-gray-900 font-mono"
-        />
+          <select
+            value={exchange}
+            onChange={(e) => setExchange(e.target.value as Exchange)}
+            className="w-full px-4 py-3.5 rounded-2xl text-[15px] font-semibold bg-transparent outline-none appearance-none"
+            style={{ color: '#191F28' }}
+          >
+            {EXCHANGES.map((ex) => (
+              <option key={ex} value={ex}>{EXCHANGE_LABELS[ex]}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
-      <p className="text-[11px] text-gray-600 leading-relaxed break-keep">
-        ⚠️ 거래소 API 등록 시 <b>입출금 권한은 반드시 제외</b>해주세요. 매수·매도·조회 권한만 허용됩니다.
+      {/* 라벨 */}
+      <div>
+        <p className="text-[13px] font-semibold mb-2" style={{ color: '#6B7684' }}>라벨 (메모용)</p>
+        <div
+          className="rounded-2xl"
+          style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
+        >
+          <input
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder="예: 내 주계정"
+            maxLength={50}
+            className="w-full px-4 py-3.5 rounded-2xl text-[15px] font-semibold bg-transparent outline-none placeholder-gray-400"
+            style={{ color: '#191F28' }}
+          />
+        </div>
+      </div>
+
+      {/* Access Key */}
+      <div>
+        <p className="text-[13px] font-semibold mb-2" style={{ color: '#6B7684' }}>Access Key</p>
+        <div
+          className="rounded-2xl"
+          style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
+        >
+          <input
+            type="text"
+            value={accessKey}
+            onChange={(e) => setAccessKey(e.target.value)}
+            autoComplete="off"
+            spellCheck={false}
+            className="w-full px-4 py-3.5 rounded-2xl text-[14px] font-mono bg-transparent outline-none"
+            style={{ color: '#191F28' }}
+          />
+        </div>
+      </div>
+
+      {/* Secret Key */}
+      <div>
+        <p className="text-[13px] font-semibold mb-2" style={{ color: '#6B7684' }}>Secret Key</p>
+        <div
+          className="rounded-2xl"
+          style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
+        >
+          <input
+            type="password"
+            value={secretKey}
+            onChange={(e) => setSecretKey(e.target.value)}
+            autoComplete="off"
+            spellCheck={false}
+            className="w-full px-4 py-3.5 rounded-2xl text-[14px] font-mono bg-transparent outline-none"
+            style={{ color: '#191F28' }}
+          />
+        </div>
+      </div>
+
+      {/* 주의 문구 */}
+      <p className="text-[12px] leading-relaxed break-keep px-1" style={{ color: '#6B7684' }}>
+        ⚠️ 거래소 API 등록 시 <strong style={{ color: '#191F28' }}>입출금 권한은 반드시 제외</strong>해주세요.
+        매수·매도·조회 권한만 허용됩니다.
       </p>
 
-      {error && <p className="text-xs text-red-600 break-keep">{error}</p>}
+      {error && (
+        <p className="text-[13px] break-keep" style={{ color: '#FF4D4F' }}>{error}</p>
+      )}
 
-      <div className="flex gap-2">
+      <div className="flex gap-3 pb-4">
         <button
           type="button"
           onClick={onCancel}
           disabled={submitting}
-          className="flex-1 py-3 bg-white rounded-xl text-sm font-semibold text-gray-700"
+          className="flex-1 py-4 rounded-2xl text-[14px] font-semibold"
+          style={{ background: '#fff', color: '#6B7684', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
         >
           취소
         </button>
         <button
           type="submit"
           disabled={submitting}
-          className="flex-[2] py-3 bg-gray-900 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+          className="flex-[2] py-4 rounded-2xl text-[15px] font-semibold disabled:opacity-50"
+          style={{ background: '#0064FF', color: '#fff' }}
         >
           {submitting ? '저장 중...' : '저장'}
         </button>
       </div>
 
-      {/* 가이드 모달 */}
-      {guideModal === 'signup' && (
-        <SignupGuideModal onClose={() => setGuideModal(null)} />
-      )}
-      {guideModal === 'apikey' && (
-        <ApiKeyGuideModal onClose={() => setGuideModal(null)} />
-      )}
+      {guideModal === 'signup' && <SignupGuideModal onClose={() => setGuideModal(null)} />}
+      {guideModal === 'apikey' && <ApiKeyGuideModal onClose={() => setGuideModal(null)} />}
     </form>
   )
 }
