@@ -3,6 +3,7 @@ import { getSession } from '@/lib/session'
 import { createServerClient } from '@/lib/supabase'
 import { EXCHANGE_LABELS, TRADE_TYPE_LABELS, type Exchange, type TradeType } from '@/types/database'
 import OnboardingBanner from '../_components/OnboardingBanner'
+import ExchangeIcon from '@/components/ExchangeIcon'
 
 interface EventItem {
   id: string
@@ -221,9 +222,10 @@ export default async function AppHomePage() {
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <span
-                      className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                      className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full inline-flex items-center gap-1"
                       style={{ background: badge.bg, color: badge.text }}
                     >
+                      <ExchangeIcon exchange={e.exchange} size={13} />
                       {label}
                     </span>
                     <div className="min-w-0">
@@ -287,9 +289,10 @@ export default async function AppHomePage() {
                 >
                   <div className="flex items-start gap-3 min-w-0 flex-1">
                     <span
-                      className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full mt-0.5"
+                      className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full mt-0.5 inline-flex items-center gap-1"
                       style={{ background: badge.bg, color: badge.text }}
                     >
+                      <ExchangeIcon exchange={s.exchange} size={13} />
                       {label}
                     </span>
                     <div className="min-w-0 flex-1">

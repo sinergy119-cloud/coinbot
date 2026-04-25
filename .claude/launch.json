@@ -8,10 +8,10 @@
       "port": 3002
     },
     {
-      "name": "HTML Preview",
+      "name": "preview-html",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["serve", ".claude", "-p", "3099", "--no-clipboard"],
-      "port": 3099
+      "runtimeArgs": ["serve", "public", "-p", "3098", "--no-clipboard"],
+      "port": 3098
     }
   ]
 }

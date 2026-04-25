@@ -6,6 +6,7 @@ import PinPad from '../../_components/PinPad'
 import KeySelector from '../../_components/KeySelector'
 import { verifyPin, decryptAllByIds } from '@/lib/app/key-store'
 import { EXCHANGE_LABELS, TRADE_TYPE_LABELS, type Exchange, type TradeType } from '@/types/database'
+import ExchangeIcon from '@/components/ExchangeIcon'
 
 type Tab = 'instant' | 'schedule' | 'list'
 
@@ -308,9 +309,10 @@ function ScheduleList() {
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1, flexWrap: 'wrap' }}>
                       <span
-                        className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0"
+                        className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 inline-flex items-center gap-1"
                         style={{ background: exBadge.bg, color: exBadge.text }}
                       >
+                        <ExchangeIcon exchange={j.exchange} size={13} />
                         {exchangeLabel}
                       </span>
                       {statusBadge && (

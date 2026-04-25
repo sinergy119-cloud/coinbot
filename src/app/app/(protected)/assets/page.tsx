@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react'
 import PinPad from '../../_components/PinPad'
 import { isPinSet, verifyPin, listKeys, decryptAllByIds } from '@/lib/app/key-store'
 import { EXCHANGE_LABELS, type Exchange } from '@/types/database'
+import ExchangeIcon from '@/components/ExchangeIcon'
 
 interface CoinRow {
   coin: string
@@ -199,9 +200,10 @@ export default function AssetsPage() {
                     <div className="flex items-start justify-between gap-3 mb-3">
                       <div className="min-w-0 flex-1">
                         <span
-                          className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                          className="text-[10px] font-semibold px-2 py-0.5 rounded-full inline-flex items-center gap-1"
                           style={{ background: badge.bg, color: badge.text }}
                         >
+                          <ExchangeIcon exchange={b.exchange} size={13} />
                           {exchangeLabel}
                         </span>
                         <p className="text-[15px] font-bold mt-1.5 truncate" style={{ color: '#191F28' }}>

@@ -24,6 +24,7 @@ const PUBLIC_PATHS = [
   '/privacy',      // 개인정보처리방침 — 비로그인 접근 허용
   '/.well-known/', // Google Play Digital Asset Links (assetlinks.json)
   '/tester-guide.html', // 테스터 매뉴얼 이미지 (공개)
+  '/preview-schedule-list.html', // 내스케줄 UI 프리뷰 (임시)
   '/account-deletion',  // 계정 삭제 안내 — Google Play Data Safety URL (비로그인 접근)
 ]
 

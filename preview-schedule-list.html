@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=375, initial-scale=1">
+<title>내스케줄 UI 프리뷰</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+  body { font-family: -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+         background: #E8EAED; display: flex; justify-content: center; padding: 20px; gap: 24px; flex-wrap: wrap; }
+
+  .phone {
+    width: 375px; background: #F9FAFB; border-radius: 36px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.18); overflow: hidden;
+    border: 8px solid #1a1a1a;
+  }
+  .phone-label {
+    text-align: center; font-size: 13px; font-weight: 700; color: #555;
+    margin-bottom: 8px; letter-spacing: 0.5px;
+  }
+
+  /* TopBar */
+  .topbar { background: #fff; padding: 14px 16px 0; border-bottom: 1px solid #F2F4F6; }
+  .topbar-title { text-align: center; font-size: 16px; font-weight: 700; color: #191F28; padding-bottom: 12px; }
+  .subtabs { display: flex; gap: 0; }
+  .subtab {
+    flex: 1; text-align: center; padding: 10px 0; font-size: 13px; font-weight: 600;
+    color: #6B7684; border-bottom: 2px solid transparent; cursor: pointer; transition: all .15s;
+  }
+  .subtab.active { color: #191F28; border-bottom-color: #191F28; }
+
+  /* Filter chips */
+  .filter-bar { padding: 12px 16px 8px; display: flex; gap: 8px; background: #F9FAFB; }
+  .chip {
+    padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 600;
+    cursor: pointer; transition: all .15s; border: none; outline: none;
+  }
+  .chip.selected { background: #191F28; color: #fff; }
+  .chip.unselected { background: #fff; color: #6B7684; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+
+  /* Cards */
+  .cards-wrap { padding: 0 16px 80px; display: flex; flex-direction: column; gap: 10px; }
+  .card {
+    background: #fff; border-radius: 16px; padding: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+
+  /* Card top row: exchange badge + trade type + status badge + [취소/빈공간] */
+  .card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .card-top-left { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; flex: 1; min-width: 0; }
+
+  .badge-exchange {
+    font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px;
+  }
+  .badge-trade {
+    font-size: 11px; font-weight: 700;
+  }
+  .badge-status {
+    font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 6px;
+  }
+  .status-active   { background: #E6FBF0; color: #007A30; }
+  .status-paused   { background: #FFF3E0; color: #E65100; }
+  .status-completed{ background: #F2F4F6; color: #6B7684; }
+  .status-cancelled{ background: #FFE8E8; color: #C0392B; }
+
+  .btn-cancel {
+    font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 8px;
+    background: #FFF0F0; color: #FF4D4F; border: none; cursor: pointer; white-space: nowrap; flex-shrink: 0;
+  }
+
+  /* Coin name */
+  .coin-name { font-size: 18px; font-weight: 800; color: #191F28; margin-bottom: 2px; }
+  .coin-amount { font-size: 13px; color: #6B7684; margin-bottom: 6px; }
+
+  /* Period row */
+  .period { font-size: 11px; color: #B0B8C1; margin-bottom: 8px; }
+
+  /* Bottom row: badges */
+  .card-bottom { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .badge-type {
+    font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 6px;
+    display: flex; align-items: center; gap: 3px;
+  }
+  .type-event   { background: #F3EEFF; color: #5B21B6; }
+  .type-direct  { background: #EBF3FF; color: #0050CC; }
+  .badge-event-link {
+    font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 6px;
+    background: #FFF9C4; color: #7A6000; display: flex; align-items: center; gap: 3px;
+    cursor: pointer; text-decoration: none;
+  }
+
+  /* Bottom Nav */
+  .bottom-nav {
+    position: sticky; bottom: 0; background: #fff; display: flex;
+    border-top: 1px solid #F2F4F6; padding: 8px 0 12px;
+  }
+  .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; }
+  .nav-icon { font-size: 20px; }
+  .nav-label { font-size: 10px; color: #B0B8C1; font-weight: 500; }
+  .nav-item.active .nav-label { color: #0064FF; }
+  .nav-item.active .nav-icon { filter: none; }
+
+  /* Scroll area */
+  .scroll-area { max-height: 640px; overflow-y: auto; }
+  .scroll-area::-webkit-scrollbar { width: 0; }
+</style>
+</head>
+<body>
+
+<!-- ① 진행 탭 (디폴트) -->
+<div>
+  <div class="phone-label">① 디폴트: 진행 탭</div>
+  <div class="phone">
+    <div class="topbar">
+      <div class="topbar-title">MyCoinBot</div>
+      <div class="subtabs">
+        <div class="subtab">⚡ 즉시거래</div>
+        <div class="subtab">📅 스케줄</div>
+        <div class="subtab active">📋 내스케줄</div>
+      </div>
+    </div>
+
+    <!-- 필터 칩 -->
+    <div class="filter-bar">
+      <button class="chip selected">진행 3</button>
+      <button class="chip unselected">완료 2</button>
+      <button class="chip unselected">전체 5</button>
+    </div>
+
+    <div class="scroll-area">
+    <div class="cards-wrap">
+
+      <!-- Card 1: active, 이벤트 연계, 이벤트 바로가기 -->
+      <div class="card">
+        <div class="card-top">
+          <div class="card-top-left">
+            <span class="badge-exchange" style="background:#FFFBE6;color:#946200">고팍스</span>
+            <span class="badge-trade" style="color:#8E44AD">매수 &amp; 매도</span>
+            <span class="badge-status status-active">진행 중</span>
+          </div>
+          <button class="btn-cancel">취소</button>
+        </div>
+        <div class="coin-name">TCC</div>
+        <div class="coin-amount">51,000원 (일별)</div>
+        <div class="period">2026-04-27 ~ 2026-05-13 · 12:30:00</div>
+        <div class="card-bottom">
+          <span class="badge-type type-event">🎯 이벤트 참여</span>
+          <a class="badge-event-link">🎉 이벤트 보기</a>
+        </div>
+      </div>
+
+      <!-- Card 2: active, 이벤트 연계 -->
+      <div class="card">
+        <div class="card-top">
+          <div class="card-top-left">
+            <span class="badge-exchange" style="background:#FFFBE6;color:#946200">고팍스</span>
+            <span class="badge-trade" style="color:#8E44AD">매수 &amp; 매도</span>
+            <span class="badge-status status-active">진행 중</span>
+          </div>
+          <button class="btn-cancel">취소</button>
+        </div>
+        <div class="coin-name">SPACE</div>
+        <div class="coin-amount">51,000원 (일별)</div>
+        <div class="period">2026-04-23 ~ 2026-05-02 · 12:30:00</div>
+        <div class="card-bottom">
+          <span class="badge-type type-event">🎯 이벤트 참여</span>
+          <a class="badge-event-link">🎉 이벤트 보기</a>
+        </div>
+      </div>
+
+      <!-- Card 3: active, 직접 거래, 이벤트 없음 -->
+      <div class="card">
+        <div class="card-top">
+          <div class="card-top-left">
+            <span class="badge-exchange" style="background:#FFF0E6;color:#C94B00">빗썸</span>
+            <span class="badge-trade" style="color:#0064FF">매수</span>
+            <span class="badge-status status-active">진행 중</span>
+          </div>
+          <button class="btn-cancel">취소</button>
+        </div>
+        <div class="coin-name">BTC</div>
+        <div class="coin-amount">100,000원 (일별)</div>
+        <div class="period">2026-04-01 ~ 2026-06-30 · 09:00:00</div>
+        <div class="card-bottom">
+          <span class="badge-type type-direct">🔗 거래소 직접</span>
+        </div>
+      </div>
+
+    </div>
+    </div><!-- scroll-area -->
+
+    <div class="bottom-nav">
+      <div class="nav-item"><div class="nav-icon">🏠</div><div class="nav-label">홈</div></div>
+      <div class="nav-item"><div class="nav-icon">🎁</div><div class="nav-label">이벤트</div></div>
+      <div class="nav-item active"><div class="nav-icon">⚡</div><div class="nav-label" style="color:#0064FF;font-weight:700">거래</div></div>
+      <div class="nav-item"><div class="nav-icon">📊</div><div class="nav-label">조회</div></div>
+      <div class="nav-item"><div class="nav-icon">👤</div><div class="nav-label">내정보</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ② 완료 탭 -->
+<div>
+  <div class="phone-label">② 완료 탭</div>
+  <div class="phone">
+    <div class="topbar">
+      <div class="topbar-title">MyCoinBot</div>
+      <div class="subtabs">
+        <div class="subtab">⚡ 즉시거래</div>
+        <div class="subtab">📅 스케줄</div>
+        <div class="subtab active">📋 내스케줄</div>
+      </div>
+    </div>
+    <div class="filter-bar">
+      <button class="chip unselected">진행 3</button>
+      <button class="chip selected">완료 2</button>
+      <button class="chip unselected">전체 5</button>
+    </div>
+
+    <div class="scroll-area">
+    <div class="cards-wrap">
+
+      <!-- Card: completed -->
+      <div class="card" style="opacity:0.8">
+        <div class="card-top">
+          <div class="card-top-left">
+            <span class="badge-exchange" style="background:#FFF0E6;color:#C94B00">빗썸</span>
+            <span class="badge-trade" style="color:#0064FF">매수</span>
+            <span class="badge-status status-completed">완료</span>
+          </div>
+          <!-- 완료된 항목은 취소 버튼 없음 -->
+        </div>
+        <div class="coin-name">USDT</div>
+        <div class="coin-amount">51,000원 (일별)</div>
+        <div class="period">2026-04-20 ~ 2026-04-20 · 21:36:00</div>
+        <div class="card-bottom">
+          <span class="badge-type type-direct">🔗 거래소 직접</span>
+        </div>
+      </div>
+
+      <!-- Card: cancelled -->
+      <div class="card" style="opacity:0.75">
+        <div class="card-top">
+          <div class="card-top-left">
+            <span class="badge-exchange" style="background:#FFF0E6;color:#C94B00">빗썸</span>
+            <span class="badge-trade" style="color:#0064FF">매수</span>
+            <span class="badge-status status-cancelled">취소됨</span>
+          </div>
+        </div>
+        <div class="coin-name">USDT</div>
+        <div class="coin-amount">51,000원 (일별)</div>
+        <div class="period">2026-04-15 ~ 2026-04-19 · 09:00:00</div>
+        <div class="card-bottom">
+          <span class="badge-type type-event">🎯 이벤트 참여</span>
+          <a class="badge-event-link">🎉 이벤트 보기</a>
+        </div>
+      </div>
+
+    </div>
+    </div>
+    <div class="bottom-nav">
+      <div class="nav-item"><div class="nav-icon">🏠</div><div class="nav-label">홈</div></div>
+      <div class="nav-item"><div class="nav-icon">🎁</div><div class="nav-label">이벤트</div></div>
+      <div class="nav-item active"><div class="nav-icon">⚡</div><div class="nav-label" style="color:#0064FF;font-weight:700">거래</div></div>
+      <div class="nav-item"><div class="nav-icon">📊</div><div class="nav-label">조회</div></div>
+      <div class="nav-item"><div class="nav-icon">👤</div><div class="nav-label">내정보</div></div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

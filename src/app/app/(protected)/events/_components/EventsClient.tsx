@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import { EXCHANGE_LABELS, type Exchange } from '@/types/database'
+import ExchangeIcon from '@/components/ExchangeIcon'
 
 interface AnnouncementRow {
   id: string
@@ -81,12 +82,13 @@ export default function EventsClient({ items }: { items: AnnouncementRow[] }) {
                   key={ex}
                   type="button"
                   onClick={() => setFilter(ex)}
-                  className="px-3 py-1.5 rounded-full text-[12px] font-semibold transition-all"
+                  className="px-3 py-1.5 rounded-full text-[12px] font-semibold transition-all inline-flex items-center gap-1"
                   style={isActive
                     ? { background: badge.text, color: '#fff' }
                     : { background: '#fff', color: '#6B7684', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }
                   }
                 >
+                  <ExchangeIcon exchange={ex} size={13} />
                   {EXCHANGE_LABELS[ex]} {count}
                 </button>
               )
@@ -121,9 +123,10 @@ export default function EventsClient({ items }: { items: AnnouncementRow[] }) {
                   <div className="flex items-center gap-1.5 flex-wrap">
                     {/* 거래소 */}
                     <span
-                      className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
+                      className="text-[11px] font-semibold px-2 py-0.5 rounded-full inline-flex items-center gap-1"
                       style={{ background: badge.bg, color: badge.text }}
                     >
+                      <ExchangeIcon exchange={e.exchange} size={13} />
                       {exchangeLabel}
                     </span>
                     {/* 예정 (시작 전) */}

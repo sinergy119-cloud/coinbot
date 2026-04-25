@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase'
 import { EXCHANGE_LABELS, type Exchange } from '@/types/database'
+import ExchangeIcon from '@/components/ExchangeIcon'
 
 interface AnnouncementRow {
   id: string
@@ -56,9 +57,10 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
         {/* 거래소 뱃지 */}
         <div className="flex items-center gap-2 mt-4">
           <span
-            className="text-[11px] font-semibold px-2.5 py-1 rounded-full"
+            className="text-[11px] font-semibold px-2.5 py-1 rounded-full inline-flex items-center gap-1"
             style={{ background: badge.bg, color: badge.text }}
           >
+            <ExchangeIcon exchange={e.exchange} size={14} />
             {exchangeLabel}
           </span>
           {e.require_apply && (

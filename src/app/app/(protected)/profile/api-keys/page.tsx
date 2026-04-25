@@ -19,6 +19,7 @@ import {
 } from '@/lib/app/key-store'
 import { EXCHANGE_LABELS, type Exchange } from '@/types/database'
 import { SignupGuideModal, ApiKeyGuideModal } from '@/components/GuideModals'
+import ExchangeIcon from '@/components/ExchangeIcon'
 
 type Phase =
   | 'loading'
@@ -546,9 +547,10 @@ function KeysList({ pin: _pin, keys, bioAvailable, bioRegistered, onBioRegistere
                 >
                   <div className="min-w-0 flex-1">
                     <span
-                      className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                      className="text-[10px] font-semibold px-2 py-0.5 rounded-full inline-flex items-center gap-1"
                       style={{ background: badge.bg, color: badge.text }}
                     >
+                      <ExchangeIcon exchange={k.exchange} size={13} />
                       {EXCHANGE_LABELS[k.exchange]}
                     </span>
                     <p className="text-[14px] font-semibold mt-1.5 truncate" style={{ color: '#191F28' }}>
