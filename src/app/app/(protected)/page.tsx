@@ -63,22 +63,37 @@ export default async function AppHomePage() {
 
   const [
     { data: events },
+    { count: eventCount },
     { data: schedules },
+    { count: scheduleCount },
     { data: todayTrades },
     { data: user },
   ] = await Promise.all([
+    // 미리보기용 최근 3개
     db.from('announcements')
       .select('id, exchange, coin, amount, start_date, end_date')
       .gte('end_date', today)
       .order('created_at', { ascending: false })
       .limit(3),
 
+    // 실제 전체 카운트
+    db.from('announcements')
+      .select('*', { count: 'exact', head: true })
+      .gte('end_date', today),
+
+    // 미리보기용 최근 3개
     db.from('trade_jobs')
       .select('id, exchange, coin, trade_type, amount_krw, schedule_from, schedule_to, schedule_time, status')
       .eq('user_id', session!.userId)
       .in('status', ['active', 'paused'])
       .order('created_at', { ascending: false })
       .limit(3),
+
+    // 실제 활성 스케줄 카운트
+    db.from('trade_jobs')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', session!.userId)
+      .in('status', ['active', 'paused']),
 
     db.from('trade_logs')
       .select('id, success')
@@ -98,7 +113,7 @@ export default async function AppHomePage() {
     : rawId
   const displayName = user?.name || fallbackName || '회원'
 
-  const activeScheduleCount = schedules?.length ?? 0
+  const activeScheduleCount = scheduleCount ?? 0
   const todaySuccessCount = todayTrades?.length ?? 0
 
   return (
@@ -124,7 +139,7 @@ export default async function AppHomePage() {
             style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
           >
             <p className="text-[18px] font-bold leading-none" style={{ color: '#0064FF' }}>
-              {(events ?? []).length}
+              {eventCount ?? 0}
             </p>
             <p className="text-[10px] mt-1 break-keep" style={{ color: '#6B7684' }}>진행 이벤트</p>
           </Link>
