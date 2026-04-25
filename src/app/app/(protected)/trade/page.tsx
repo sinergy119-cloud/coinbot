@@ -131,21 +131,75 @@ interface JobItem {
   isAppJob: boolean
 }
 
+// 이벤트 매칭용 타입
+interface EventMeta {
+  id: string
+  exchange: string
+  coin: string
+  requireApply: boolean
+  apiAllowed: boolean
+}
+
+// 필터 탭: 진행(active/paused) | 완료(completed/cancelled) | 전체
+type ListFilter = 'active' | 'done' | 'all'
+
+const STATUS_BADGE: Record<string, { bg: string; color: string; label: string }> = {
+  active:    { bg: '#E6FBF0', color: '#007A30', label: '진행 중' },
+  paused:    { bg: '#FFF3E0', color: '#E65100', label: '일시정지' },
+  completed: { bg: '#F2F4F6', color: '#6B7684', label: '완료' },
+  cancelled: { bg: '#FFE8E8', color: '#C0392B', label: '취소됨' },
+}
+
+// 좌측 컬러바 색상 (안 C)
+const STATUS_BAR_COLOR: Record<string, string> = {
+  active:    '#007A30',
+  paused:    '#E65100',
+  completed: '#B0B8C1',
+  cancelled: '#B0B8C1',
+}
+
+// 깜빡이는 뱃지 CSS (Tailwind 없이 인라인 keyframe 불가 → style tag 삽입)
+const BLINK_STYLE = `
+@keyframes _blink {
+  0%,100%{ opacity:1 }
+  50%{ opacity:0.25 }
+}
+._blink { animation: _blink 1.1s ease-in-out infinite; }
+`
+
 function ScheduleList() {
-  const [items, setItems] = useState<JobItem[]>([])
+  const [items, setItems]     = useState<JobItem[]>([])
+  const [events, setEvents]   = useState<EventMeta[]>([])
   const [loading, setLoading] = useState(true)
+  const [filter, setFilter]   = useState<ListFilter>('active')
 
   async function load() {
     setLoading(true)
     try {
-      const res = await fetch('/api/app/trade-jobs')
-      const json = await res.json()
-      if (json.ok) setItems(json.data.items)
+      const [jobsRes, eventsRes] = await Promise.all([
+        fetch('/api/app/trade-jobs'),
+        fetch('/api/app/events?status=active&limit=100'),
+      ])
+      const [jobsJson, eventsJson] = await Promise.all([jobsRes.json(), eventsRes.json()])
+      if (jobsJson.ok)   setItems(jobsJson.data.items)
+      if (eventsJson.ok) setEvents(
+        eventsJson.data.items.map((e: { id: string; exchange: string; coin: string; requireApply: boolean; apiAllowed: boolean }) => ({
+          id: e.id, exchange: e.exchange, coin: e.coin,
+          requireApply: e.requireApply, apiAllowed: e.apiAllowed,
+        }))
+      )
     } finally {
       setLoading(false)
     }
   }
   useEffect(() => { load() }, [])
+
+  // exchange+coin → event 빠른 조회
+  const eventMap = useMemo(() => {
+    const m = new Map<string, EventMeta>()
+    events.forEach((e) => m.set(`${e.exchange}:${e.coin.toUpperCase()}`, e))
+    return m
+  }, [events])
 
   async function cancel(id: string) {
     if (!confirm('이 스케줄을 취소하시겠습니까?')) return
@@ -153,80 +207,178 @@ function ScheduleList() {
     await load()
   }
 
+  // 필터 적용
+  const filtered = items.filter((j) => {
+    if (filter === 'active') return j.status === 'active' || j.status === 'paused'
+    if (filter === 'done')   return j.status === 'completed' || j.status === 'cancelled'
+    return true
+  })
+
+  const activeCnt = items.filter((j) => j.status === 'active' || j.status === 'paused').length
+  const doneCnt   = items.filter((j) => j.status === 'completed' || j.status === 'cancelled').length
+
+  const filterTabs: { key: ListFilter; label: string; count: number }[] = [
+    { key: 'active', label: '진행', count: activeCnt },
+    { key: 'done',   label: '완료', count: doneCnt },
+    { key: 'all',    label: '전체', count: items.length },
+  ]
+
   return (
-    <div className="flex flex-col gap-5 p-4 pb-6">
-      {loading ? (
-        <div
-          className="rounded-2xl p-6 text-center text-[14px] break-keep"
-          style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', color: '#6B7684' }}
-        >
-          불러오는 중...
-        </div>
-      ) : items.length === 0 ? (
-        <div
-          className="rounded-2xl p-8 text-center text-[14px] break-keep"
-          style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', color: '#6B7684' }}
-        >
-          <p className="text-[28px] mb-3">📋</p>
-          <p>등록된 스케줄이 없습니다.</p>
-          <p className="text-[12px] mt-1" style={{ color: '#B0B8C1' }}>
-            위 탭에서 스케줄을 등록해보세요.
-          </p>
-        </div>
-      ) : (
-        <div
-          className="rounded-2xl overflow-hidden"
-          style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
-        >
-          {items.map((j, idx, arr) => {
-            const badge = EXCHANGE_BADGE[j.exchange] ?? { bg: '#F2F4F6', text: '#6B7684' }
+    <div className="flex flex-col gap-0 pb-6" style={{ background: '#F9FAFB' }}>
+      {/* 깜빡임 애니메이션 CSS 주입 */}
+      <style dangerouslySetInnerHTML={{ __html: BLINK_STYLE }} />
+
+      {/* 필터 칩 */}
+      <div className="flex gap-2 px-4 pt-3 pb-2">
+        {filterTabs.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            onClick={() => setFilter(t.key)}
+            className="px-4 py-1.5 rounded-full text-[12px] font-semibold transition-all break-keep"
+            style={filter === t.key
+              ? { background: '#191F28', color: '#fff' }
+              : { background: '#fff', color: '#6B7684', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }
+            }
+          >
+            {t.label} {t.count}
+          </button>
+        ))}
+      </div>
+
+      {/* 카드 목록 */}
+      <div className="px-4 flex flex-col gap-3">
+        {loading ? (
+          <div
+            className="rounded-2xl p-6 text-center text-[14px] break-keep"
+            style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', color: '#6B7684' }}
+          >
+            불러오는 중...
+          </div>
+        ) : filtered.length === 0 ? (
+          <div
+            className="rounded-2xl p-8 text-center text-[14px] break-keep"
+            style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', color: '#6B7684' }}
+          >
+            <p className="text-[28px] mb-3">📋</p>
+            <p>
+              {filter === 'active' ? '진행 중인 스케줄이 없습니다.'
+               : filter === 'done'  ? '완료된 스케줄이 없습니다.'
+               : '등록된 스케줄이 없습니다.'}
+            </p>
+            {filter === 'active' && (
+              <p className="text-[12px] mt-1" style={{ color: '#B0B8C1' }}>위 탭에서 스케줄을 등록해보세요.</p>
+            )}
+          </div>
+        ) : (
+          filtered.map((j) => {
+            const exBadge      = EXCHANGE_BADGE[j.exchange] ?? { bg: '#F2F4F6', text: '#6B7684' }
             const exchangeLabel = EXCHANGE_LABELS[j.exchange] ?? j.exchange
-            const tradeColor = TRADE_TYPE_COLOR[j.tradeType] ?? '#6B7684'
-            const statusLabel = STATUS_LABEL[j.status] ?? j.status
+            const statusBadge  = STATUS_BADGE[j.status]
+            const barColor     = STATUS_BAR_COLOR[j.status] ?? '#B0B8C1'
+            const isDone       = j.status === 'completed' || j.status === 'cancelled'
+            const matchedEvent = eventMap.get(`${j.exchange}:${j.coin.toUpperCase()}`)
+
+            // 메타 정보 1줄 압축: 금액 · MM/DD ~ MM/DD · HH:MM
+            const metaParts: string[] = []
+            if (j.tradeType !== 'SELL') metaParts.push(`${j.amountKrw.toLocaleString()}원`)
+            metaParts.push(`${j.scheduleFrom.slice(5)} ~ ${j.scheduleTo.slice(5)}`)
+            metaParts.push(j.scheduleTime.slice(0, 5))
+            const metaLine = metaParts.join(' · ')
+
             return (
               <div
                 key={j.id}
-                className="flex items-start justify-between px-5 py-4 break-keep"
-                style={idx < arr.length - 1 ? { borderBottom: '1px solid #F2F4F6' } : undefined}
+                className="break-keep"
+                style={{
+                  display: 'flex',
+                  background: '#fff',
+                  borderRadius: '16px',
+                  overflow: 'hidden',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                  opacity: isDone ? 0.75 : 1,
+                }}
               >
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                    <span
-                      className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0"
-                      style={{ background: badge.bg, color: badge.text }}
-                    >
-                      {exchangeLabel}
-                    </span>
-                    <span className="text-[11px] font-semibold shrink-0" style={{ color: tradeColor }}>
-                      {TRADE_TYPE_LABELS[j.tradeType]}
-                    </span>
+                {/* 좌측 컬러바 */}
+                <div style={{ width: '4px', flexShrink: 0, background: barColor }} />
+
+                {/* 카드 내용 */}
+                <div style={{ flex: 1, padding: '12px 13px' }}>
+                  {/* 1행: 거래소 뱃지 + 상태 뱃지 + 취소 버튼 */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1, flexWrap: 'wrap' }}>
+                      <span
+                        className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0"
+                        style={{ background: exBadge.bg, color: exBadge.text }}
+                      >
+                        {exchangeLabel}
+                      </span>
+                      {statusBadge && (
+                        <span
+                          className="text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0"
+                          style={{ background: statusBadge.bg, color: statusBadge.color }}
+                        >
+                          {statusBadge.label}
+                        </span>
+                      )}
+                    </div>
+                    {!isDone && (
+                      <button
+                        type="button"
+                        onClick={() => cancel(j.id)}
+                        className="shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-lg active:opacity-70 transition-opacity"
+                        style={{ color: '#FF4D4F', background: '#FFF0F0' }}
+                      >
+                        취소
+                      </button>
+                    )}
                   </div>
-                  <p className="text-[16px] font-bold" style={{ color: '#191F28' }}>{j.coin}</p>
-                  {j.tradeType !== 'SELL' && (
-                    <p className="text-[13px] mt-0.5" style={{ color: '#6B7684' }}>
-                      {j.amountKrw.toLocaleString()}원
-                    </p>
+
+                  {/* 코인명 */}
+                  <p className="text-[17px] font-extrabold" style={{ color: '#191F28' }}>{j.coin}</p>
+
+                  {/* 메타 정보 (금액 · 기간 · 시간) */}
+                  <p className="text-[11px] mt-1" style={{ color: '#B0B8C1' }}>{metaLine}</p>
+
+                  {/* 이벤트 연계 뱃지 행 */}
+                  {matchedEvent && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginTop: '8px' }}>
+                      {/* 이벤트 등록 필요 (깜빡임) */}
+                      {matchedEvent.requireApply && (
+                        <span
+                          className="_blink text-[11px] font-extrabold px-2.5 py-1 rounded-lg"
+                          style={{ background: '#FFF9C4', color: '#7A6000' }}
+                        >
+                          ⚠️ 이벤트 등록
+                        </span>
+                      )}
+
+                      {/* API 미허용 → 거래소 직접 거래 (깜빡임) */}
+                      {!matchedEvent.apiAllowed && (
+                        <span
+                          className="_blink text-[11px] font-extrabold px-2.5 py-1 rounded-lg"
+                          style={{ background: '#FFE8E8', color: '#C0392B' }}
+                        >
+                          ⚠️ 거래소 거래
+                        </span>
+                      )}
+
+                      {/* 원문 보기 */}
+                      <a
+                        href={`/app/events/${matchedEvent.id}`}
+                        className="text-[11px] font-semibold px-2.5 py-1 rounded-lg"
+                        style={{ background: '#F2F4F6', color: '#4B5563' }}
+                      >
+                        원문 보기 ↗
+                      </a>
+                    </div>
                   )}
-                  <p className="text-[12px] mt-1" style={{ color: '#B0B8C1' }}>
-                    {j.scheduleFrom} ~ {j.scheduleTo} · {j.scheduleTime}
-                  </p>
-                  <p className="text-[11px] mt-0.5" style={{ color: '#B0B8C1' }}>
-                    {j.isAppJob ? '📱 앱 실행' : '🌐 서버 실행'} · {statusLabel}
-                  </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => cancel(j.id)}
-                  className="shrink-0 ml-3 text-[12px] font-semibold px-3 py-1.5 rounded-lg active:opacity-70 transition-opacity"
-                  style={{ color: '#FF4D4F', background: '#FFF0F0' }}
-                >
-                  취소
-                </button>
               </div>
             )
-          })}
-        </div>
-      )}
+          })
+        )}
+      </div>
     </div>
   )
 }
