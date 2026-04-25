@@ -27,7 +27,6 @@ export default async function EventsPage() {
   const { data } = await db
     .from('announcements')
     .select('id, exchange, coin, amount, require_apply, api_allowed, link, start_date, end_date')
-    .lte('start_date', today)
     .gte('end_date', today)
     .order('created_at', { ascending: false })
 

@@ -31,8 +31,17 @@ function fmtDate(d: string) {
   return d.slice(5).replace('-', '/')
 }
 
+function kstToday(): string {
+  const kst = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul' }))
+  const y = kst.getFullYear()
+  const m = String(kst.getMonth() + 1).padStart(2, '0')
+  const d = String(kst.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
 export default function EventsClient({ items }: { items: AnnouncementRow[] }) {
   const [filter, setFilter] = useState<string>('all')
+  const today = kstToday()
 
   const existingExchanges = EXCHANGE_ORDER.filter((ex) => items.some((e) => e.exchange === ex))
   const filtered = filter === 'all' ? items : items.filter((e) => e.exchange === filter)
@@ -43,7 +52,7 @@ export default function EventsClient({ items }: { items: AnnouncementRow[] }) {
       {/* 헤더 */}
       <header className="px-4 pt-6 pb-3">
         <h1 className="text-[22px] font-bold break-keep" style={{ color: '#191F28' }}>
-          진행 중인 이벤트
+          이벤트
         </h1>
         <p className="text-[13px] mt-1" style={{ color: '#6B7684' }}>총 {items.length}건</p>
       </header>
@@ -100,6 +109,7 @@ export default function EventsClient({ items }: { items: AnnouncementRow[] }) {
             const exchangeLabel = EXCHANGE_LABELS[e.exchange as Exchange] ?? e.exchange
             const badge = EXCHANGE_BADGE[e.exchange] ?? { bg: '#F2F4F6', text: '#6B7684' }
             const tradeParams = `exchange=${e.exchange}&coin=${encodeURIComponent(e.coin)}`
+            const isUpcoming = e.start_date > today
             return (
               <div
                 key={e.id}
@@ -116,6 +126,15 @@ export default function EventsClient({ items }: { items: AnnouncementRow[] }) {
                     >
                       {exchangeLabel}
                     </span>
+                    {/* 예정 (시작 전) */}
+                    {isUpcoming && (
+                      <span
+                        className="text-[10px] font-semibold px-1.5 py-0.5 rounded"
+                        style={{ background: '#EBF3FF', color: '#0050CC' }}
+                      >
+                        예정
+                      </span>
+                    )}
                     {/* 신청 필요 */}
                     {e.require_apply && (
                       <span

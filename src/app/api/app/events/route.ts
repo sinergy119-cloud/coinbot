@@ -71,7 +71,7 @@ export async function GET(req: NextRequest) {
     .limit(limit)
 
   if (status === 'active') {
-    query = query.lte('start_date', today).gte('end_date', today)
+    query = query.gte('end_date', today)
   } else if (status === 'upcoming') {
     query = query.gt('start_date', today)
   } else if (status === 'ended') {
