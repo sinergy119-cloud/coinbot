@@ -457,7 +457,7 @@ export default function EventManager({ prefill, onClearPrefill }: Props) {
                       )}
                       {!ev.api_allowed && (
                         <span className="rounded-full bg-red-100 border border-red-400 px-2 py-0.5 text-[10px] font-semibold text-red-800 animate-pulse">
-                          ⛔ 거래소 거래
+                          ⛔ 거래소 직접 거래
                         </span>
                       )}
                     </div>

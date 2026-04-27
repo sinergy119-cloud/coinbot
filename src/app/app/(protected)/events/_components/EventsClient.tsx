@@ -153,7 +153,7 @@ export default function EventsClient({ items }: { items: AnnouncementRow[] }) {
                         className="text-[10px] font-semibold px-1.5 py-0.5 rounded animate-pulse"
                         style={{ background: '#FFE3E3', color: '#C92A2A' }}
                       >
-                        거래소 거래
+                        거래소 직접 거래
                       </span>
                     )}
                   </div>
