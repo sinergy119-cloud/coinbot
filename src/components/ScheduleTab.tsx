@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { ChevronDown, ChevronUp, Bell } from 'lucide-react'
 import { EXCHANGE_LABELS, EXCHANGE_EMOJI, TRADE_TYPE_LABELS } from '@/types/database'
 import type { Exchange, TradeType, TradeJobRow } from '@/types/database'
@@ -10,6 +10,7 @@ const EXCHANGES = Object.keys(EXCHANGE_LABELS) as Exchange[]
 const TRADE_TYPES = Object.keys(TRADE_TYPE_LABELS) as TradeType[]
 
 interface Account { id: string; account_name: string; exchange: string; _delegated?: boolean; _owner_login_id?: string }
+interface CoinInfo { code: string; name: string }
 
 function getTodayKST() {
   const now = new Date()
@@ -205,6 +206,11 @@ export default function ScheduleTab({ defaultExchange, onExchangeChange }: Sched
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
+  // 코인 자동완성
+  const [allCoins, setAllCoins] = useState<CoinInfo[]>([])
+  const [coinsLoading, setCoinsLoading] = useState(false)
+  const [coinFocused, setCoinFocused] = useState(false)
+
   // 스케줄 목록 + 수정
   const [jobs, setJobs] = useState<TradeJobRow[]>([])
   const [editJob, setEditJob] = useState<TradeJobRow | null>(null)
@@ -246,7 +252,7 @@ export default function ScheduleTab({ defaultExchange, onExchangeChange }: Sched
 
   // 거래소 변경 → 계정 로드 (전체 디폴트 선택)
   useEffect(() => {
-    if (!exchange) { setAccounts([]); setSelectedIds([]); return }
+    if (!exchange) { setAccounts([]); setSelectedIds([]); setAllCoins([]); return }
     fetch(`/api/accounts?exchange=${exchange}`)
       .then((r) => r.json())
       .then((data: Account[]) => {
@@ -255,7 +261,25 @@ export default function ScheduleTab({ defaultExchange, onExchangeChange }: Sched
         setSelectedIds(list.filter((a) => !a._delegated).map((a) => a.id))
       })
       .catch(() => setAccounts([]))
+
+    // 코인 목록 로드
+    setAllCoins([])
+    setCoinsLoading(true)
+    fetch(`/api/markets?exchange=${exchange}`)
+      .then((r) => r.json())
+      .then((data: CoinInfo[]) => Array.isArray(data) ? setAllCoins(data) : null)
+      .catch(() => null)
+      .finally(() => setCoinsLoading(false))
   }, [exchange])
+
+  const coinSuggestions = useMemo(() => {
+    if (coin.length < 1 || allCoins.length === 0) return []
+    const upper = coin.toUpperCase()
+    return allCoins.filter((c) => c.code.startsWith(upper) || c.name.includes(coin)).slice(0, 8)
+  }, [coin, allCoins])
+
+  const coinUpper = coin.trim().toUpperCase()
+  const coinNotListed = !!coinUpper && allCoins.length > 0 && !allCoins.some((c) => c.code === coinUpper)
 
   function toggleAccount(id: string) {
     setSelectedIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id])
@@ -266,6 +290,7 @@ export default function ScheduleTab({ defaultExchange, onExchangeChange }: Sched
     setError('')
     if (!exchange) { setError('거래소를 선택해주세요.'); return }
     if (!coin.trim()) { setError('코인을 입력해주세요.'); return }
+    if (coinNotListed) { setError('거래소에 상장되지 않은 코인입니다.'); return }
     if (tradeType !== 'SELL' && amountKrw < 5100) { setError('최소 거래 금액은 5,100원입니다.'); return }
     if (selectedIds.length === 0) { setError('계정을 1개 이상 선택해주세요.'); return }
     if (!scheduleFrom || !scheduleTo) { setError('실행 기간을 입력해주세요.'); return }
@@ -360,11 +385,34 @@ export default function ScheduleTab({ defaultExchange, onExchangeChange }: Sched
           </div>
 
           {/* 코인 */}
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">코인</label>
-            <input type="text" value={coin} onChange={(e) => setCoin(e.target.value.toUpperCase())}
-              placeholder="예: BTC, ETH, USDT"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+          <div className="relative">
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              코인
+              {coinsLoading && <span className="ml-2 text-xs text-blue-500 animate-pulse">목록 로딩 중...</span>}
+              {!coinsLoading && allCoins.length > 0 && <span className="ml-2 text-xs text-gray-500">{allCoins.length}종</span>}
+            </label>
+            <input type="text" value={coin}
+              onChange={(e) => setCoin(e.target.value.toUpperCase())}
+              onFocus={() => setCoinFocused(true)}
+              onBlur={() => setTimeout(() => setCoinFocused(false), 150)}
+              placeholder={!exchange ? '거래소를 먼저 선택' : coinsLoading ? '코인 목록 로딩 중...' : '코드(BTC) 또는 이름(비트코인) 입력'}
+              disabled={!exchange || coinsLoading}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-50" />
+            {coinFocused && coinSuggestions.length > 0 && (
+              <ul className="absolute z-50 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg max-h-48 overflow-y-auto">
+                {coinSuggestions.map((c) => (
+                  <li key={c.code}
+                    onMouseDown={() => { setCoin(c.code); setCoinFocused(false) }}
+                    className="flex items-center gap-2 cursor-pointer px-3 py-2 text-sm hover:bg-blue-50">
+                    <span className="font-semibold text-gray-900 w-16 shrink-0">{c.code}</span>
+                    <span className="text-gray-500 text-xs">{c.name}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {coinNotListed && (
+              <p className="mt-1 text-xs text-amber-600 break-keep">⚠️ 거래소에 상장되지 않은 코인입니다.</p>
+            )}
           </div>
 
           {/* 거래 방식 */}

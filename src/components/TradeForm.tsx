@@ -92,16 +92,20 @@ export default function TradeForm({ onExecute, loading }: TradeFormProps) {
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
   }
 
+  const coinUpper = coin.trim().toUpperCase()
+  const coinNotListed = !!coinUpper && allCoins.length > 0 && !allCoins.some((c) => c.code === coinUpper)
+
   function validate(): TradeInput | null {
     setError('')
     if (!exchange) {
       setError('거래소를 선택해주세요.')
       return null
     }
-    if (!coin.trim()) { setError('코인을 입력해주세요.'); return null }
+    if (!coinUpper) { setError('코인을 입력해주세요.'); return null }
+    if (coinNotListed) { setError('거래소에 상장되지 않은 코인입니다.'); return null }
     if (tradeType !== 'SELL' && amountKrw < 5100) { setError('최소 거래 금액은 5,100원입니다.'); return null }
     if (selectedIds.length === 0) { setError('계정을 1개 이상 선택해주세요.'); return null }
-    return { exchange, coin: coin.trim().toUpperCase(), tradeType, amountKrw, accountIds: selectedIds }
+    return { exchange, coin: coinUpper, tradeType, amountKrw, accountIds: selectedIds }
   }
 
   function handleExecute() {
@@ -169,6 +173,9 @@ export default function TradeForm({ onExecute, loading }: TradeFormProps) {
               </li>
             ))}
           </ul>
+        )}
+        {coinNotListed && (
+          <p className="mt-1 text-xs text-amber-600 break-keep">⚠️ 거래소에 상장되지 않은 코인입니다.</p>
         )}
       </div>
 

@@ -63,25 +63,12 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
             <ExchangeIcon exchange={e.exchange} size={14} />
             {exchangeLabel}
           </span>
-          {e.require_apply && (
-            <span
-              className="text-[11px] font-semibold px-2.5 py-1 rounded-full"
-              style={{ background: '#FFF9C4', color: '#7A6000' }}
-            >
-              신청 필요
-            </span>
-          )}
         </div>
 
         {/* 코인명 */}
         <h1 className="text-[28px] font-bold mt-2" style={{ color: '#191F28' }}>
           {e.coin}
         </h1>
-
-        {/* 종료일 */}
-        <p className="text-[13px] mt-1" style={{ color: '#B0B8C1' }}>
-          ~ {e.end_date}까지
-        </p>
       </header>
 
       {/* 이벤트 정보 카드 */}
@@ -90,41 +77,57 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
           className="rounded-2xl overflow-hidden"
           style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
         >
-          {e.amount && (
-            <InfoRow
-              label="보상"
-              value={e.amount}
-              highlight
-              isLast={false}
-            />
-          )}
-          <InfoRow
-            label="이벤트 기간"
-            value={`${e.start_date} ~ ${e.end_date}`}
-            isLast={!e.reward_date}
-          />
-          {e.reward_date && (
-            <InfoRow
-              label="지급일"
-              value={e.reward_date}
-              isLast={true}
-            />
-          )}
-          <div
-            className="flex items-center justify-between px-5 py-4"
-            style={{ borderTop: '1px solid #F2F4F6' }}
-          >
-            <span className="text-[13px]" style={{ color: '#6B7684' }}>API 자동 거래</span>
-            <span
-              className="text-[12px] font-semibold px-2.5 py-1 rounded-full"
-              style={e.api_allowed
-                ? { background: '#E6F9EE', color: '#007A30' }
-                : { background: '#F2F4F6', color: '#6B7684' }
-              }
-            >
-              {e.api_allowed ? '허용' : '불가'}
-            </span>
-          </div>
+          {(() => {
+            const rows: React.ReactNode[] = []
+            if (e.amount) {
+              rows.push(
+                <InfoRow key="amount" label="보상" value={e.amount} highlight isLast={false} />
+              )
+            }
+            rows.push(
+              <InfoRow key="period" label="이벤트 기간" value={`${e.start_date} ~ ${e.end_date}`} isLast={false} />
+            )
+            if (e.reward_date) {
+              rows.push(
+                <InfoRow key="reward" label="지급일" value={e.reward_date} isLast={false} />
+              )
+            }
+            if (e.require_apply) {
+              rows.push(
+                <div
+                  key="apply"
+                  className="flex items-center justify-between px-5 py-4"
+                  style={{ borderTop: '1px solid #F2F4F6' }}
+                >
+                  <span className="text-[13px]" style={{ color: '#6B7684' }}>이벤트 별도 신청</span>
+                  <span
+                    className="text-[12px] font-semibold px-2.5 py-1 rounded-full animate-pulse"
+                    style={{ background: '#FFF9C4', color: '#7A6000' }}
+                  >
+                    필요
+                  </span>
+                </div>
+              )
+            }
+            if (!e.api_allowed) {
+              rows.push(
+                <div
+                  key="api"
+                  className="flex items-center justify-between px-5 py-4"
+                  style={{ borderTop: '1px solid #F2F4F6' }}
+                >
+                  <span className="text-[13px]" style={{ color: '#6B7684' }}>API 허용</span>
+                  <span
+                    className="text-[12px] font-semibold px-2.5 py-1 rounded-full animate-pulse"
+                    style={{ background: '#FFE3E3', color: '#C92A2A' }}
+                  >
+                    거래소 거래
+                  </span>
+                </div>
+              )
+            }
+            return rows
+          })()}
         </div>
       </section>
 

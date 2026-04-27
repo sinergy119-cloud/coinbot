@@ -370,12 +370,12 @@ export default function Dashboard({ userId, loginId, isAdmin }: DashboardProps) 
                         <span className="font-bold text-sm text-gray-900">{ev.coin}</span>
                         {ev.require_apply && (
                           <span className="rounded-full bg-amber-100 border border-amber-400 px-2 py-0.5 text-[10px] font-semibold text-amber-800 animate-pulse">
-                            🎟️ 이벤트 신청 필요
+                            🎟️ 이벤트 별도 신청
                           </span>
                         )}
                         {!ev.api_allowed && (
-                          <span className="rounded-full bg-red-100 border border-red-400 px-2 py-0.5 text-[10px] font-semibold text-red-800">
-                            ⛔ [API 거래 미허용] 거래소에서 거래
+                          <span className="rounded-full bg-red-100 border border-red-400 px-2 py-0.5 text-[10px] font-semibold text-red-800 animate-pulse">
+                            ⛔ 거래소 거래
                           </span>
                         )}
                       </div>

@@ -138,22 +138,22 @@ export default function EventsClient({ items }: { items: AnnouncementRow[] }) {
                         예정
                       </span>
                     )}
-                    {/* 신청 필요 */}
+                    {/* 이벤트 별도 신청 */}
                     {e.require_apply && (
                       <span
-                        className="text-[10px] font-semibold px-1.5 py-0.5 rounded"
+                        className="text-[10px] font-semibold px-1.5 py-0.5 rounded animate-pulse"
                         style={{ background: '#FFF9C4', color: '#7A6000' }}
                       >
-                        신청필요
+                        이벤트 별도 신청
                       </span>
                     )}
-                    {/* API 미허용 */}
+                    {/* API 미허용 → 거래소 거래 */}
                     {!e.api_allowed && (
                       <span
-                        className="text-[10px] font-semibold px-1.5 py-0.5 rounded"
-                        style={{ background: '#F2F4F6', color: '#6B7684' }}
+                        className="text-[10px] font-semibold px-1.5 py-0.5 rounded animate-pulse"
+                        style={{ background: '#FFE3E3', color: '#C92A2A' }}
                       >
-                        API미허용
+                        거래소 거래
                       </span>
                     )}
                   </div>

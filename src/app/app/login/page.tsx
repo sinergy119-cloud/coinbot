@@ -426,13 +426,9 @@ export default function LoginPage() {
             onClick={handleKakaoLogin}
             className="relative flex w-full items-center justify-center rounded-xl bg-[#FEE500] py-3.5 text-sm font-semibold text-[#3C1E1E] hover:brightness-95 transition active:scale-[0.98] mb-3"
           >
-            <span className="absolute left-4 flex items-center justify-center">
-              <svg width="22" height="22" viewBox="0 0 40 40">
-                <ellipse cx="20" cy="19" rx="17" ry="15" fill="#3C1E1E"/>
-                <circle cx="13" cy="19" r="2.5" fill="#FEE500"/>
-                <circle cx="20" cy="19" r="2.5" fill="#FEE500"/>
-                <circle cx="27" cy="19" r="2.5" fill="#FEE500"/>
-                <polygon points="14,26 17,32 23,26" fill="#FEE500"/>
+            <span className="absolute left-3 flex h-8 w-8 items-center justify-center rounded-lg bg-[#3C1E1E]">
+              <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="#FEE500" d="M12 3C6.48 3 2 6.6 2 10.7c0 2.62 1.74 4.92 4.34 6.22l-.92 3.39c-.08.3.25.54.51.36l4.05-2.69c.66.09 1.34.13 2.02.13 5.52 0 10-3.6 10-7.7S17.52 3 12 3z"/>
               </svg>
             </span>
             카카오로 시작하기
@@ -449,9 +445,9 @@ export default function LoginPage() {
             onClick={handleNaverLogin}
             className="relative flex w-full items-center justify-center rounded-xl bg-[#03C75A] py-3.5 text-sm font-semibold text-white hover:brightness-95 transition active:scale-[0.98] mb-3"
           >
-            <span className="absolute left-4 flex items-center justify-center">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <path d="M13.547 12.836L10.204 8H8v8h2.453V12.164L13.796 17H16V9h-2.453z" fill="white"/>
+            <span className="absolute left-3 flex h-8 w-8 items-center justify-center rounded-lg bg-[#02A84B]">
+              <svg width="18" height="18" viewBox="0 0 16 16" aria-hidden="true">
+                <path fill="white" d="M10.4 8.6 5.6 2H2v12h3.6V7.4L10.4 14H14V2h-3.6v6.6z"/>
               </svg>
             </span>
             네이버로 시작하기
