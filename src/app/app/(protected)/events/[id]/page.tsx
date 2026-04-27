@@ -96,12 +96,11 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
               rows.push(
                 <div
                   key="apply"
-                  className="flex items-center justify-between px-5 py-4"
+                  className="flex items-center justify-center px-5 py-4"
                   style={{ borderTop: '1px solid #F2F4F6' }}
                 >
-                  <span className="text-[13px] shrink-0 mr-3" style={{ color: '#6B7684' }}>이벤트 별도 신청</span>
                   <span
-                    className="text-[12px] font-semibold px-2.5 py-1 rounded-full animate-pulse text-right break-keep"
+                    className="text-[12px] font-semibold px-3 py-1.5 rounded-full animate-pulse text-center break-keep"
                     style={{ background: '#FFF9C4', color: '#7A6000' }}
                   >
                     이벤트 별도 신청 필요해요!
@@ -113,12 +112,11 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
               rows.push(
                 <div
                   key="api"
-                  className="flex items-center justify-between px-5 py-4"
+                  className="flex items-center justify-center px-5 py-4"
                   style={{ borderTop: '1px solid #F2F4F6' }}
                 >
-                  <span className="text-[13px] shrink-0 mr-3" style={{ color: '#6B7684' }}>API 허용</span>
                   <span
-                    className="text-[12px] font-semibold px-2.5 py-1 rounded-full animate-pulse text-right break-keep"
+                    className="text-[12px] font-semibold px-3 py-1.5 rounded-full animate-pulse text-center break-keep"
                     style={{ background: '#FFE3E3', color: '#C92A2A' }}
                   >
                     거래소 앱에서 직접 거래 해야해요!

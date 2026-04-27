@@ -12,6 +12,8 @@ interface EventItem {
   amount: string | null
   start_date: string
   end_date: string
+  require_apply: boolean
+  api_allowed: boolean
 }
 
 interface ScheduleItem {
@@ -72,7 +74,7 @@ export default async function AppHomePage() {
   ] = await Promise.all([
     // 미리보기용 최근 3개
     db.from('announcements')
-      .select('id, exchange, coin, amount, start_date, end_date')
+      .select('id, exchange, coin, amount, start_date, end_date, require_apply, api_allowed')
       .gte('end_date', today)
       .order('created_at', { ascending: false })
       .limit(3),
@@ -217,29 +219,51 @@ export default async function AppHomePage() {
                 <Link
                   key={e.id}
                   href={`/app/events/${e.id}`}
-                  className="flex items-center justify-between px-4 py-3.5 active:bg-gray-50 transition-colors break-keep"
+                  className="block px-4 py-3.5 active:bg-gray-50 transition-colors break-keep"
                   style={idx < arr.length - 1 ? { borderBottom: '1px solid #F2F4F6' } : undefined}
                 >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span
-                      className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full inline-flex items-center gap-1"
-                      style={{ background: badge.bg, color: badge.text }}
-                    >
-                      <ExchangeIcon exchange={e.exchange} size={13} />
-                      {label}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span
+                        className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full inline-flex items-center gap-1"
+                        style={{ background: badge.bg, color: badge.text }}
+                      >
+                        <ExchangeIcon exchange={e.exchange} size={13} />
+                        {label}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-[14px] font-semibold truncate" style={{ color: '#191F28' }}>
+                          {e.coin}
+                        </p>
+                        {e.amount && (
+                          <p className="text-[11px] mt-0.5" style={{ color: '#6B7684' }}>{e.amount}</p>
+                        )}
+                      </div>
+                    </div>
+                    <span className="text-[11px] shrink-0 ml-3" style={{ color: '#B0B8C1' }}>
+                      ~ {e.end_date.slice(5).replace('-', '/')}
                     </span>
-                    <div className="min-w-0">
-                      <p className="text-[14px] font-semibold truncate" style={{ color: '#191F28' }}>
-                        {e.coin}
-                      </p>
-                      {e.amount && (
-                        <p className="text-[11px] mt-0.5" style={{ color: '#6B7684' }}>{e.amount}</p>
+                  </div>
+                  {(e.require_apply || !e.api_allowed) && (
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {e.require_apply && (
+                        <span
+                          className="text-[10px] font-semibold px-2 py-0.5 rounded-full animate-pulse"
+                          style={{ background: '#FFF9C4', color: '#7A6000' }}
+                        >
+                          🎟️ 이벤트 별도 신청
+                        </span>
+                      )}
+                      {!e.api_allowed && (
+                        <span
+                          className="text-[10px] font-semibold px-2 py-0.5 rounded-full animate-pulse"
+                          style={{ background: '#FFE3E3', color: '#C92A2A' }}
+                        >
+                          ⛔ 거래소 직접 거래
+                        </span>
                       )}
                     </div>
-                  </div>
-                  <span className="text-[11px] shrink-0 ml-3" style={{ color: '#B0B8C1' }}>
-                    ~ {e.end_date.slice(5).replace('-', '/')}
-                  </span>
+                  )}
                 </Link>
               )
             })}
