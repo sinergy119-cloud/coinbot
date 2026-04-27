@@ -524,16 +524,6 @@ export default function LoginPage() {
         </a>
 
 
-        {/* ── 관리자 로그인 ── */}
-        <div className="text-center">
-          <a
-            href="/login"
-            className="text-xs text-gray-400 hover:text-gray-600 transition underline-offset-2 hover:underline"
-          >
-            관리자 로그인
-          </a>
-        </div>
-
         {/* ── 푸터 ── */}
         <div className="flex items-center justify-between text-xs text-gray-500 pb-4">
           <button type="button" onClick={() => setActiveModal('privacy')} className="hover:text-gray-700 hover:underline">
