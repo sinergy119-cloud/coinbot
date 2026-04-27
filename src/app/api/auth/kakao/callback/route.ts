@@ -78,6 +78,10 @@ export async function GET(req: NextRequest) {
       const errDest = existingUser.is_admin && !fromApp ? '/login' : '/app/login'
       return Response.redirect(`${origin}${errDest}?error=suspended`)
     }
+    // /login(관리자 진입점)에서 시작한 OAuth는 is_admin=true 계정만 통과
+    if (!fromApp && !existingUser.is_admin) {
+      return Response.redirect(`${origin}/login?error=not_admin`)
+    }
     const profileUpdate: Record<string, string> = { last_login_at: new Date().toISOString() }
     if (email) profileUpdate.email = email
     if (nickname) profileUpdate.name = nickname
@@ -105,6 +109,10 @@ export async function GET(req: NextRequest) {
         const errDest = emailUser.is_admin && !fromApp ? '/login' : '/app/login'
         return Response.redirect(`${origin}${errDest}?error=suspended`)
       }
+      // /login(관리자 진입점)에서 시작한 OAuth는 is_admin=true 계정만 통과
+      if (!fromApp && !emailUser.is_admin) {
+        return Response.redirect(`${origin}/login?error=not_admin`)
+      }
       await db.from('users').update({ last_login_at: new Date().toISOString() }).eq('id', emailUser.id)
       try {
         const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown'
@@ -116,7 +124,12 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // 5) 신규 사용자 → 약관 동의 페이지로 이동
+  // 5) 신규 사용자 처리
+  // /login(관리자 진입점)에서 시작한 신규 가입은 차단 — 관리자는 사전에 DB에 만들어진 계정만 사용
+  if (!fromApp) {
+    return Response.redirect(`${origin}/login?error=not_admin`)
+  }
+  // /app/login에서 시작한 신규 사용자 → 약관 동의 페이지로 이동
   try {
     const res = NextResponse.redirect(`${origin}/agree`)
     return await setPendingSignupOnResponse(res, { provider: 'kakao', userId: kakaoUserId, name: nickname, email })
