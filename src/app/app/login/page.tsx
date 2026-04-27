@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { X } from 'lucide-react'
 import { SignupGuideModal, ApiKeyGuideModal } from '@/components/GuideModals'
+import IosInstallBanner from '@/app/app/_components/IosInstallBanner'
 
 // ─── 섹션 아이콘/색상 매핑 ──────────────────────────
 const SECTION_STYLES: Record<string, { icon: string; color: string }> = {
@@ -415,6 +416,9 @@ export default function LoginPage() {
         {oauthError && (
           <p className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600 text-center break-keep">{oauthError}</p>
         )}
+
+        {/* ── iPhone Safari 사용자용 PWA 설치 안내 ── */}
+        <IosInstallBanner />
 
         {/* ── 간편 로그인 (메인) ── */}
         <div className="rounded-2xl bg-white p-5 shadow-sm">
