@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { X } from 'lucide-react'
 import { SignupGuideModal, ApiKeyGuideModal } from '@/components/GuideModals'
 import IosInstallBanner from '@/app/app/_components/IosInstallBanner'
+import { setOAuthStateCookieOnClient } from '@/lib/oauthState'
 
 // ─── 섹션 아이콘/색상 매핑 ──────────────────────────
 const SECTION_STYLES: Record<string, { icon: string; color: string }> = {
@@ -347,6 +348,7 @@ export default function LoginPage() {
           google_user: '구글 사용자 정보를 가져올 수 없습니다.',
           google_config: '구글 로그인 설정 오류입니다.',
           google_signup: '가입 처리 중 오류가 발생했습니다.',
+          oauth_state_mismatch: '로그인 요청이 만료되었거나 변조되었습니다. 다시 시도해주세요.',
         }
         setOauthError(errorMessages[err] ?? `로그인 오류: ${err}`)
         window.history.replaceState({}, '', '/app/login')
@@ -370,7 +372,7 @@ export default function LoginPage() {
     localStorage.setItem('lastLoginProvider', 'kakao')
     const redirectUri = `${window.location.origin}/api/auth/kakao/callback`
     const state = 'app_' + Math.random().toString(36).slice(2)
-    sessionStorage.setItem('oauth_state', state)
+    setOAuthStateCookieOnClient(state)
     window.location.href = `https://kauth.kakao.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&state=${state}`
   }
 
@@ -379,6 +381,7 @@ export default function LoginPage() {
     if (!clientId) { setOauthError('네이버 로그인 설정이 누락되었습니다.'); return }
     localStorage.setItem('lastLoginProvider', 'naver')
     const state = 'app_' + Math.random().toString(36).slice(2)
+    setOAuthStateCookieOnClient(state)
     const redirectUri = `${window.location.origin}/api/auth/naver/callback`
     window.location.href = `https://nid.naver.com/oauth2.0/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&state=${state}`
   }
@@ -389,6 +392,7 @@ export default function LoginPage() {
     localStorage.setItem('lastLoginProvider', 'google')
     const redirectUri = `${window.location.origin}/api/auth/google/callback`
     const state = 'app_' + Math.random().toString(36).slice(2)
+    setOAuthStateCookieOnClient(state)
     window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=openid email profile&state=${state}`
   }
 

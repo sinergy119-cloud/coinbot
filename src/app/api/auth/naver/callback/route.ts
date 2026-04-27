@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase'
 import { createSession } from '@/lib/session'
 import { setPendingSignupOnResponse } from '@/lib/pendingSignup'
+import { validateOAuthState } from '@/lib/oauthState'
 
 function getOrigin(req: NextRequest) {
   const host = req.headers.get('x-forwarded-host') ?? req.headers.get('host') ?? req.nextUrl.host
@@ -20,6 +21,14 @@ export async function GET(req: NextRequest) {
 
   if (error || !code || !state) {
     return Response.redirect(`${origin}/login?error=naver_failed`)
+  }
+
+  // CSRF state 검증
+  const stateCheck = validateOAuthState(req)
+  if (!stateCheck.ok) {
+    const fromAppGuess = state.startsWith('app_')
+    const errDest = fromAppGuess ? '/app/login' : '/login'
+    return Response.redirect(`${origin}${errDest}?error=oauth_state_mismatch`)
   }
 
   const clientId = process.env.NAVER_CLIENT_ID

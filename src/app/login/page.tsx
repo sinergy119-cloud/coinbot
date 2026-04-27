@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { X } from 'lucide-react'
 import ExchangeApiGuide from '@/components/ExchangeApiGuide'
+import { setOAuthStateCookieOnClient } from '@/lib/oauthState'
 
 // ─── 섹션 아이콘/색상 매핑 ──────────────────────────
 const SECTION_STYLES: Record<string, { icon: string; color: string }> = {
@@ -328,6 +329,7 @@ export default function LoginPage() {
           kakao_disabled: '카카오 로그인은 현재 준비 중입니다.',
           suspended: '이용이 정지된 계정입니다. 관리자에게 문의하세요.',
           not_admin: '관리자 계정이 아닙니다. 일반 사용자는 앱을 이용해주세요.',
+          oauth_state_mismatch: '로그인 요청이 만료되었거나 변조되었습니다. 다시 시도해주세요.',
         }
         setOauthError(errorMessages[err] ?? `로그인 오류: ${err}`)
         window.history.replaceState({}, '', '/login')
@@ -448,7 +450,7 @@ export default function LoginPage() {
                 const clientId = process.env.NEXT_PUBLIC_KAKAO_REST_API_KEY
                 const redirectUri = `${window.location.origin}/api/auth/kakao/callback`
                 const state = Math.random().toString(36).slice(2)
-                sessionStorage.setItem('oauth_state', state)
+                setOAuthStateCookieOnClient(state)
                 window.location.href = `https://kauth.kakao.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&state=${state}`
               }}
               className="relative flex w-full items-center justify-center rounded-xl bg-[#FEE500] py-3 text-sm font-semibold text-[#3C1E1E] hover:brightness-95 transition"

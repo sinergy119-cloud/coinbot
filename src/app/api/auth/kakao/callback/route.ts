@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase'
 import { createSession } from '@/lib/session'
 import { setPendingSignupOnResponse } from '@/lib/pendingSignup'
+import { validateOAuthState } from '@/lib/oauthState'
 
 // 프록시 뒤에서 origin이 localhost로 잡히므로 실제 origin 복원
 function getOrigin(req: NextRequest) {
@@ -19,6 +20,14 @@ export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get('code')
   if (!code) {
     return Response.redirect(`${origin}/app/login?error=kakao_failed`)
+  }
+
+  // CSRF state 검증 — cookie와 URL state 비교
+  const stateCheck = validateOAuthState(req)
+  if (!stateCheck.ok) {
+    const fromAppGuess = (req.nextUrl.searchParams.get('state') ?? '').startsWith('app_')
+    const errDest = fromAppGuess ? '/app/login' : '/login'
+    return Response.redirect(`${origin}${errDest}?error=oauth_state_mismatch`)
   }
 
   const clientId = process.env.KAKAO_REST_API_KEY
