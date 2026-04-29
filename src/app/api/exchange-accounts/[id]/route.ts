@@ -23,19 +23,26 @@ export async function DELETE(_req: NextRequest, { params }: { params: Params }) 
     return Response.json({ error: '계정을 찾을 수 없습니다.' }, { status: 404 })
   }
 
-  // 2) trade_jobs에 사용 중인지 확인
+  // 2) trade_jobs에 사용 중인지 확인 — 진행 중(active/paused)만 차단, 완료된 이력은 통과
   const { data: usedJobs } = await db
     .from('trade_jobs')
-    .select('id')
+    .select('id, exchange, coin, trade_type, status, schedule_from, schedule_to, schedule_time')
     .eq('user_id', session.userId)
     .contains('account_ids', [id])
-    .limit(1)
+    .in('status', ['active', 'paused'])
 
   if (usedJobs && usedJobs.length > 0) {
-    return Response.json(
-      { error: '이 계정은 스케줄에 사용 중입니다. 스케줄을 먼저 삭제해주세요.' },
-      { status: 400 },
-    )
+    const first = usedJobs[0]
+    const detail =
+      `진행 중인 스케줄에 사용되어 삭제할 수 없습니다.\n\n` +
+      `차단된 스케줄${usedJobs.length > 1 ? ` (${usedJobs.length}건 중 1건 표시)` : ''}\n` +
+      `• 거래소/코인: ${first.exchange} / ${first.coin}\n` +
+      `• 거래 방식: ${first.trade_type}\n` +
+      `• 상태: ${first.status}\n` +
+      `• 기간: ${first.schedule_from} ~ ${first.schedule_to}\n` +
+      `• 실행 시각: ${first.schedule_time}\n\n` +
+      `해당 스케줄을 먼저 삭제하세요.`
+    return Response.json({ error: detail, blockingJobs: usedJobs }, { status: 400 })
   }
 
   // 3) 삭제
