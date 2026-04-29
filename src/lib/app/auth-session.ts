@@ -107,7 +107,22 @@ export function installVisibilityListener(): void {
     }
   })
 
-  // 일부 환경에서 visibilitychange 누락 대응 (탭 닫힘/앱 종료)
-  window.addEventListener('pagehide', () => markBackgrounded())
-  window.addEventListener('pageshow', () => markForegrounded())
+  // BFCache(뒤로가기 캐시·앱 종료 후 복원) 처리
+  // - pagehide persisted=true: 페이지가 BFCache로 들어감 → 세션 폐기 (다음 복원 시 새 인증)
+  // - pageshow persisted=true: BFCache에서 복원됨 → 세션 폐기 (사용자가 "앱 다시 켰다"고 느낌)
+  window.addEventListener('pagehide', (e) => {
+    if ((e as PageTransitionEvent).persisted) {
+      clearSession()
+    } else {
+      markBackgrounded()
+    }
+  })
+  window.addEventListener('pageshow', (e) => {
+    if ((e as PageTransitionEvent).persisted) {
+      // BFCache 복원 = 사용자 입장에서 '앱 새로 켬' → 강제 재인증
+      clearSession()
+    } else {
+      markForegrounded()
+    }
+  })
 }
