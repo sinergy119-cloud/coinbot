@@ -360,10 +360,19 @@ function AssetsView({ selectedEx, visibleAccounts }: { selectedEx: SelectedEx; v
 }
 
 // ── 거래내역 ──────────────────────────────────────────────────
-interface TradeItem {
-  id: string; exchange: string; coin: string; tradeType: string
-  amountKrw: number; accountName: string | null; success: boolean
-  reason: string | null; balance: number | null; executedAt: string
+// 거래소 API 직접 호출 (체결 완료 주문) — Phase 1
+//   /api/app/proxy/trade-history 에 IndexedDB 키를 보내 거래소별 체결 내역 조회
+
+interface ExchangeHistoryItem {
+  type: 'order_filled'
+  exchange: string
+  accountLabel: string | null
+  id: string
+  datetime: string
+  coin: string
+  side: 'buy' | 'sell'
+  quantity: number
+  total: number
 }
 
 type QuickFilter = '오늘' | '7일' | '30일'
@@ -385,13 +394,14 @@ function formatKst(iso: string): string {
 }
 
 function HistoryView({ selectedEx, visibleAccounts }: { selectedEx: SelectedEx; visibleAccounts: AccountMeta[] }) {
-  const [items, setItems] = useState<TradeItem[]>([])
-  const [loading, setLoading] = useState(false)
+  const [phase, setPhase] = useState<'loading' | 'no_keys' | 'fetching' | 'result' | 'error'>('loading')
+  const [items, setItems] = useState<ExchangeHistoryItem[]>([])
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [perAccountErrors, setPerAccountErrors] = useState<Array<{ exchange: string | null; label: string | null; error: string }>>([])
   const [selectedAccId, setSelectedAccId] = useState<string>('ALL')
   const [quickFilter, setQuickFilter] = useState<QuickFilter | null>(null)
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
-  const [total, setTotal] = useState(0)
 
   // visibleAccounts 1개면 자동 선택
   useEffect(() => {
@@ -399,24 +409,52 @@ function HistoryView({ selectedEx, visibleAccounts }: { selectedEx: SelectedEx; 
     else if (visibleAccounts.length === 0) setSelectedAccId('ALL')
   }, [visibleAccounts])
 
-  // 초기 로드 (필터 없이 최근 100건)
-  useEffect(() => { fetchHistory() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  // 초기 로드
+  useEffect(() => {
+    ;(async () => {
+      const keys = await listKeys()
+      if (keys.length === 0) { setPhase('no_keys'); return }
+      const decrypted = await decryptAllByDeviceKey()
+      if (decrypted.length === 0) { setPhase('no_keys'); return }
+      await fetchHistory(decrypted)
+    })()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-  async function fetchHistory(from?: string, to?: string, acctName?: string) {
-    setLoading(true)
+  async function fetchHistory(decrypted: { exchange: string; accessKey: string; secretKey: string; label: string }[]) {
+    setPhase('fetching')
+    setErrorMsg(null)
     try {
-      const sp = new URLSearchParams({ limit: '500' })
-      if (from)     sp.set('from', from)
-      if (to)       sp.set('to', to)
-      if (acctName) sp.set('accountName', acctName)
-      const res = await fetch(`/api/app/trade-history?${sp}`)
+      const res = await fetch('/api/app/proxy/trade-history', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          accounts: decrypted.map((d) => ({ exchange: d.exchange, accessKey: d.accessKey, secretKey: d.secretKey, label: d.label })),
+          limit: 100,
+        }),
+      })
       const json = await res.json()
-      if (json.ok) { setItems(json.data.items); setTotal(json.data.total ?? 0) }
-    } finally {
-      setLoading(false)
+      if (json.ok) {
+        setItems(json.data.items)
+        const errs = (json.data.perAccount ?? []).filter((p: { ok: boolean }) => !p.ok)
+        setPerAccountErrors(errs.map((p: { exchange: string | null; label: string | null; error: string }) => ({ exchange: p.exchange, label: p.label, error: p.error })))
+        setPhase('result')
+      } else {
+        setErrorMsg(json.error ?? '조회 실패')
+        setPhase('error')
+      }
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : '오류')
+      setPhase('error')
     }
   }
 
+  async function reload() {
+    const decrypted = await decryptAllByDeviceKey()
+    if (decrypted.length > 0) await fetchHistory(decrypted)
+  }
+
+  // 빠른 필터 — 클라이언트 측에서 datetime으로 필터 (서버는 거래소별로 limit만 적용)
   function handleQuickFilter(f: QuickFilter) {
     setQuickFilter(f)
     const today = kstToday()
@@ -425,52 +463,58 @@ function HistoryView({ selectedEx, visibleAccounts }: { selectedEx: SelectedEx; 
     if (f === '30일') from = kstDaysAgo(30)
     setDateFrom(from)
     setDateTo(today)
-    const accLabel = getSelectedAccLabel()
-    fetchHistory(from, today, accLabel)
   }
 
   function handleDateChange(from: string, to: string) {
     setQuickFilter(null)
     setDateFrom(from)
     setDateTo(to)
-    if (from && to) {
-      const accLabel = getSelectedAccLabel()
-      fetchHistory(from, to, accLabel)
-    }
   }
 
   function clearFilter() {
     setQuickFilter(null)
     setDateFrom('')
     setDateTo('')
-    fetchHistory()
   }
 
-  function getSelectedAccLabel(): string | undefined {
-    if (selectedAccId === 'ALL') return undefined
-    return visibleAccounts.find((a) => a.id === selectedAccId)?.label
-  }
+  // 클라이언트 사이드 필터: exchange + 계정 + 날짜
+  const filtered = items.filter((t) => {
+    if (selectedEx !== 'ALL' && t.exchange !== selectedEx) return false
+    if (selectedAccId !== 'ALL') {
+      const selAcc = visibleAccounts.find((a) => a.id === selectedAccId)
+      if (selAcc && t.accountLabel !== selAcc.label) return false
+    }
+    if (dateFrom || dateTo) {
+      // datetime은 ISO. KST 날짜로 비교
+      const kst = new Date(new Date(t.datetime).toLocaleString('en-US', { timeZone: 'Asia/Seoul' }))
+      const kstYmd = `${kst.getFullYear()}-${String(kst.getMonth() + 1).padStart(2, '0')}-${String(kst.getDate()).padStart(2, '0')}`
+      if (dateFrom && kstYmd < dateFrom) return false
+      if (dateTo && kstYmd > dateTo) return false
+    }
+    return true
+  })
 
-  function handleAccChange(id: string) {
-    setSelectedAccId(id)
-    const label = id === 'ALL' ? undefined : visibleAccounts.find((a) => a.id === id)?.label
-    if (dateFrom && dateTo) fetchHistory(dateFrom, dateTo, label)
-    else fetchHistory(undefined, undefined, label)
+  if (phase === 'no_keys') {
+    return (
+      <div className="px-4 pt-6">
+        <div className="rounded-2xl p-8 flex flex-col items-center text-center break-keep"
+          style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+          <p className="text-[32px] mb-3">🔑</p>
+          <p className="text-[15px] font-semibold" style={{ color: '#191F28' }}>등록된 API Key가 없습니다.</p>
+          <p className="text-[12px] mt-1" style={{ color: '#6B7684' }}>거래소 API Key를 등록하시면 거래소의 체결 내역을 보실 수 있어요.</p>
+          <a href="/app/profile/api-keys" className="inline-block mt-4 px-5 py-3 rounded-2xl text-[14px] font-semibold" style={{ background: '#0064FF', color: '#fff' }}>API Key 등록하기</a>
+        </div>
+      </div>
+    )
   }
-
-  // 클라이언트 사이드 exchange 필터
-  const filtered = selectedEx === 'ALL' ? items : items.filter((t) => t.exchange === selectedEx)
-  const successCount = filtered.filter((t) => t.success).length
-  const failCount = filtered.filter((t) => !t.success).length
 
   return (
     <>
       {/* 계정 칩 (2개 이상일 때만) */}
-      <AccountChips accounts={visibleAccounts} selected={selectedAccId} onChange={handleAccChange} />
+      <AccountChips accounts={visibleAccounts} selected={selectedAccId} onChange={setSelectedAccId} />
 
       {/* 날짜 필터 */}
       <div className="px-4 py-3" style={{ background: '#fff', borderBottom: '1px solid #F2F4F6' }}>
-        {/* 빠른 선택 버튼 */}
         <div className="flex items-center gap-2 mb-2.5 flex-wrap">
           {(['오늘', '7일', '30일'] as QuickFilter[]).map((f) => (
             <button key={f} type="button" onClick={() => handleQuickFilter(f)}
@@ -483,10 +527,9 @@ function HistoryView({ selectedEx, visibleAccounts }: { selectedEx: SelectedEx; 
             </button>
           ))}
           <span className="text-[11px] break-keep" style={{ color: '#B0B8C1' }}>
-            * 조회구간은 30일까지 설정 가능합니다.
+            * 거래소별 최근 100건 기준
           </span>
         </div>
-        {/* 날짜 직접 입력 */}
         <div className="flex items-center gap-2">
           <input type="date" value={dateFrom}
             onChange={(e) => handleDateChange(e.target.value, dateTo)}
@@ -510,68 +553,86 @@ function HistoryView({ selectedEx, visibleAccounts }: { selectedEx: SelectedEx; 
       </div>
 
       <div className="flex flex-col gap-4 p-4 pb-6">
-        {/* 요약 */}
-        {filtered.length > 0 && (
-          <div className="flex items-center gap-2 px-1">
-            <span className="text-[13px] font-semibold" style={{ color: '#191F28' }}>총 {filtered.length}건</span>
-            <span className="text-[12px] font-semibold" style={{ color: '#00C853' }}>성공 {successCount}</span>
-            <span className="text-[12px] font-semibold" style={{ color: '#FF4D4F' }}>실패 {failCount}</span>
+        {phase === 'fetching' && (
+          <div className="flex flex-col items-center justify-center gap-3 py-8">
+            <div className="w-8 h-8 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
+            <p className="text-[13px] break-keep" style={{ color: '#6B7684' }}>거래소별 체결 내역 조회 중...</p>
           </div>
         )}
 
-        {loading ? (
-          <div className="rounded-2xl p-6 text-center text-[14px] break-keep"
-            style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', color: '#6B7684' }}>
-            불러오는 중...
+        {phase === 'error' && errorMsg && (
+          <div className="rounded-2xl p-4 text-center text-[13px] break-keep"
+            style={{ background: '#FFF0F0', color: '#FF4D4F' }}>
+            {errorMsg}
+            <button type="button" onClick={reload}
+              className="ml-2 px-3 py-1 rounded-lg text-[12px] font-semibold"
+              style={{ background: '#fff', color: '#FF4D4F' }}>
+              재시도
+            </button>
           </div>
-        ) : filtered.length === 0 ? (
-          <div className="rounded-2xl p-8 text-center text-[14px] break-keep"
-            style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', color: '#6B7684' }}>
-            <p className="text-[28px] mb-3">📜</p>
-            <p>{dateFrom || dateTo ? '선택한 기간에 거래 내역이 없습니다.' : '아직 거래 내역이 없어요.'}</p>
-          </div>
-        ) : (
-          <div className="rounded-2xl overflow-hidden" style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-            {filtered.map((t, idx, arr) => {
-              const meta = EXCHANGE_META[t.exchange] ?? { short: t.exchange, color: '#6B7684', brandBg: '#6B7684', brandFg: '#fff', initial: '?' }
-              return (
-                <div key={t.id}
-                  className="flex items-start justify-between px-4 py-3 break-keep"
-                  style={idx < arr.length - 1 ? { borderBottom: '1px solid #F2F4F6' } : undefined}>
-                  <div className="flex items-start gap-2.5 min-w-0 flex-1">
-                    <ExchangeLogo exchange={t.exchange} size={36} />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5 mb-0.5">
-                        <span className="text-[11px] font-bold" style={{ color: meta.color }}>{meta.short}</span>
-                        {t.accountName && <span className="text-[11px]" style={{ color: '#B0B8C1' }}>{t.accountName}</span>}
+        )}
+
+        {phase === 'result' && (
+          <>
+            {/* 일부 계정 조회 실패 안내 */}
+            {perAccountErrors.length > 0 && (
+              <div className="rounded-xl px-3 py-2 text-[11px] break-keep"
+                style={{ background: '#FFF7E6', color: '#946200', border: '1px solid #FFD89C' }}>
+                ⚠️ 일부 계정 조회 실패: {perAccountErrors.map((e) => `${e.exchange ?? ''}${e.label ? ' '+e.label : ''}`).filter(Boolean).join(', ')}
+              </div>
+            )}
+
+            {/* 요약 + 새로고침 */}
+            <div className="flex items-center justify-between gap-2 px-1">
+              <span className="text-[13px] font-semibold" style={{ color: '#191F28' }}>총 {filtered.length}건</span>
+              <button type="button" onClick={reload}
+                className="text-[12px] font-semibold px-3 py-1 rounded-lg"
+                style={{ background: '#fff', color: '#0064FF', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+                🔄 새로고침
+              </button>
+            </div>
+
+            {filtered.length === 0 ? (
+              <div className="rounded-2xl p-8 text-center text-[14px] break-keep"
+                style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', color: '#6B7684' }}>
+                <p className="text-[28px] mb-3">📜</p>
+                <p>{dateFrom || dateTo ? '선택한 기간에 거래 내역이 없습니다.' : '체결된 거래가 없어요.'}</p>
+              </div>
+            ) : (
+              <div className="rounded-2xl overflow-hidden" style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                {filtered.map((t, idx, arr) => {
+                  const meta = EXCHANGE_META[t.exchange] ?? { short: t.exchange, color: '#6B7684', brandBg: '#6B7684', brandFg: '#fff', initial: '?' }
+                  const sideLabel = t.side === 'buy' ? '매수' : '매도'
+                  const sideColor = t.side === 'buy' ? '#FF4D4F' : '#0064FF'
+                  return (
+                    <div key={`${t.exchange}-${t.id}`}
+                      className="flex items-start justify-between px-4 py-3 break-keep"
+                      style={idx < arr.length - 1 ? { borderBottom: '1px solid #F2F4F6' } : undefined}>
+                      <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                        <ExchangeLogo exchange={t.exchange} size={36} />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 mb-0.5">
+                            <span className="text-[11px] font-bold" style={{ color: meta.color }}>{meta.short}</span>
+                            {t.accountLabel && <span className="text-[11px]" style={{ color: '#B0B8C1' }}>{t.accountLabel}</span>}
+                          </div>
+                          <p className="text-[13px] font-bold" style={{ color: '#191F28' }}>
+                            {t.coin}
+                            <span className="ml-1.5 text-[11px] font-semibold" style={{ color: sideColor }}>
+                              {sideLabel}
+                            </span>
+                          </p>
+                          <p className="text-[11px] mt-0.5" style={{ color: '#6B7684' }}>
+                            {fmtAmount(t.quantity)} {t.coin} · {Math.floor(t.total).toLocaleString()}원
+                          </p>
+                          <p className="text-[10px] mt-0.5" style={{ color: '#B0B8C1' }}>{formatKst(t.datetime)}</p>
+                        </div>
                       </div>
-                      <p className="text-[13px] font-bold" style={{ color: '#191F28' }}>
-                        {t.coin}
-                        <span className="ml-1.5 text-[11px] font-semibold" style={{ color: '#6B7684' }}>
-                          {TRADE_TYPE_LABELS[t.tradeType as TradeType] ?? t.tradeType}
-                        </span>
-                      </p>
-                      {t.tradeType !== 'SELL' && t.amountKrw > 0 && (
-                        <p className="text-[11px] mt-0.5" style={{ color: '#6B7684' }}>{t.amountKrw.toLocaleString()}원</p>
-                      )}
-                      {!t.success && t.reason && (
-                        <p className="text-[11px] mt-0.5 break-keep" style={{ color: '#FF4D4F' }}>{t.reason}</p>
-                      )}
-                      <p className="text-[10px] mt-0.5" style={{ color: '#B0B8C1' }}>{formatKst(t.executedAt)}</p>
                     </div>
-                  </div>
-                  <div className="text-right shrink-0 ml-2">
-                    <span className="text-[13px] font-bold" style={{ color: t.success ? '#00C853' : '#FF4D4F' }}>
-                      {t.success ? '성공' : '실패'}
-                    </span>
-                    {t.success && t.balance != null && (
-                      <p className="text-[10px] mt-0.5" style={{ color: '#B0B8C1' }}>{Math.floor(t.balance).toLocaleString()}</p>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+                  )
+                })}
+              </div>
+            )}
+          </>
         )}
       </div>
     </>
