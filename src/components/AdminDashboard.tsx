@@ -185,6 +185,28 @@ export default function AdminDashboard({ loginId, embedded }: { loginId: string;
     fetchAll()
   }
 
+  // 위임받은 계정 섹션의 🗑 — 키 삭제가 아니라 위임만 해제
+  // accountId가 어떤 user의 것인지 찾아서 그 user의 delegated=false 설정
+  async function handleRevokeDelegation(accountId: string, userName: string, accName: string) {
+    const acc = accounts.find((a) => a.id === accountId)
+    if (!acc) return
+    if (!confirm(
+      `'${userName}'님의 관리자 위임을 해제하시겠습니까?\n\n` +
+      `• 관리자가 더 이상 이 분의 계정으로 거래할 수 없습니다\n` +
+      `• ${userName}님의 API Key('${accName}' 등)는 그대로 유지됩니다\n` +
+      `• ${userName}님은 본인 자동매수를 계속 사용할 수 있습니다\n\n` +
+      `해제 알림이 ${userName}님께 발송됩니다.`
+    )) return
+    const res = await fetch('/api/admin/delegate', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'reject', userId: acc.user_id }),
+    })
+    const data = await res.json()
+    if (!res.ok) { alert(data.error || '위임 해제 실패'); return }
+    fetchAll()
+  }
+
   const content = (
     <div className="space-y-4">
 
@@ -275,9 +297,12 @@ export default function AdminDashboard({ loginId, embedded }: { loginId: string;
                   </div>
                   <div className="space-y-2">
                     {exchanges.map(({ ex, accounts: exAccs }) => (
-                      <ExchangeAccordion key={ex} ex={ex} accounts={exAccs} onDelete={handleDelete} getUserName={getUserName} />
+                      <ExchangeAccordion key={ex} ex={ex} accounts={exAccs} onDelete={handleRevokeDelegation} getUserName={getUserName} />
                     ))}
                   </div>
+                  <p className="mt-1.5 text-[11px] text-purple-500 break-keep">
+                    ※ 휴지통 클릭 시 <b>위임만 해제</b>되며, 키는 그대로 유지됩니다.
+                  </p>
                 </div>
               ))}
             </div>
