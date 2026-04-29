@@ -444,9 +444,15 @@ function KeysList({ pin: _pin, keys, bioAvailable, bioRegistered, onBioRegistere
   void _pin
   const [bioSubmitting, setBioSubmitting] = useState(false)
 
-  async function handleDelete(id: string, label: string) {
+  async function handleDelete(id: string, label: string, exchange: string) {
     if (!confirm(`"${label}" 키를 삭제하시겠습니까?`)) return
     await deleteKey(id)
+    // 보안 알림 발송 (다른 기기 포함 본인 모든 디바이스로 system 카테고리 푸시)
+    fetch('/api/app/notify/key-event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'delete', exchange, label }),
+    }).catch(() => { /* 알림 실패는 삭제 성공에 영향 없음 */ })
     await onChange()
   }
 
@@ -562,7 +568,7 @@ function KeysList({ pin: _pin, keys, bioAvailable, bioRegistered, onBioRegistere
                   </div>
                   <button
                     type="button"
-                    onClick={() => handleDelete(k.id, k.label)}
+                    onClick={() => handleDelete(k.id, k.label, k.exchange)}
                     className="shrink-0 ml-3 text-[12px] font-semibold px-3 py-1.5 rounded-lg"
                     style={{ color: '#FF4D4F', background: '#FFF0F0' }}
                   >
@@ -708,6 +714,12 @@ function AddKeyForm({ pin, onDone, onCancel }: { pin: string; onDone: () => void
     setSubmitting(true)
     try {
       await saveKey(pin, exchange, label.trim(), accessKey.trim(), secretKey.trim())
+      // 보안 알림 발송 (system 카테고리 — 다른 기기 포함 본인 모든 디바이스에 알림)
+      fetch('/api/app/notify/key-event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'add', exchange, label: label.trim() }),
+      }).catch(() => { /* 알림 실패는 저장 성공에 영향 없음 */ })
       setAccessKey('')
       setSecretKey('')
       await onDone()

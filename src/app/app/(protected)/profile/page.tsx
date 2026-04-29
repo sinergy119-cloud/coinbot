@@ -297,11 +297,7 @@ export default function ProfilePage() {
               <Divider />
               <SettingRow label="신규 이벤트" description="새 에어드랍·N빵 공지" value={settings?.eventEnabled} onChange={() => toggleSetting('eventEnabled')} disabled={!settings?.masterEnabled} indent />
               <Divider />
-              <SettingRow label="스케줄 변경" description="스케줄 등록·실행 알림" value={settings?.scheduleEnabled} onChange={() => toggleSetting('scheduleEnabled')} disabled={!settings?.masterEnabled} indent />
-              <Divider />
-              <SettingRow label="시스템 경고" description="연속 실패 등 중요 경고" value={settings?.systemEnabled} onChange={() => toggleSetting('systemEnabled')} disabled={!settings?.masterEnabled} indent />
-              <Divider />
-              <SettingRow label="공지·프로모션" description="운영 공지사항 (기본 꺼짐)" value={settings?.announcementEnabled} onChange={() => toggleSetting('announcementEnabled')} disabled={!settings?.masterEnabled} indent />
+              <SettingRow label="API Key 보안" description="키 등록/삭제 시 다른 기기 알림" value={settings?.systemEnabled} onChange={() => toggleSetting('systemEnabled')} disabled={!settings?.masterEnabled} indent />
               <Divider />
               <a
                 href="/app/profile/push-setup"
@@ -404,7 +400,7 @@ function TossToggle({ checked, onChange, disabled }: { checked: boolean; onChang
 function NotifAccordionHeader({ open, disabled, settings, onClick }: {
   open: boolean; disabled: boolean | undefined; settings: Settings | null; onClick: () => void
 }) {
-  const subKeys: (keyof Settings)[] = ['tradeResultEnabled', 'eventEnabled', 'scheduleEnabled', 'systemEnabled', 'announcementEnabled']
+  const subKeys: (keyof Settings)[] = ['tradeResultEnabled', 'eventEnabled', 'systemEnabled']
   const enabledCount = settings ? subKeys.filter((k) => settings[k]).length : 0
   const label = open ? '세부 설정 접기' : enabledCount > 0 ? `세부 설정 (${enabledCount}개 켜짐)` : '세부 설정'
 
