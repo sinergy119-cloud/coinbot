@@ -2,7 +2,9 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { X, AlertTriangle, Loader2, CalendarClock } from 'lucide-react'
+import { X, AlertTriangle, Loader2, CalendarClock, KeyRound } from 'lucide-react'
+import { listKeys, resetAll } from '@/lib/app/key-store'
+import { EXCHANGE_LABELS, EXCHANGE_EMOJI, type Exchange } from '@/types/database'
 
 interface Props {
   onClose: () => void
@@ -14,6 +16,14 @@ interface Props {
   tradeJobsApiPath?: string
 }
 
+interface LocalKey {
+  id: string
+  exchange: Exchange
+  label: string
+}
+
+type Step = 'warning' | 'apikey-list' | 'apikey-confirm' | 'confirm'
+
 export default function WithdrawModal({
   onClose,
   loginPath = '/login',
@@ -21,20 +31,35 @@ export default function WithdrawModal({
   tradeJobsApiPath = '/api/trade-jobs',
 }: Props) {
   const router = useRouter()
-  const [step, setStep] = useState<'warning' | 'confirm'>('warning')
+  const [step, setStep] = useState<Step>('warning')
   const [inputText, setInputText] = useState('')
   const [loading, setLoading] = useState(false)
   const [checking, setChecking] = useState(false)
   const [error, setError] = useState('')
   const [showScheduleAlert, setShowScheduleAlert] = useState(false)
+  const [localKeys, setLocalKeys] = useState<LocalKey[]>([])
+  const [clearing, setClearing] = useState(false)
 
   const CONFIRM_KEYWORD = '회원탈퇴'
   const canSubmit = inputText === CONFIRM_KEYWORD && !loading
+
+  // IndexedDB의 거래소 API Key 목록 조회 (앱 사용자 전용)
+  // 웹 사용자는 IndexedDB가 비어 있어 빈 배열 반환
+  async function fetchLocalKeys(): Promise<LocalKey[]> {
+    try {
+      const keys = await listKeys()
+      return keys.map((k) => ({ id: k.id, exchange: k.exchange, label: k.label }))
+    } catch {
+      // IndexedDB 미지원 / DB 미초기화 → 키 없음으로 간주
+      return []
+    }
+  }
 
   async function handleContinue() {
     setChecking(true)
     setError('')
     try {
+      // 1단계: 활성 스케줄 검사
       const res = await fetch(tradeJobsApiPath)
       if (res.ok) {
         const jobs = await res.json()
@@ -43,11 +68,38 @@ export default function WithdrawModal({
           return
         }
       }
+
+      // 2단계: 로컬(IndexedDB) API Key 검사
+      const keys = await fetchLocalKeys()
+      if (keys.length > 0) {
+        setLocalKeys(keys)
+        setStep('apikey-list')
+        return
+      }
+
+      // 키 없음 → 바로 텍스트 확인 단계
       setStep('confirm')
     } catch {
       setError('네트워크 오류가 발생했습니다.')
     } finally {
       setChecking(false)
+    }
+  }
+
+  async function handleClearLocalData() {
+    setClearing(true)
+    setError('')
+    try {
+      // IndexedDB 거래소 키 + meta + auto_keys 전체 삭제
+      await resetAll()
+      // localStorage / sessionStorage 정리
+      try { localStorage.clear() } catch { /* 무시 */ }
+      try { sessionStorage.clear() } catch { /* 무시 */ }
+      setStep('confirm')
+    } catch {
+      setError('API Key 삭제 중 오류가 발생했습니다. 다시 시도해주세요.')
+    } finally {
+      setClearing(false)
     }
   }
 
@@ -126,6 +178,98 @@ export default function WithdrawModal({
                   {checking
                     ? <><Loader2 size={14} className="animate-spin" /> 확인 중...</>
                     : '계속하기'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 1.5단계: API Key 목록 + 명시적 삭제 동의 */}
+          {step === 'apikey-list' && (
+            <div className="px-5 py-5 space-y-4">
+              <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2.5">
+                <KeyRound size={16} className="text-amber-700 shrink-0" />
+                <p className="text-xs font-semibold text-amber-800 break-keep">
+                  이 폰에 거래소 API Key {localKeys.length}건이 저장되어 있어요
+                </p>
+              </div>
+
+              <div className="rounded-lg border border-gray-200 max-h-48 overflow-y-auto">
+                {localKeys.map((k, i) => (
+                  <div
+                    key={k.id}
+                    className={`flex items-center gap-2 px-3 py-2.5 ${i < localKeys.length - 1 ? 'border-b border-gray-100' : ''}`}
+                  >
+                    <span className="text-base shrink-0">{EXCHANGE_EMOJI[k.exchange] ?? '🔑'}</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold text-gray-900 truncate">
+                        {EXCHANGE_LABELS[k.exchange] ?? k.exchange}
+                      </p>
+                      <p className="text-[11px] text-gray-600 truncate">{k.label}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <p className="text-xs text-gray-700 break-keep leading-relaxed">
+                회원 탈퇴를 진행하려면 이 폰에 저장된{' '}
+                <b className="text-red-600">모든 API Key를 먼저 삭제</b>해야 합니다.
+                삭제는 취소할 수 없으며, 자동 매수가 즉시 중단됩니다.
+              </p>
+
+              {error && <p className="text-xs text-red-600 break-keep">{error}</p>}
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={() => { setStep('warning'); setError('') }}
+                  className="flex-1 rounded-lg border border-gray-300 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={() => setStep('apikey-confirm')}
+                  className="flex-1 rounded-lg bg-red-600 py-2 text-sm font-medium text-white hover:bg-red-700"
+                >
+                  지금 모두 삭제
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 1.6단계: 최종 삭제 확인 */}
+          {step === 'apikey-confirm' && (
+            <div className="px-5 py-5 space-y-4">
+              <div className="rounded-lg bg-red-50 border-2 border-red-300 px-4 py-4">
+                <div className="flex items-start gap-2 mb-2">
+                  <AlertTriangle size={18} className="text-red-600 shrink-0 mt-0.5" />
+                  <p className="text-sm font-bold text-red-700 break-keep">
+                    {localKeys.length}건의 API Key를 정말 삭제할까요?
+                  </p>
+                </div>
+                <ul className="text-xs text-red-600 space-y-1 ml-6 break-keep">
+                  <li>• 이 폰에서 거래소 자동 매수가 <b>즉시 중단</b>됩니다</li>
+                  <li>• 삭제 후 <b>복구할 수 없습니다</b></li>
+                  <li>• 거래소 사이트에서 <b>API Key 폐기 처리</b>도 권장됩니다</li>
+                </ul>
+              </div>
+
+              {error && <p className="text-xs text-red-600 break-keep">{error}</p>}
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={() => { setStep('apikey-list'); setError('') }}
+                  disabled={clearing}
+                  className="flex-1 rounded-lg border border-gray-300 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  이전
+                </button>
+                <button
+                  onClick={handleClearLocalData}
+                  disabled={clearing}
+                  className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-red-600 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                >
+                  {clearing
+                    ? <><Loader2 size={14} className="animate-spin" /> 삭제 중...</>
+                    : `${localKeys.length}건 모두 삭제`}
                 </button>
               </div>
             </div>
