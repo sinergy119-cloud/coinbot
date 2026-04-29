@@ -4,8 +4,8 @@
 
 import { NextRequest } from 'next/server'
 import { getSession } from '@/lib/session'
-import { createServerClient } from '@/lib/supabase'
 import { ok, unauthorized } from '@/lib/app/response'
+import { getAnnouncementsList } from '@/lib/data/announcements'
 
 const VALID_EXCHANGES = ['BITHUMB', 'UPBIT', 'COINONE', 'KORBIT', 'GOPAX'] as const
 const VALID_STATUSES = ['active', 'upcoming', 'ended', 'all'] as const
@@ -63,25 +63,12 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(Math.max(limitRaw, 1), 100)
 
   const today = kstToday()
-  const db = createServerClient()
-  let query = db
-    .from('announcements')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(limit)
-
-  if (status === 'active') {
-    query = query.gte('end_date', today)
-  } else if (status === 'upcoming') {
-    query = query.gt('start_date', today)
-  } else if (status === 'ended') {
-    query = query.lt('end_date', today)
-  }
-  if (exchange !== 'all') {
-    query = query.eq('exchange', exchange)
-  }
-
-  const { data } = await query
-  const items = (data ?? []).map((r) => toApi(r as AnnouncementRow))
+  // 캐시된 함수 사용 — 60초 메모리 캐시 + 관리자 변경 시 즉시 무효화
+  const data = await getAnnouncementsList(today, {
+    status: status as 'active' | 'upcoming' | 'ended' | 'all',
+    exchange,
+    limit,
+  })
+  const items = data.map((r) => toApi(r as unknown as AnnouncementRow))
   return ok({ items })
 }

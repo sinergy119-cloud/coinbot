@@ -1,8 +1,8 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { createServerClient } from '@/lib/supabase'
 import { EXCHANGE_LABELS, type Exchange } from '@/types/database'
 import ExchangeIcon from '@/components/ExchangeIcon'
+import { getAnnouncementById } from '@/lib/data/announcements'
 
 interface AnnouncementRow {
   id: string
@@ -29,15 +29,10 @@ const EXCHANGE_BADGE: Record<string, { bg: string; text: string }> = {
 
 export default async function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const db = createServerClient()
-  const { data } = await db
-    .from('announcements')
-    .select('id, exchange, coin, amount, require_apply, api_allowed, link, notes, start_date, end_date, reward_date')
-    .eq('id', id)
-    .maybeSingle()
+  const data = await getAnnouncementById(id)
 
   if (!data) notFound()
-  const e = data as AnnouncementRow
+  const e = data as unknown as AnnouncementRow
   const exchangeLabel = EXCHANGE_LABELS[e.exchange as Exchange] ?? e.exchange
   const badge = EXCHANGE_BADGE[e.exchange] ?? { bg: '#F2F4F6', text: '#6B7684' }
 

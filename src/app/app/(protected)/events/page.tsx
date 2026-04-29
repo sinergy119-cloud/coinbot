@@ -1,5 +1,5 @@
-import { createServerClient } from '@/lib/supabase'
 import EventsClient from './_components/EventsClient'
+import { getAnnouncementsList } from '@/lib/data/announcements'
 
 interface AnnouncementRow {
   id: string
@@ -22,14 +22,19 @@ function kstToday() {
 }
 
 export default async function EventsPage() {
-  const db = createServerClient()
   const today = kstToday()
-  const { data } = await db
-    .from('announcements')
-    .select('id, exchange, coin, amount, require_apply, api_allowed, link, start_date, end_date')
-    .gte('end_date', today)
-    .order('created_at', { ascending: false })
-
-  const items = (data as AnnouncementRow[]) ?? []
+  const fullList = await getAnnouncementsList(today, { status: 'active', limit: 500 })
+  // EventsClient가 사용하는 필드만 추려서 클라이언트 페이로드 절감
+  const items: AnnouncementRow[] = fullList.map((r) => ({
+    id: r.id,
+    exchange: r.exchange,
+    coin: r.coin,
+    amount: r.amount,
+    require_apply: r.require_apply,
+    api_allowed: r.api_allowed,
+    link: r.link,
+    start_date: r.start_date,
+    end_date: r.end_date,
+  }))
   return <EventsClient items={items} />
 }
