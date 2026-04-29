@@ -13,6 +13,7 @@ import {
   registerBiometric,
   removeBiometric,
 } from '@/lib/app/key-store'
+import { clearSession } from '@/lib/app/auth-session'
 
 interface Profile {
   userId: string
@@ -217,6 +218,7 @@ export default function ProfilePage() {
   async function logout() {
     if (!confirm('로그아웃 하시겠습니까?')) return
     await fetch('/api/auth/logout', { method: 'POST' })
+    clearSession()  // 인증 세션(in-memory PIN) 폐기
     window.location.href = '/app/login'
   }
 

@@ -6,6 +6,7 @@ import { X } from 'lucide-react'
 import { SignupGuideModal, ApiKeyGuideModal } from '@/components/GuideModals'
 import IosInstallBanner from '@/app/app/_components/IosInstallBanner'
 import { setOAuthStateCookieOnClient } from '@/lib/oauthState'
+import { clearSession } from '@/lib/app/auth-session'
 
 // ─── 섹션 아이콘/색상 매핑 ──────────────────────────
 const SECTION_STYLES: Record<string, { icon: string; color: string }> = {
@@ -324,6 +325,8 @@ export default function LoginPage() {
     if (typeof window !== 'undefined') {
       setLastProvider(localStorage.getItem('lastLoginProvider'))
     }
+    // 로그인 화면 진입 시점에 인증 세션 강제 폐기 — 로그아웃 후 진입한 경우 안전장치
+    clearSession()
   }, [])
 
   useEffect(() => {

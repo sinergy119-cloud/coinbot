@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { X, KeyRound, Wallet, Shield, LogOut, Send, CheckCircle2, AlertCircle } from 'lucide-react'
+import { clearSession } from '@/lib/app/auth-session'
 
 interface DrawerProps {
   open: boolean
@@ -42,6 +43,7 @@ export default function DrawerMenu({ open, onClose }: DrawerProps) {
   async function handleLogout() {
     if (!confirm('로그아웃 하시겠습니까?')) return
     await fetch('/api/auth/logout', { method: 'POST' })
+    clearSession()  // 인증 세션(in-memory PIN) 폐기
     window.location.href = '/app/login'
   }
 
