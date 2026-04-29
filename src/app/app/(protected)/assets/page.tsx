@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import PinPad from '../../_components/PinPad'
 import { isPinSet, verifyPin, listKeys, decryptAllByIds } from '@/lib/app/key-store'
+import { getSessionPin, setSessionPin } from '@/lib/app/auth-session'
 import { EXCHANGE_LABELS, type Exchange } from '@/types/database'
 import ExchangeIcon from '@/components/ExchangeIcon'
 
@@ -50,25 +51,20 @@ export default function AssetsPage() {
       if (!hasPin) { setPhase('no_pin'); return }
       const keys = await listKeys()
       if (keys.length === 0) { setPhase('no_keys'); return }
+      // 세션 인증 유효 시 PIN 단계 생략 — 자산 자동 조회
+      const cachedPin = getSessionPin()
+      if (cachedPin) {
+        void fetchBalances(cachedPin)
+        return
+      }
       setPhase('pin')
     })()
   }, [])
 
-  async function handlePin(pin: string) {
+  async function fetchBalances(pin: string) {
     setSubmitting(true)
     setPinError(null)
     try {
-      const v = await verifyPin(pin)
-      if (!v.ok) {
-        if (v.reason === 'locked') {
-          const min = Math.ceil((v.retryAfterMs ?? 0) / 60000)
-          setPinError(`잠금 상태입니다. ${min}분 후 재시도.`)
-        } else {
-          setPinError('PIN이 틀립니다.')
-        }
-        return
-      }
-
       const keys = await listKeys()
       const decrypted = await decryptAllByIds(pin, keys.map((k) => k.id))
       setPhase('fetching')
@@ -98,6 +94,30 @@ export default function AssetsPage() {
       setPinError(err instanceof Error ? err.message : '오류')
       setPhase('pin')
     } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handlePin(pin: string) {
+    setSubmitting(true)
+    setPinError(null)
+    try {
+      const v = await verifyPin(pin)
+      if (!v.ok) {
+        if (v.reason === 'locked') {
+          const min = Math.ceil((v.retryAfterMs ?? 0) / 60000)
+          setPinError(`잠금 상태입니다. ${min}분 후 재시도.`)
+        } else {
+          setPinError('PIN이 틀립니다.')
+        }
+        setSubmitting(false)
+        return
+      }
+      setSessionPin(pin)
+      await fetchBalances(pin)
+    } catch (err) {
+      setPinError(err instanceof Error ? err.message : '오류')
+      setPhase('pin')
       setSubmitting(false)
     }
   }

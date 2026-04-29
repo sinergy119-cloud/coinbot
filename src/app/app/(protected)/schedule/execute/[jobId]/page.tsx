@@ -15,6 +15,7 @@ import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import PinPad from '../../../../_components/PinPad'
 import KeySelector from '../../../../_components/KeySelector'
 import { verifyPin, decryptAllByIds } from '@/lib/app/key-store'
+import { getSessionPin, setSessionPin } from '@/lib/app/auth-session'
 import { EXCHANGE_LABELS, TRADE_TYPE_LABELS, type Exchange, type TradeType } from '@/types/database'
 
 interface JobDetail {
@@ -85,15 +86,20 @@ function ExecuteInner() {
     setSubmitting(true)
     setPinError(null)
     try {
-      const v = await verifyPin(pin)
-      if (!v.ok) {
-        if (v.reason === 'locked') {
-          const min = Math.ceil((v.retryAfterMs ?? 0) / 60000)
-          setPinError(`잠금 상태입니다. ${min}분 후 재시도.`)
-        } else {
-          setPinError('PIN이 틀립니다.')
+      // 세션에 캐시된 PIN이면 verifyPin 생략 가능 (이미 검증됨), 아니면 검증
+      const cachedPin = getSessionPin()
+      if (pin !== cachedPin) {
+        const v = await verifyPin(pin)
+        if (!v.ok) {
+          if (v.reason === 'locked') {
+            const min = Math.ceil((v.retryAfterMs ?? 0) / 60000)
+            setPinError(`잠금 상태입니다. ${min}분 후 재시도.`)
+          } else {
+            setPinError('PIN이 틀립니다.')
+          }
+          return
         }
-        return
+        setSessionPin(pin)
       }
 
       const decrypted = await decryptAllByIds(pin, selectedKeyIds)
@@ -203,11 +209,17 @@ function ExecuteInner() {
           type="button"
           onClick={() => {
             if (selectedKeyIds.length === 0) { alert('계정을 하나 이상 선택하세요.'); return }
+            // 세션 인증 유효 시 PIN 단계 생략
+            const cachedPin = getSessionPin()
+            if (cachedPin) {
+              void handlePin(cachedPin)
+              return
+            }
             setPhase('pin')
           }}
           className="bg-gray-900 text-white py-3 rounded-2xl text-sm font-semibold"
         >
-          PIN 입력 후 실행
+          실행
         </button>
       </div>
     )

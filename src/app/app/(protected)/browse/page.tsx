@@ -26,22 +26,35 @@ const EXCHANGE_META: Record<string, {
 function ExchangeLogo({ exchange, size = 48, selected = false }: { exchange: string; size?: number; selected?: boolean }) {
   const meta = EXCHANGE_META[exchange]
   if (!meta) return null
+  // 공식 거래소 CI PNG (/exchanges/*.png) 사용
+  // 선택 시 컬러 보더로 강조, 미선택 시 기본 보더
+  const innerSize = Math.round(size * 0.72)
   return (
     <div style={{
       width: size, height: size, borderRadius: Math.round(size * 0.28),
-      background: selected ? meta.brandBg : '#fff',
-      border: `2px solid ${selected ? meta.brandBg : meta.brandBg + '22'}`,
+      background: '#fff',
+      border: `2px solid ${selected ? meta.brandBg : '#E5E8EB'}`,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       transition: 'all 0.15s', flexShrink: 0,
       boxShadow: selected ? `0 3px 10px ${meta.brandBg}55` : '0 1px 4px rgba(0,0,0,0.06)',
+      overflow: 'hidden',
     }}>
-      <span style={{
-        color: selected ? meta.brandFg : meta.brandBg,
-        fontSize: size * 0.46, fontWeight: 900,
-        fontFamily: "'Arial Black','Arial',sans-serif", lineHeight: 1,
-      }}>
-        {meta.initial}
-      </span>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={`/exchanges/${exchange.toLowerCase()}.png`}
+        alt={meta.short}
+        width={innerSize}
+        height={innerSize}
+        style={{ width: innerSize, height: innerSize, objectFit: 'contain' }}
+        onError={(e) => {
+          // PNG 로드 실패 시 글자 fallback으로 회복
+          const img = e.currentTarget
+          const fallback = document.createElement('span')
+          fallback.textContent = meta.initial
+          fallback.style.cssText = `color: ${meta.brandBg}; font-size: ${size * 0.46}px; font-weight: 900; font-family: 'Arial Black','Arial',sans-serif; line-height: 1;`
+          img.replaceWith(fallback)
+        }}
+      />
     </div>
   )
 }

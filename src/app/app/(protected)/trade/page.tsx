@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import PinPad from '../../_components/PinPad'
 import KeySelector from '../../_components/KeySelector'
 import { verifyPin, decryptAllByIds } from '@/lib/app/key-store'
+import { getSessionPin, setSessionPin } from '@/lib/app/auth-session'
 import { EXCHANGE_LABELS, TRADE_TYPE_LABELS, type Exchange, type TradeType } from '@/types/database'
 import ExchangeIcon from '@/components/ExchangeIcon'
 
@@ -415,6 +416,13 @@ function InstantForm({ initCoin, initExchange, onDone }: { initCoin: string; ini
     const err = validate()
     if (err) { alert(err); return }
     setPinError(null)
+    // 세션 인증 유효 시 PIN 단계 생략
+    const cachedPin = getSessionPin()
+    if (cachedPin) {
+      setPhase('executing')
+      void executeWithPin(cachedPin)
+      return
+    }
     setPhase('pin')
   }
 
@@ -430,8 +438,24 @@ function InstantForm({ initCoin, initExchange, onDone }: { initCoin: string; ini
         } else {
           setPinError('PIN이 틀립니다.')
         }
+        setSubmitting(false)
         return
       }
+      // 인증 성공 → 세션에 PIN 저장 (15분/24시간 정책)
+      setSessionPin(pin)
+      await executeWithPin(pin)
+    } catch (err) {
+      setPinError(err instanceof Error ? err.message : '오류')
+      setPhase('pin')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function executeWithPin(pin: string) {
+    setSubmitting(true)
+    setPinError(null)
+    try {
       const decrypted = await decryptAllByIds(pin, selectedKeyIds)
       setPhase('executing')
 
@@ -838,12 +862,14 @@ function FormFields({ exchange, setExchange, coin, setCoin, tradeType, setTradeT
           </p>
           <div className="rounded-2xl" style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
             <input
-              type="number"
-              value={amountKrw}
-              onChange={(e) => setAmountKrw(e.target.value)}
-              placeholder="10000"
-              min={5100}
-              step={100}
+              type="text"
+              inputMode="numeric"
+              value={amountKrw === '' ? '' : Number(amountKrw).toLocaleString()}
+              onChange={(e) => {
+                const raw = e.target.value.replace(/,/g, '')
+                if (raw === '' || /^\d+$/.test(raw)) setAmountKrw(raw)
+              }}
+              placeholder="10,000"
               className="w-full px-4 py-3.5 rounded-2xl text-[15px] font-semibold bg-transparent outline-none placeholder-gray-400"
               style={{ color: '#191F28' }}
             />
