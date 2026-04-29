@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import { getSession } from '@/lib/session'
 import { createServerClient } from '@/lib/supabase'
 import { sendNotification } from '@/lib/app/notifications'
@@ -93,6 +94,9 @@ export async function POST(req: NextRequest) {
     console.error('[announcements] insert error:', error)
     return Response.json({ error: '이벤트 등록에 실패했습니다.' }, { status: 500 })
   }
+
+  // 캐시 무효화 — /app 홈 진행 이벤트 목록이 즉시 반영되도록
+  revalidateTag('announcements', 'max')
 
   // 신규 이벤트 푸시 발송 — 모든 일반 사용자에게 fan-out (관리자 자신은 제외)
   // 발송 실패해도 이벤트 등록 자체는 성공으로 간주

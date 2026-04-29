@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import { getSession } from '@/lib/session'
 import { createServerClient } from '@/lib/supabase'
 
@@ -52,6 +53,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
     console.error('[announcements/id] update error:', error)
     return Response.json({ error: '이벤트 수정에 실패했습니다.' }, { status: 500 })
   }
+  revalidateTag('announcements', 'max')
   return Response.json(data)
 }
 
@@ -70,5 +72,6 @@ export async function DELETE(_req: NextRequest, { params }: { params: Params }) 
     console.error('[announcements/id] delete error:', error)
     return Response.json({ error: '이벤트 삭제에 실패했습니다.' }, { status: 500 })
   }
+  revalidateTag('announcements', 'max')
   return Response.json({ ok: true })
 }
