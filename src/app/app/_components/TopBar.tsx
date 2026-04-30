@@ -9,10 +9,29 @@ export default function TopBar() {
   const [scrolled, setScrolled] = useState(false)
 
   useEffect(() => {
-    fetch('/api/app/notifications?limit=1')
-      .then((r) => r.json())
-      .then((j) => { if (j.ok) setUnread(j.data.unreadCount ?? 0) })
-      .catch(() => {})
+    let cancelled = false
+    function refresh() {
+      fetch('/api/app/notifications?limit=1')
+        .then((r) => r.json())
+        .then((j) => { if (!cancelled && j.ok) setUnread(j.data.unreadCount ?? 0) })
+        .catch(() => {})
+    }
+    refresh()
+
+    // 알림함 페이지에서 읽음 처리/삭제 시 발행
+    const onUpdate = () => refresh()
+    // 탭 복귀 시 다시 동기화
+    const onVisible = () => { if (document.visibilityState === 'visible') refresh() }
+    window.addEventListener('notifications-updated', onUpdate)
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onUpdate)
+
+    return () => {
+      cancelled = true
+      window.removeEventListener('notifications-updated', onUpdate)
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onUpdate)
+    }
   }, [])
 
   useEffect(() => {
