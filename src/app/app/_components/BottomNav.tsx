@@ -26,13 +26,24 @@ export default function BottomNav() {
   const [newEventCount, setNewEventCount] = useState(0)
 
   useEffect(() => {
+    // 이벤트 탭 진입 시 "마지막 본 시각"을 갱신 → 배지 즉시 0
+    if (pathname.startsWith('/app/events')) {
+      try { localStorage.setItem('lastEventsViewedAt', String(Date.now())) } catch { /* 무시 */ }
+    }
+
     fetch('/api/app/events?status=active&limit=50')
       .then((r) => r.json())
       .then((j) => {
         if (j.ok && Array.isArray(j.data.items)) {
-          const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000
+          let threshold = 0
+          try {
+            const v = localStorage.getItem('lastEventsViewedAt')
+            if (v) threshold = parseInt(v, 10) || 0
+          } catch { /* 무시 */ }
+          // 처음 사용자(기록 없음)는 최근 24시간 이내를 신규로 간주
+          if (!threshold) threshold = Date.now() - 24 * 60 * 60 * 1000
           const recent = j.data.items.filter((e: { createdAt: string }) =>
-            new Date(e.createdAt).getTime() > oneDayAgo,
+            new Date(e.createdAt).getTime() > threshold,
           )
           setNewEventCount(recent.length)
         }
