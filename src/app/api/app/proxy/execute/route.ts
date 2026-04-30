@@ -9,6 +9,7 @@ import { userRateLimit } from '@/lib/app/rate-limit'
 import { ok, unauthorized, fail } from '@/lib/app/response'
 import { isValidExchange, isValidTradeType, isValidCoin, parseAmountKrw } from '@/lib/validation'
 import { createServerClient } from '@/lib/supabase'
+import { notifyTradeResult } from '@/lib/app/notifications'
 import type { Exchange, TradeType } from '@/types/database'
 
 async function logTrade(userId: string, fields: {
@@ -34,6 +35,21 @@ async function logTrade(userId: string, fields: {
     })
   } catch {
     // 로그 실패는 무시
+  }
+
+  // app_schedule은 /report 엔드포인트가 알림을 별도 발송하므로 중복 방지를 위해 여기서 스킵
+  if (fields.source !== 'app_schedule') {
+    await notifyTradeResult({
+      userId,
+      exchange: fields.exchange,
+      coin: fields.coin,
+      tradeType: fields.trade_type,
+      amountKrw: fields.amount_krw,
+      success: fields.success,
+      reason: fields.reason ?? null,
+      accountLabel: fields.account_label ?? null,
+      metadata: { source: fields.source },
+    })
   }
 }
 

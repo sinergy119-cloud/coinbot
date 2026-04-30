@@ -7,14 +7,16 @@ import MemberStatus from '@/components/MemberStatus'
 import EventManager from '@/components/EventManager'
 import InquiryManager from '@/components/InquiryManager'
 import CrawledEventManager from '@/components/CrawledEventManager'
+import TradeStats from '@/components/TradeStats'
 
-type TabType = 'accounts' | 'members' | 'events' | 'crawled' | 'inquiries'
+type TabType = 'accounts' | 'members' | 'events' | 'crawled' | 'inquiries' | 'stats'
 const TABS: { id: TabType; label: string }[] = [
   { id: 'accounts', label: '계정 관리' },
   { id: 'members', label: '회원 현황' },
   { id: 'events', label: '이벤트 관리' },
   { id: 'crawled', label: '수집 이벤트' },
   { id: 'inquiries', label: '문의 관리' },
+  { id: 'stats', label: '거래 통계' },
 ]
 
 export interface CrawledPrefill {
@@ -120,6 +122,7 @@ export default function AdminTabs({ loginId }: { loginId: string }) {
           <CrawledEventManager onApproveNavigation={handleApproveNavigation} />
         )}
         {activeTab === 'inquiries' && <InquiryManager />}
+        {activeTab === 'stats' && <TradeStats />}
       </main>
     </div>
   )

@@ -8,6 +8,7 @@ import {
 } from '@/lib/exchange'
 import { sendTelegramMessage } from '@/lib/telegram'
 import { sendFCMToTokens } from '@/lib/push'
+import { notifyTradeResult } from '@/lib/app/notifications'
 import type { Exchange, TradeType, TradeJobRow } from '@/types/database'
 
 // 앱 사용자 job — account_ids 비어있으면 FCM으로 실행 트리거
@@ -320,6 +321,23 @@ export async function POST(req: NextRequest) {
         source: 'schedule',
       }))
       await db.from('trade_logs').insert(logs)
+
+      // 알림함 기록 + 푸시 (계정별 1건씩) — 계정 소유자 user_id 기준
+      await Promise.all(
+        logs.map((l) =>
+          notifyTradeResult({
+            userId: l.user_id,
+            exchange: l.exchange,
+            coin: l.coin,
+            tradeType: l.trade_type,
+            amountKrw: l.amount_krw,
+            success: l.success,
+            reason: l.reason ?? null,
+            accountLabel: l.account_name,
+            metadata: { source: 'schedule', tradeJobId: l.trade_job_id },
+          }),
+        ),
+      )
 
       // 연속 실패 감지: 이번 실행에서 전부 실패했으면 최근 3회 체크
       const allFailed = orderResults.every((r: { success: boolean }) => !r.success)

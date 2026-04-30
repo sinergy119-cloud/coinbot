@@ -91,6 +91,74 @@ export async function recordNotification(input: NotificationInput): Promise<stri
   return data.id
 }
 
+// 거래 결과 알림 — 성공/실패 모두 알림함에 기록 + 푸시
+// execute / execute-batch / cron / report 4곳에서 공통 사용
+import { EXCHANGE_LABELS } from '@/types/database'
+import type { Exchange, TradeType } from '@/types/database'
+
+const TRADE_TYPE_LABEL_KO: Record<string, string> = {
+  BUY: '매수',
+  SELL: '매도',
+  CYCLE: '매수·매도',
+}
+
+function formatKSTTimeShort(): string {
+  return new Date().toLocaleString('ko-KR', {
+    timeZone: 'Asia/Seoul',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  })
+}
+
+export interface TradeResultNotificationInput {
+  userId: string
+  exchange: string
+  coin: string
+  tradeType: string
+  amountKrw: number
+  success: boolean
+  reason?: string | null
+  accountLabel?: string | null
+  metadata?: Record<string, unknown>
+}
+
+export async function notifyTradeResult(input: TradeResultNotificationInput): Promise<void> {
+  const exchangeLabel = EXCHANGE_LABELS[input.exchange as Exchange] ?? input.exchange
+  const tradeTypeLabel = TRADE_TYPE_LABEL_KO[input.tradeType] ?? input.tradeType
+  const kstTime = formatKSTTimeShort()
+  const accountSuffix = input.accountLabel ? ` (${input.accountLabel})` : ''
+
+  const title = input.success
+    ? `✅ ${exchangeLabel} ${input.coin} ${tradeTypeLabel} 완료${accountSuffix}`
+    : `❌ ${exchangeLabel} ${input.coin} ${tradeTypeLabel} 실패${accountSuffix}`
+
+  const body = input.success
+    ? (input.tradeType === 'SELL' || !input.amountKrw
+        ? `${kstTime} 체결 완료`
+        : `${input.amountKrw.toLocaleString('ko-KR')}원 · ${kstTime} 체결`)
+    : (input.reason && input.reason.length > 0 ? input.reason.slice(0, 100) : '실행 중 오류가 발생했습니다.')
+
+  try {
+    await sendNotification({
+      userId: input.userId,
+      category: 'trade_result',
+      title,
+      body,
+      deepLink: '/app/notifications',
+      metadata: {
+        exchange: input.exchange,
+        coin: input.coin,
+        tradeType: input.tradeType,
+        success: input.success,
+        ...(input.metadata ?? {}),
+      },
+    })
+  } catch (err) {
+    console.error('[notifyTradeResult] error:', err)
+  }
+}
+
 // 통합 발송 — DB 기록 + (설정 활성 시) FCM 발송
 export async function sendNotification(input: NotificationInput): Promise<{ notificationId: string | null; pushSent: number; pushFailed: number }> {
   const notificationId = await recordNotification(input)
