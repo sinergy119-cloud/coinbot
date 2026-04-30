@@ -713,6 +713,25 @@ function AddKeyForm({ pin, onDone, onCancel }: { pin: string; onDone: () => void
     if (secretKey.trim().length < 5) return setError('유효한 Secret Key를 입력하세요.')
     setSubmitting(true)
     try {
+      // 1) 거래소 API로 키 유효성 검증 (실패 시 저장 차단)
+      const validateRes = await fetch('/api/app/validate-key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          exchange,
+          accessKey: accessKey.trim(),
+          secretKey: secretKey.trim(),
+        }),
+      })
+      if (!validateRes.ok) {
+        const data = await validateRes.json().catch(() => ({}))
+        const reason = typeof data?.error === 'string' ? data.error : 'API Key 검증 실패'
+        setError(reason)
+        setSubmitting(false)
+        return
+      }
+
+      // 2) 검증 성공 → IndexedDB 저장
       await saveKey(pin, exchange, label.trim(), accessKey.trim(), secretKey.trim())
       // 보안 알림 발송 (system 카테고리 — 다른 기기 포함 본인 모든 디바이스에 알림)
       fetch('/api/app/notify/key-event', {
