@@ -42,12 +42,11 @@ export async function POST(req: NextRequest) {
   const db = createServerClient()
   const today = kstToday()
 
-  // 1) 오늘이 리워드 지급일인 active 이벤트 조회
+  // 1) 오늘이 리워드 지급일인 이벤트 조회 (active 필터는 reward_date 자체로 충분)
   const { data: anns, error: annError } = await db
     .from('announcements')
     .select('id, exchange, coin, amount, reward_date, link')
     .eq('reward_date', today)
-    .eq('status', 'active')
 
   if (annError) {
     console.error('[cron/reward-notify] announcements query error:', annError.message)
