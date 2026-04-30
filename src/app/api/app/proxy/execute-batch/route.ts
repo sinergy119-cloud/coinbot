@@ -9,6 +9,7 @@ import { userRateLimit } from '@/lib/app/rate-limit'
 import { ok, unauthorized, fail } from '@/lib/app/response'
 import { isValidExchange, isValidTradeType, isValidCoin, parseAmountKrw } from '@/lib/validation'
 import { createServerClient } from '@/lib/supabase'
+import { notifyTradeResult } from '@/lib/app/notifications'
 import type { Exchange, TradeType } from '@/types/database'
 
 interface AccountInput {
@@ -139,6 +140,23 @@ export async function POST(req: NextRequest) {
     }))
     if (logs.length > 0) await db.from('trade_logs').insert(logs)
   } catch { /* 로그 실패 무시 */ }
+
+  // 알림함 기록 + 푸시 (계정별 1건씩)
+  await Promise.all(
+    results.map((r) =>
+      notifyTradeResult({
+        userId: session.userId,
+        exchange: exchange as string,
+        coin: (coin as string).toUpperCase(),
+        tradeType: tradeType as string,
+        amountKrw: parsedAmount ?? 0,
+        success: r.ok,
+        reason: r.error ?? null,
+        accountLabel: r.label,
+        metadata: { source: 'app_manual' },
+      }),
+    ),
+  )
 
   return ok({ results })
 }
