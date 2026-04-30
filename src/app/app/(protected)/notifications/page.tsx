@@ -70,6 +70,7 @@ export default function NotificationsPage() {
     if (json.ok) {
       setItems((prev) => prev.map((n) => ({ ...n, readAt: n.readAt ?? new Date().toISOString() })))
       setUnreadCount(0)
+      window.dispatchEvent(new Event('notifications-updated'))
     }
   }
 
@@ -77,11 +78,13 @@ export default function NotificationsPage() {
     await fetch(`/api/app/notifications/${id}/read`, { method: 'PATCH' })
     setItems((prev) => prev.map((n) => (n.id === id ? { ...n, readAt: n.readAt ?? new Date().toISOString() } : n)))
     setUnreadCount((c) => Math.max(0, c - 1))
+    window.dispatchEvent(new Event('notifications-updated'))
   }
 
   async function remove(id: string) {
     await fetch(`/api/app/notifications/${id}`, { method: 'DELETE' })
     setItems((prev) => prev.filter((n) => n.id !== id))
+    window.dispatchEvent(new Event('notifications-updated'))
   }
 
   return (
