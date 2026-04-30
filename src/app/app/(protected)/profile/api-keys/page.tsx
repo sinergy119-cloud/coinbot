@@ -696,7 +696,7 @@ function ResetConfirmModal({ confirmText, onChangeText, onCancel, onConfirm }: {
 
 // ── API Key 등록 폼 ──────────────────────────────────────────
 function AddKeyForm({ pin, onDone, onCancel }: { pin: string; onDone: () => void | Promise<void>; onCancel: () => void }) {
-  const [exchange, setExchange] = useState<Exchange>('BITHUMB')
+  const [exchange, setExchange] = useState<Exchange | ''>('')
   const [label, setLabel] = useState('')
   const [accessKey, setAccessKey] = useState('')
   const [secretKey, setSecretKey] = useState('')
@@ -704,14 +704,24 @@ function AddKeyForm({ pin, onDone, onCancel }: { pin: string; onDone: () => void
   const [error, setError] = useState<string | null>(null)
   const [guideOpen, setGuideOpen] = useState(false)
   const [guideModal, setGuideModal] = useState<'signup' | 'apikey' | null>(null)
+  const [confirmOpen, setConfirmOpen] = useState(false)
 
-  async function handleSave(e: React.FormEvent) {
+  function handleSave(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
+    if (!exchange) return setError('거래소를 선택하세요.')
     if (!label.trim()) return setError('라벨을 입력하세요.')
     if (accessKey.trim().length < 5) return setError('유효한 Access Key를 입력하세요.')
     if (secretKey.trim().length < 5) return setError('유효한 Secret Key를 입력하세요.')
+    // 입력 검증 완료 → 저장 직전 확인 모달
+    setConfirmOpen(true)
+  }
+
+  async function runSave() {
+    if (!exchange) return
+    setConfirmOpen(false)
     setSubmitting(true)
+    setError(null)
     try {
       // 1) 거래소 API로 키 유효성 검증 (실패 시 저장 차단)
       const validateRes = await fetch('/api/app/validate-key', {
@@ -810,10 +820,11 @@ function AddKeyForm({ pin, onDone, onCancel }: { pin: string; onDone: () => void
         >
           <select
             value={exchange}
-            onChange={(e) => setExchange(e.target.value as Exchange)}
+            onChange={(e) => setExchange(e.target.value as Exchange | '')}
             className="w-full px-4 py-3.5 rounded-2xl text-[15px] font-semibold bg-transparent outline-none appearance-none"
-            style={{ color: '#191F28' }}
+            style={{ color: exchange ? '#191F28' : '#9CA3AF' }}
           >
+            <option value="" disabled>거래소를 선택하세요</option>
             {EXCHANGES.map((ex) => (
               <option key={ex} value={ex}>{EXCHANGE_LABELS[ex]}</option>
             ))}
@@ -909,6 +920,63 @@ function AddKeyForm({ pin, onDone, onCancel }: { pin: string; onDone: () => void
 
       {guideModal === 'signup' && <SignupGuideModal onClose={() => setGuideModal(null)} />}
       {guideModal === 'apikey' && <ApiKeyGuideModal onClose={() => setGuideModal(null)} />}
+
+      {/* 저장 직전 최종 확인 모달 */}
+      {confirmOpen && exchange && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4"
+          style={{ background: 'rgba(17, 24, 39, 0.5)' }}
+          onClick={() => setConfirmOpen(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-3xl p-5"
+            style={{ background: '#fff' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-[16px] font-bold mb-3" style={{ color: '#191F28' }}>
+              등록 정보를 확인해주세요
+            </h3>
+            <div
+              className="rounded-2xl p-4 mb-4 flex flex-col gap-2"
+              style={{ background: '#F9FAFB' }}
+            >
+              <div className="flex justify-between items-center">
+                <span className="text-[12px]" style={{ color: '#6B7684' }}>거래소</span>
+                <span className="text-[14px] font-semibold" style={{ color: '#191F28' }}>
+                  {EXCHANGE_LABELS[exchange as Exchange]}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-[12px]" style={{ color: '#6B7684' }}>라벨</span>
+                <span className="text-[14px] font-semibold break-keep" style={{ color: '#191F28' }}>
+                  {label.trim()}
+                </span>
+              </div>
+            </div>
+            <p className="text-[12px] leading-relaxed break-keep mb-4" style={{ color: '#6B7684' }}>
+              위 거래소에 입력한 API Key로 등록됩니다. 거래소가 다르면 검증에 실패합니다.
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setConfirmOpen(false)}
+                className="flex-1 py-3 rounded-2xl text-[14px] font-semibold"
+                style={{ background: '#F2F4F6', color: '#6B7684' }}
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={runSave}
+                className="flex-[2] py-3 rounded-2xl text-[14px] font-semibold"
+                style={{ background: '#0064FF', color: '#fff' }}
+              >
+                확인하고 등록
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </form>
   )
 }
