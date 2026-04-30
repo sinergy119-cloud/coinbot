@@ -32,14 +32,25 @@ export async function POST(req: NextRequest) {
   if (!exchange) return fail('exchange 누락', 400)
 
   const exchangeLabel = EXCHANGE_LABELS[exchange as Exchange] ?? exchange
+
+  // KST 기준 날짜·시각 (M/D HH:mm)
+  const kstNow = new Date().toLocaleString('ko-KR', {
+    timeZone: 'Asia/Seoul',
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })
+
   const title =
     action === 'add'
-      ? `🔑 ${exchangeLabel} API Key 등록`
-      : `🗑 ${exchangeLabel} API Key 삭제`
+      ? `🔑 ${exchangeLabel} API Key 등록 완료`
+      : `🗑 ${exchangeLabel} API Key 삭제 완료`
   const bodyText =
     action === 'add'
-      ? `${label || '새 키'}가 이 기기에 등록되었어요. 본인이 한 게 맞나요?`
-      : `${label || '키'}가 이 기기에서 삭제되었어요.`
+      ? `'${label || '새 키'}' 키 등록 (${kstNow})`
+      : `'${label || '키'}' 키 삭제 (${kstNow})`
 
   await sendNotification({
     userId: session.userId,
