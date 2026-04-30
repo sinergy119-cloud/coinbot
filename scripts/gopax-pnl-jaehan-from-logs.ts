@@ -68,10 +68,9 @@ async function main() {
   }
   console.log(`| 합계 | — | — | — | ${fmt(totalDelta)} | ${fmt(totalReward)} | ${fmt(totalReward - totalDelta)} | — |`)
 
-  // 참고용: amount_krw=0 인 건 (SELL 등) 개수도 표시
-  const sellZero = successRows.filter((r) => r.trade_type === 'SELL' && (!r.amount_krw || r.amount_krw === 0))
-  if (sellZero.length > 0) {
-    console.log(`\n⚠️ amount_krw=0인 SELL 건수: ${sellZero.length}건 — trade_logs에는 매도 체결액이 기록되지 않은 경우, 매도액이 과소 집계될 수 있음`)
+  console.log('\n=== 원본 trade_logs 덤프 (성공만) ===')
+  for (const r of successRows) {
+    console.log(`${r.executed_at} | ${r.coin} | ${r.trade_type} | ${r.amount_krw}원 | source=${r.source}`)
   }
 }
 
