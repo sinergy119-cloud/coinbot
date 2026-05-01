@@ -47,20 +47,18 @@ async function main() {
   const fromMs = new Date('2026-03-25T00:00:00+09:00').getTime()
   const toMs = new Date('2026-04-13T23:59:59+09:00').getTime()
 
+  // 99건 한계 확인됨. /orders 계열은 최근/완료 별도. 더 정밀 시도
   const tries = [
-    `/trades?limit=1000`,
-    `/trades?limit=1000&pastmax=${fromMs}`,
-    `/trades?limit=1000&latestmax=${toMs}`,
-    `/trades?limit=1000&from=${fromMs}&to=${toMs}`,
-    `/trades?limit=1000&start=${new Date(fromMs).toISOString()}&end=${new Date(toMs).toISOString()}`,
-    `/orders?limit=1000`,
-    `/orders/history?limit=1000`,
-    `/orders?limit=1000&statuses=completed`,
-    `/orders?limit=1000&from=${fromMs}&to=${toMs}`,
-    `/orders/history?limit=1000&from=${fromMs}&to=${toMs}`,
+    `/orders?limit=100&statuses=completed`,
+    `/orders/history?limit=100`,
+    `/orders/history?limit=100&start-time=${fromMs}&end-time=${toMs}`,
+    `/orders/history?limit=100&statuses=completed&start-time=${fromMs}&end-time=${toMs}`,
+    `/orders/history?limit=100&pastmax=${toMs}`,
+    `/trades?limit=100&pastmax=${new Date('2026-04-22T03:30:03Z').getTime() - 1}`,  // 가장 오래된 기존 < 이전
   ]
 
   for (const path of tries) {
+    await new Promise((r) => setTimeout(r, 2000))  // rate limit 회피
     const r = await call(ak, sk, path)
     const arr = Array.isArray(r.data) ? r.data : null
     let oldestTs = '?'
