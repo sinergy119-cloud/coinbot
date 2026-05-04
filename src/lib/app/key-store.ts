@@ -358,6 +358,20 @@ export async function removeBiometric(): Promise<void> {
   await tx<IDBValidKey>(STORE_META, 'readwrite', (s) => s.put(updated))
 }
 
+// PIN 없이 device key로 ids에 해당하는 키만 복호화 (UI 거래·자산조회용)
+// device key가 없거나 일부 키가 device key로 복호화 불가능하면 throw → UI에서 PIN 폴백 처리
+export async function decryptByIdsViaDeviceKey(ids: string[]): Promise<Array<{
+  id: string; exchange: Exchange; label: string; accessKey: string; secretKey: string
+}>> {
+  const all = await decryptAllByDeviceKey()
+  const set = new Set(ids)
+  const filtered = all.filter((k) => set.has(k.id))
+  if (filtered.length !== ids.length) {
+    throw new Error('일부 키를 자동 복호화할 수 없습니다. 다시 등록해주세요.')
+  }
+  return filtered
+}
+
 // PIN 없이 device key로 전체 복호화 (자산조회·SW 자동실행용)
 export async function decryptAllByDeviceKey(): Promise<Array<{
   id: string; exchange: Exchange; label: string; accessKey: string; secretKey: string

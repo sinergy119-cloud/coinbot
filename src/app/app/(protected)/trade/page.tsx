@@ -2,10 +2,8 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import PinPad from '../../_components/PinPad'
 import KeySelector from '../../_components/KeySelector'
-import { verifyPin, decryptAllByIds } from '@/lib/app/key-store'
-import { getSessionPin, setSessionPin } from '@/lib/app/auth-session'
+import { decryptByIdsViaDeviceKey } from '@/lib/app/key-store'
 import { EXCHANGE_LABELS, TRADE_TYPE_LABELS, type Exchange, type TradeType } from '@/types/database'
 import ExchangeIcon from '@/components/ExchangeIcon'
 
@@ -396,8 +394,8 @@ function InstantForm({ initCoin, initExchange, onDone }: { initCoin: string; ini
   const [tradeType, setTradeType] = useState<TradeType>('BUY')
   const [amountKrw, setAmountKrw] = useState('')
   const [selectedKeyIds, setSelectedKeyIds] = useState<string[]>([])
-  const [phase, setPhase] = useState<'form' | 'pin' | 'executing' | 'result'>('form')
-  const [pinError, setPinError] = useState<string | null>(null)
+  const [phase, setPhase] = useState<'form' | 'executing' | 'result'>('form')
+  const [execError, setExecError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   interface BatchResult { label: string | null; ok: boolean; balanceBefore: number; balance: number; error?: string }
   const [result, setResult] = useState<BatchResult[] | null>(null)
@@ -415,49 +413,16 @@ function InstantForm({ initCoin, initExchange, onDone }: { initCoin: string; ini
   async function handleStart() {
     const err = validate()
     if (err) { alert(err); return }
-    setPinError(null)
-    // 세션 인증 유효 시 PIN 단계 생략
-    const cachedPin = getSessionPin()
-    if (cachedPin) {
-      setPhase('executing')
-      void executeWithPin(cachedPin)
-      return
-    }
-    setPhase('pin')
+    setExecError(null)
+    setPhase('executing')
+    void executeTrade()
   }
 
-  async function handlePin(pin: string) {
+  async function executeTrade() {
     setSubmitting(true)
-    setPinError(null)
+    setExecError(null)
     try {
-      const v = await verifyPin(pin)
-      if (!v.ok) {
-        if (v.reason === 'locked') {
-          const min = Math.ceil((v.retryAfterMs ?? 0) / 60000)
-          setPinError(`잠금 상태입니다. ${min}분 후 재시도.`)
-        } else {
-          setPinError('PIN이 틀립니다.')
-        }
-        setSubmitting(false)
-        return
-      }
-      // 인증 성공 → 세션에 PIN 저장 (15분/24시간 정책)
-      setSessionPin(pin)
-      await executeWithPin(pin)
-    } catch (err) {
-      setPinError(err instanceof Error ? err.message : '오류')
-      setPhase('pin')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  async function executeWithPin(pin: string) {
-    setSubmitting(true)
-    setPinError(null)
-    try {
-      const decrypted = await decryptAllByIds(pin, selectedKeyIds)
-      setPhase('executing')
+      const decrypted = await decryptByIdsViaDeviceKey(selectedKeyIds)
 
       const res = await fetch('/api/app/proxy/execute-batch', {
         method: 'POST',
@@ -475,28 +440,15 @@ function InstantForm({ initCoin, initExchange, onDone }: { initCoin: string; ini
         setResult(json.data.results)
         setPhase('result')
       } else {
-        setPinError(json.error ?? '실행 실패')
-        setPhase('pin')
+        setExecError(json.error ?? '실행 실패')
+        setPhase('form')
       }
     } catch (err) {
-      setPinError(err instanceof Error ? err.message : '오류')
-      setPhase('pin')
+      setExecError(err instanceof Error ? err.message : '오류')
+      setPhase('form')
     } finally {
       setSubmitting(false)
     }
-  }
-
-  if (phase === 'pin') {
-    return (
-      <PinPad
-        title="PIN 입력"
-        description="거래 실행을 위해 PIN을 입력해주세요."
-        errorMessage={pinError}
-        onSubmit={handlePin}
-        onCancel={() => setPhase('form')}
-        submitting={submitting}
-      />
-    )
   }
 
   if (phase === 'executing') {
@@ -568,10 +520,14 @@ function InstantForm({ initCoin, initExchange, onDone }: { initCoin: string; ini
         <p className="text-[13px] font-semibold mb-2" style={{ color: '#6B7684' }}>계정 선택 (복수 가능)</p>
         <KeySelector exchange={exchange} multi={true} value={selectedKeyIds} onChange={setSelectedKeyIds} />
       </div>
+      {execError && (
+        <p className="text-[13px] break-keep" style={{ color: '#FF4D4F' }}>{execError}</p>
+      )}
       <button
         type="button"
         onClick={handleStart}
-        className="w-full py-4 rounded-2xl text-[15px] font-semibold pb-4"
+        disabled={submitting}
+        className="w-full py-4 rounded-2xl text-[15px] font-semibold pb-4 disabled:opacity-50"
         style={{ background: '#0064FF', color: '#fff' }}
       >
         ⚡ 즉시 실행

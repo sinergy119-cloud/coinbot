@@ -5,9 +5,7 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import PinPad from '../../_components/PinPad'
-import { isPinSet, verifyPin, listKeys, decryptAllByIds } from '@/lib/app/key-store'
-import { getSessionPin, setSessionPin } from '@/lib/app/auth-session'
+import { isPinSet, listKeys, decryptAllByDeviceKey } from '@/lib/app/key-store'
 import { EXCHANGE_LABELS, type Exchange } from '@/types/database'
 import ExchangeIcon from '@/components/ExchangeIcon'
 
@@ -27,7 +25,7 @@ interface BalanceRow {
   error?: string
 }
 
-type Phase = 'loading' | 'no_pin' | 'no_keys' | 'pin' | 'fetching' | 'result'
+type Phase = 'loading' | 'no_pin' | 'no_keys' | 'fetching' | 'result' | 'error'
 
 // 거래소별 뱃지 색상
 const EXCHANGE_BADGE: Record<string, { bg: string; text: string }> = {
@@ -40,8 +38,7 @@ const EXCHANGE_BADGE: Record<string, { bg: string; text: string }> = {
 
 export default function AssetsPage() {
   const [phase, setPhase] = useState<Phase>('loading')
-  const [pinError, setPinError] = useState<string | null>(null)
-  const [submitting, setSubmitting] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [balances, setBalances] = useState<BalanceRow[]>([])
   const [grandTotal, setGrandTotal] = useState(0)
 
@@ -51,23 +48,20 @@ export default function AssetsPage() {
       if (!hasPin) { setPhase('no_pin'); return }
       const keys = await listKeys()
       if (keys.length === 0) { setPhase('no_keys'); return }
-      // 세션 인증 유효 시 PIN 단계 생략 — 자산 자동 조회
-      const cachedPin = getSessionPin()
-      if (cachedPin) {
-        void fetchBalances(cachedPin)
-        return
-      }
-      setPhase('pin')
+      void fetchBalances()
     })()
   }, [])
 
-  async function fetchBalances(pin: string) {
-    setSubmitting(true)
-    setPinError(null)
+  async function fetchBalances() {
+    setErrorMessage(null)
+    setPhase('fetching')
     try {
-      const keys = await listKeys()
-      const decrypted = await decryptAllByIds(pin, keys.map((k) => k.id))
-      setPhase('fetching')
+      const decrypted = await decryptAllByDeviceKey()
+      if (decrypted.length === 0) {
+        setErrorMessage('자동 복호화에 실패했습니다. API Key를 다시 등록해주세요.')
+        setPhase('error')
+        return
+      }
 
       const res = await fetch('/api/app/proxy/balance', {
         method: 'POST',
@@ -87,38 +81,12 @@ export default function AssetsPage() {
         setGrandTotal(json.data.grandTotalKrw ?? 0)
         setPhase('result')
       } else {
-        setPinError(json.error ?? '조회 실패')
-        setPhase('pin')
+        setErrorMessage(json.error ?? '조회 실패')
+        setPhase('error')
       }
     } catch (err) {
-      setPinError(err instanceof Error ? err.message : '오류')
-      setPhase('pin')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  async function handlePin(pin: string) {
-    setSubmitting(true)
-    setPinError(null)
-    try {
-      const v = await verifyPin(pin)
-      if (!v.ok) {
-        if (v.reason === 'locked') {
-          const min = Math.ceil((v.retryAfterMs ?? 0) / 60000)
-          setPinError(`잠금 상태입니다. ${min}분 후 재시도.`)
-        } else {
-          setPinError('PIN이 틀립니다.')
-        }
-        setSubmitting(false)
-        return
-      }
-      setSessionPin(pin)
-      await fetchBalances(pin)
-    } catch (err) {
-      setPinError(err instanceof Error ? err.message : '오류')
-      setPhase('pin')
-      setSubmitting(false)
+      setErrorMessage(err instanceof Error ? err.message : '오류')
+      setPhase('error')
     }
   }
 
@@ -167,15 +135,26 @@ export default function AssetsPage() {
         </div>
       )}
 
-      {/* PIN 입력 */}
-      {phase === 'pin' && (
-        <PinPad
-          title="PIN 입력"
-          description="자산을 조회하려면 PIN을 입력해주세요."
-          errorMessage={pinError}
-          onSubmit={handlePin}
-          submitting={submitting}
-        />
+      {/* 오류 */}
+      {phase === 'error' && (
+        <div className="px-4">
+          <div
+            className="rounded-2xl p-6 text-center break-keep"
+            style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
+          >
+            <p className="text-[14px]" style={{ color: '#FF4D4F' }}>
+              {errorMessage ?? '조회에 실패했습니다.'}
+            </p>
+            <button
+              type="button"
+              onClick={fetchBalances}
+              className="mt-3 px-4 py-2 rounded-xl text-[13px] font-semibold"
+              style={{ background: '#0064FF', color: '#fff' }}
+            >
+              다시 시도
+            </button>
+          </div>
+        </div>
       )}
 
       {/* 조회 중 */}
