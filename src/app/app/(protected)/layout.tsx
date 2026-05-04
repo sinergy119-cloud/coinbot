@@ -4,6 +4,7 @@ import AppShell from '../_components/AppShell'
 import PushBanner from '../_components/PushBanner'
 import PwaInstaller from '../_components/PwaInstaller'
 import BatteryOptBanner from '../_components/BatteryOptBanner'
+import AppEntryGate from '../_components/AppEntryGate'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,7 +20,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       {/* Android 배터리 최적화 해제 안내 */}
       <BatteryOptBanner />
       {/* 상단 바 + 좌측 드로어 + 하단 탭 (클라이언트 상태 관리) */}
-      <AppShell>{children}</AppShell>
+      <AppShell>
+        <AppEntryGate>{children}</AppEntryGate>
+      </AppShell>
     </div>
   )
 }

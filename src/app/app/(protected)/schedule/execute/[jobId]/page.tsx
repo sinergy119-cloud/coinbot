@@ -12,10 +12,8 @@
 
 import { Suspense, useEffect, useState } from 'react'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
-import PinPad from '../../../../_components/PinPad'
 import KeySelector from '../../../../_components/KeySelector'
-import { verifyPin, decryptAllByIds } from '@/lib/app/key-store'
-import { getSessionPin, setSessionPin } from '@/lib/app/auth-session'
+import { decryptByIdsViaDeviceKey } from '@/lib/app/key-store'
 import { EXCHANGE_LABELS, TRADE_TYPE_LABELS, type Exchange, type TradeType } from '@/types/database'
 
 interface JobDetail {
@@ -41,7 +39,7 @@ interface ProxyResult {
   executedAt: string
 }
 
-type Phase = 'loading' | 'need_keys' | 'select_keys' | 'pin' | 'executing' | 'success' | 'failed' | 'not_found'
+type Phase = 'loading' | 'need_keys' | 'select_keys' | 'executing' | 'success' | 'failed' | 'not_found'
 
 function ExecuteInner() {
   const params = useParams<{ jobId: string }>()
@@ -54,7 +52,6 @@ function ExecuteInner() {
   const [phase, setPhase] = useState<Phase>('loading')
   const [job, setJob] = useState<JobDetail | null>(null)
   const [selectedKeyIds, setSelectedKeyIds] = useState<string[]>([])
-  const [pinError, setPinError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [result, setResult] = useState<ProxyResult | null>(null)
   const [failReason, setFailReason] = useState<string | null>(null)
@@ -81,30 +78,14 @@ function ExecuteInner() {
     })()
   }, [jobId])
 
-  async function handlePin(pin: string) {
+  async function startExecute() {
     if (!job) return
     setSubmitting(true)
-    setPinError(null)
     try {
-      // 세션에 캐시된 PIN이면 verifyPin 생략 가능 (이미 검증됨), 아니면 검증
-      const cachedPin = getSessionPin()
-      if (pin !== cachedPin) {
-        const v = await verifyPin(pin)
-        if (!v.ok) {
-          if (v.reason === 'locked') {
-            const min = Math.ceil((v.retryAfterMs ?? 0) / 60000)
-            setPinError(`잠금 상태입니다. ${min}분 후 재시도.`)
-          } else {
-            setPinError('PIN이 틀립니다.')
-          }
-          return
-        }
-        setSessionPin(pin)
-      }
-
-      const decrypted = await decryptAllByIds(pin, selectedKeyIds)
+      const decrypted = await decryptByIdsViaDeviceKey(selectedKeyIds)
       if (decrypted.length === 0) {
-        setPinError('선택한 계정을 찾을 수 없습니다.')
+        setFailReason('선택한 계정을 찾을 수 없습니다.')
+        setPhase('failed')
         return
       }
 
@@ -207,34 +188,16 @@ function ExecuteInner() {
 
         <button
           type="button"
+          disabled={submitting}
           onClick={() => {
             if (selectedKeyIds.length === 0) { alert('계정을 하나 이상 선택하세요.'); return }
-            // 세션 인증 유효 시 PIN 단계 생략
-            const cachedPin = getSessionPin()
-            if (cachedPin) {
-              void handlePin(cachedPin)
-              return
-            }
-            setPhase('pin')
+            void startExecute()
           }}
-          className="bg-gray-900 text-white py-3 rounded-2xl text-sm font-semibold"
+          className="bg-gray-900 text-white py-3 rounded-2xl text-sm font-semibold disabled:opacity-50"
         >
           실행
         </button>
       </div>
-    )
-  }
-
-  if (phase === 'pin') {
-    return (
-      <PinPad
-        title="PIN 입력"
-        description="스케줄 거래 실행을 위해 PIN을 입력해주세요."
-        errorMessage={pinError}
-        onSubmit={handlePin}
-        onCancel={() => setPhase('select_keys')}
-        submitting={submitting}
-      />
     )
   }
 

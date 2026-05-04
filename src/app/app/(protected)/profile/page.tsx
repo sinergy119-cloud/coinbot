@@ -13,7 +13,7 @@ import {
   registerBiometric,
   removeBiometric,
 } from '@/lib/app/key-store'
-import { clearSession } from '@/lib/app/auth-session'
+import { clearSession, isAppEntryAuthEnabled, setAppEntryAuthEnabled } from '@/lib/app/auth-session'
 
 interface Profile {
   userId: string
@@ -132,6 +132,7 @@ export default function ProfilePage() {
   const [showBioPinModal, setShowBioPinModal] = useState(false)
   const [bioPinError, setBioPinError] = useState<string | null>(null)
   const [bioSubmitting, setBioSubmitting] = useState(false)
+  const [entryAuth, setEntryAuth] = useState(false)
 
   useEffect(() => {
     (async () => {
@@ -155,6 +156,7 @@ export default function ProfilePage() {
         setLoading(false)
       }
     })()
+    setEntryAuth(isAppEntryAuthEnabled())
     ;(async () => {
       const [bioAvail, pinIsSet] = await Promise.all([isBiometricAvailable(), isPinSet()])
       setBioAvailable(bioAvail)
@@ -269,6 +271,27 @@ export default function ProfilePage() {
                   </p>
                 </div>
                 <TossToggle checked={bioRegistered} onChange={handleBioToggle} />
+              </div>
+            </>
+          )}
+          {pinSet && (
+            <>
+              <Divider />
+              <div className="flex items-center justify-between px-4 py-4">
+                <div className="break-keep pr-3">
+                  <p className="text-[15px] font-semibold" style={{ color: '#191F28' }}>앱 실행 시 인증</p>
+                  <p className="text-[12px] mt-0.5" style={{ color: '#6B7684' }}>
+                    앱 진입 시 PIN(지문 등록 시 지문 우선) 입력. 백그라운드 15분 / 24시간 후 재인증.
+                  </p>
+                </div>
+                <TossToggle
+                  checked={entryAuth}
+                  onChange={() => {
+                    const next = !entryAuth
+                    setAppEntryAuthEnabled(next)
+                    setEntryAuth(next)
+                  }}
+                />
               </div>
             </>
           )}

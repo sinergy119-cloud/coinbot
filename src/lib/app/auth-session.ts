@@ -18,6 +18,64 @@
 const BACKGROUND_TIMEOUT_MS = 15 * 60 * 1000  // 15분
 const MAX_SESSION_MS = 24 * 60 * 60 * 1000     // 24시간
 
+// ─────────────────────────────────────────────────────────────
+// 앱 진입 시 인증 설정 (localStorage 기반, 기기별)
+// ─────────────────────────────────────────────────────────────
+const ENTRY_AUTH_KEY = 'mycoinbot:app_entry_auth_enabled'
+
+/** 앱 진입 시 PIN/생체 인증을 요구할지 여부 */
+export function isAppEntryAuthEnabled(): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    return window.localStorage.getItem(ENTRY_AUTH_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+export function setAppEntryAuthEnabled(enabled: boolean): void {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(ENTRY_AUTH_KEY, enabled ? '1' : '0')
+  } catch {
+    /* 무시 */
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// 진입 인증 통과 플래그 (PIN 메모리 보관과 별개로, 게이트 통과 표시)
+// 거래는 device key로 복호화하므로 PIN을 메모리에 보관할 필요가 없음.
+// 정책은 일반 세션과 동일: 백그라운드 15분 / 절대 24시간.
+// ─────────────────────────────────────────────────────────────
+const entry: { authedAt: number; backgroundedAt: number | null } = {
+  authedAt: 0,
+  backgroundedAt: null,
+}
+
+export function markEntryAuthed(): void {
+  entry.authedAt = Date.now()
+  entry.backgroundedAt = null
+}
+
+export function clearEntryAuth(): void {
+  entry.authedAt = 0
+  entry.backgroundedAt = null
+}
+
+export function isEntryAuthValid(): boolean {
+  if (entry.authedAt === 0) return false
+  const now = Date.now()
+  if (now - entry.authedAt >= MAX_SESSION_MS) {
+    clearEntryAuth()
+    return false
+  }
+  if (entry.backgroundedAt !== null && now - entry.backgroundedAt >= BACKGROUND_TIMEOUT_MS) {
+    clearEntryAuth()
+    return false
+  }
+  return true
+}
+
 interface SessionState {
   pin: string | null
   authedAt: number       // 마지막 인증 시각 (ms)
@@ -77,6 +135,9 @@ export function markBackgrounded(): void {
   if (session.pin && session.backgroundedAt === null) {
     session.backgroundedAt = Date.now()
   }
+  if (entry.authedAt > 0 && entry.backgroundedAt === null) {
+    entry.backgroundedAt = Date.now()
+  }
 }
 
 /** 포그라운드 복귀 — 만료 검사 후 valid면 backgroundedAt 초기화 */
@@ -85,7 +146,9 @@ export function markForegrounded(): void {
   if (isSessionValid()) {
     session.backgroundedAt = null
   }
-  // 만료된 경우는 이미 clearSession됨 → 다음 작업이 PIN 요구
+  if (isEntryAuthValid()) {
+    entry.backgroundedAt = null
+  }
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -113,6 +176,7 @@ export function installVisibilityListener(): void {
   window.addEventListener('pagehide', (e) => {
     if ((e as PageTransitionEvent).persisted) {
       clearSession()
+      clearEntryAuth()
     } else {
       markBackgrounded()
     }
@@ -121,6 +185,7 @@ export function installVisibilityListener(): void {
     if ((e as PageTransitionEvent).persisted) {
       // BFCache 복원 = 사용자 입장에서 '앱 새로 켬' → 강제 재인증
       clearSession()
+      clearEntryAuth()
     } else {
       markForegrounded()
     }
