@@ -23,11 +23,13 @@ const MAX_SESSION_MS = 24 * 60 * 60 * 1000     // 24시간
 // ─────────────────────────────────────────────────────────────
 const ENTRY_AUTH_KEY = 'mycoinbot:app_entry_auth_enabled'
 
-/** 앱 진입 시 PIN/생체 인증을 요구할지 여부 */
+/** 앱 진입 시 PIN/생체 인증을 요구할지 여부 (기본: ON, 미설정 시 ON) */
 export function isAppEntryAuthEnabled(): boolean {
   if (typeof window === 'undefined') return false
   try {
-    return window.localStorage.getItem(ENTRY_AUTH_KEY) === '1'
+    const v = window.localStorage.getItem(ENTRY_AUTH_KEY)
+    if (v === null) return true     // 신규 사용자 기본값 = ON
+    return v === '1'
   } catch {
     return false
   }
