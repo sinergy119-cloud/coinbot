@@ -275,11 +275,16 @@ export default function PrivacyPage() {
         </ul>
       </Section>
 
-      <Section title="제11조 만 14세 미만 아동의 개인정보 처리">
-        <p className="text-sm text-gray-700 break-keep">
-          회사는 만 14세 미만 아동의 회원 가입을 받지 않습니다. 가입 후 만 14세 미만임이 확인되는 경우
-          즉시 해당 계정을 탈퇴 처리하고 수집된 개인정보를 파기합니다.
+      <Section title="제11조 가입 연령 및 미성년자의 개인정보 처리">
+        <p className="text-sm text-gray-700 break-keep mb-2">
+          본 서비스는 국내 가상자산 거래소(빗썸·업비트·코인원·코빗·고팍스)의 API를 매개하는 특성상,
+          해당 거래소가 「특정금융정보법」 및 실명확인 입출금 계좌 발급 기준에 따라 가입을 제한하는 것과 동일하게
+          <b> 만 19세 이상</b>의 이용자만 회원으로 가입할 수 있습니다.
         </p>
+        <ul className="text-sm text-gray-700 break-keep list-disc pl-5 space-y-1">
+          <li><b>만 19세 미만:</b> 회원 가입 불가. 가입 후 만 19세 미만임이 확인되는 경우 즉시 탈퇴 처리하고 수집된 개인정보를 파기합니다.</li>
+          <li><b>만 14세 미만:</b> 회사는 만 14세 미만 아동의 개인정보를 「개인정보 보호법」 §22-2에 따라 법정대리인의 동의 없이는 수집·이용하지 않으며, 동의 없이 수집된 사실이 확인될 경우 즉시 파기합니다.</li>
+        </ul>
       </Section>
 
       <Section title="제12조 쿠키의 사용 (자동수집장치)">
