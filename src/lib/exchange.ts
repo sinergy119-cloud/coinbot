@@ -452,7 +452,9 @@ export async function placeMarketOrderByCoinQty(
   const upperCoin = coin.toUpperCase()
   const accessKey = decrypt(encAccessKey)
   const secretKey = decrypt(encSecretKey)
-  const vol = parseFloat(coinQty.toFixed(8))
+  // Math.floor로 소수점 8자리 내림: available 값을 그대로 보내면
+  // 거래소 내부 주문가능 수량보다 1 사토시 초과하여 NO_BALANCE 오류 발생
+  const vol = Math.floor(coinQty * 1e8) / 1e8
 
   if (exchange === 'BITHUMB') {
     return bithumbPlaceMarketOrder(accessKey, secretKey, `KRW-${upperCoin}`, 'sell', 0, vol)
