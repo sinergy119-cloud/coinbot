@@ -59,11 +59,13 @@ export async function bithumbGetBalance(
   }
 
   // 응답 예: [{ currency: 'KRW', balance: '10000', locked: '0', ... }, ...]
-  const data = (await res.json()) as Array<{ currency: string; balance: string }>
+  const data = (await res.json()) as Array<{ currency: string; balance: string; locked?: string }>
   const coins: Record<string, number> = {}
   let krw = 0
   for (const item of data) {
-    const amount = Number(item.balance ?? 0)
+    // locked(미체결 주문 잠금)을 제외한 실제 주문 가능 수량
+    const avail = Number(item.balance ?? 0) - Number(item.locked ?? 0)
+    const amount = Math.max(0, avail)
     if (item.currency === 'KRW') krw = amount
     else coins[item.currency] = amount
   }
